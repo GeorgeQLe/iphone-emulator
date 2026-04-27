@@ -7,7 +7,33 @@ let package = Package(
     platforms: [
         .macOS(.v15),
     ],
+    products: [
+        .library(
+            name: "StrictModeSDK",
+            targets: ["StrictModeSDK"]
+        ),
+        .library(
+            name: "RuntimeHost",
+            targets: ["RuntimeHost"]
+        ),
+        .library(
+            name: "DiagnosticsCore",
+            targets: ["DiagnosticsCore"]
+        ),
+    ],
     targets: [
+        .target(
+            name: "StrictModeSDK",
+            path: "packages/swift-sdk/Sources/StrictModeSDK"
+        ),
+        .target(
+            name: "RuntimeHost",
+            path: "packages/runtime-host/Sources/RuntimeHost"
+        ),
+        .target(
+            name: "DiagnosticsCore",
+            path: "packages/diagnostics/Sources/DiagnosticsCore"
+        ),
         .target(
             name: "ScaffoldTestSupport"
         ),
@@ -16,13 +42,16 @@ let package = Package(
             dependencies: ["ScaffoldTestSupport"]
         ),
         .testTarget(
-            name: "StrictModeSDKContractTests"
+            name: "StrictModeSDKContractTests",
+            dependencies: ["StrictModeSDK"]
         ),
         .testTarget(
-            name: "RuntimeHostContractTests"
+            name: "RuntimeHostContractTests",
+            dependencies: ["RuntimeHost"]
         ),
         .testTarget(
-            name: "DiagnosticsCoreContractTests"
+            name: "DiagnosticsCoreContractTests",
+            dependencies: ["DiagnosticsCore"]
         ),
     ]
 )

@@ -1,0 +1,7 @@
+{
+  "name": "@iphone-emulator/browser-renderer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder package for the browser renderer."
+}

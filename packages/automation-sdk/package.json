@@ -1,0 +1,7 @@
+{
+  "name": "@iphone-emulator/automation-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder package for the automation SDK."
+}

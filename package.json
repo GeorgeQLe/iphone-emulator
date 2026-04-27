@@ -1,0 +1,9 @@
+{
+  "name": "iphone-emulator-workspace",
+  "private": true,
+  "description": "Workspace scaffold for the open-source iPhone-like app harness.",
+  "workspaces": [
+    "packages/browser-renderer",
+    "packages/automation-sdk"
+  ]
+}
