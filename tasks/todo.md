@@ -62,7 +62,7 @@
     - Detect the first explicitly unsupported imports such as `UIKit` and other Apple-only framework entry points.
     - Detect a bounded set of unsupported symbols or modifiers that are outside the current strict-mode or compatibility subset.
     - Return grouped diagnostics with suggested strict-mode adaptations where the mapping is already clear.
-- [ ] Step 4.5: Add the first supported SwiftUI-subset lowering or compatibility handoff path into the existing runtime model.
+- [x] Step 4.5: Add the first supported SwiftUI-subset lowering or compatibility handoff path into the existing runtime model.
   - Files: modify `packages/swift-sdk/Sources/StrictModeSDK/`, `packages/runtime-host/Sources/RuntimeHost/`, and `packages/diagnostics/Sources/DiagnosticsCore/` only where needed to prove the supported subset path; add fixture sources under `examples/compatibility-fixtures/`.
   - Keep scope narrow: support only the smallest fixture subset that cleanly lowers into the existing semantic tree contract and can be defended by tests.
   - Do not widen into general SwiftUI coverage, UIKit shims, or transport work.
@@ -74,6 +74,10 @@
   - Files: update `README.md`; add a dedicated compatibility document such as `docs/compatibility-matrix.md` if needed; expand `examples/compatibility-fixtures/README.md` or nearby fixture docs.
   - Document which imports, symbols, layouts, state primitives, and lifecycle hooks are supported, partially supported, unsupported, or deferred in Phase 4.
   - Include exact validation commands and explicit limitations so the compatibility lane does not overclaim simulator fidelity.
+  - Next execution plan:
+    - Update `README.md` to replace the stale "compatibility mode is not implemented" wording with the current diagnostics-led v1 subset status and its explicit limits.
+    - Add `docs/compatibility-matrix.md` that lists the supported `SwiftUI` import, `VStack`/`Text`/`Button`/`@State` subset path, the diagnostics-only unsupported `UIKit` and lifecycle/modifier gaps, and the deferred areas still out of scope.
+    - Document the exact validation commands already in use for this lane: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests`, plus the later full-phase `swift test` / `swift build` pass still pending in Step 4.8.
 
 ### Green
 - [ ] Step 4.7: Add regression tests covering supported and unsupported compatibility fixtures.

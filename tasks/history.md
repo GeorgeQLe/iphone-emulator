@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.5 by wiring `DiagnosticsCore`'s first supported-subset path to emit a real `RuntimeHost.SemanticUITree`, adding a narrow `RuntimeAppLoader.loadCompatibilityTree` handoff, and shifting the compatibility contracts from preview-only assertions to shared runtime-model coverage.
+- Validation: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests` both passed cleanly with no warnings after the compatibility handoff landed. One initial parallel `swift test` invocation produced stale SwiftPM contention output and was discarded before the final serial green runs.
 - Completed Phase 4 Step 4.4 by extending `DiagnosticsCore`'s lightweight compatibility analyzer with a first-class platform-API diagnostic path for `UIApplication` while preserving deterministic source scanning for unsupported imports, symbols, lifecycle hooks, and modifiers.
 - Validation: `swift build`, `swift test --filter DiagnosticsCoreContractTests`, and `swift test` all passed cleanly with no warnings after adding the platform-API contract coverage.
 - Completed Phase 4 Step 4.3 by replacing the `DiagnosticsCore` stub with a value-oriented compatibility contract surface: explicit support-level/category/severity enums, compatibility matrix entries, report summaries, supported-feature metadata, lowering-preview types, and a lightweight analyzer that accepts inline source or fixture paths and returns deterministic diagnostics plus the first supported-subset preview.
