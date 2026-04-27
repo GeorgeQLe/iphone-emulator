@@ -33,3 +33,5 @@
 - Archived the completed Phase 1 plan to `tasks/phases/phase-1.md`, marked the roadmap phase complete, and generated the detailed Phase 2 execution plan in `tasks/todo.md`.
 - Completed Phase 2 Step 2.1 by adding a concrete semantic UI tree contract under `RuntimeHost/UITree`, wiring `StrictModeSDK` to lower strict-mode scenes and views into `SemanticUITree`, and extending the contract tests to lock the new shared surface.
 - Validation: `swift test` passed with 7 tests across 4 suites, including semantic-tree lowering coverage, and `swift build` completed cleanly with no warnings or errors.
+- Completed Phase 2 Step 2.2 by adding a typed `RuntimeTreeSnapshot`, rewriting `RuntimeAppLoader` to lower strict-mode fixtures through explicit semantic-tree closures, and replacing `RuntimeTreeBridge` placeholder state with retained snapshot query helpers for fixture inspection.
+- Validation: `swift test` passed with 9 tests across 4 suites, including new runtime-host fixture loading and bridge retention coverage, and `swift build` completed cleanly with no warnings or errors.

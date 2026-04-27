@@ -35,7 +35,7 @@
   - Files: create `packages/runtime-host/Sources/RuntimeHost/UITree/` types for semantic nodes, roles, view identifiers, navigation state, modal state, tab state, and alert payloads; modify `packages/swift-sdk/Sources/StrictModeSDK/` to introduce the minimum protocols or builders needed to lower strict-mode declarations into that tree.
   - Keep the contract narrow and deterministic. Prefer project-owned value types over early protocol abstraction so the renderer and automation work can share a stable serialized shape later.
   - Update `Package.swift` only if additional source folders or target dependencies are required; avoid introducing new packages in this phase.
-- [ ] Step 2.2: Connect the runtime host placeholder APIs to produce and retain semantic UI tree snapshots for strict-mode fixtures.
+- [x] Step 2.2: Connect the runtime host placeholder APIs to produce and retain semantic UI tree snapshots for strict-mode fixtures.
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, and related new support files under `packages/runtime-host/Sources/RuntimeHost/`.
   - Extend the compile-only placeholders into behavior-light fixtures that can load a known strict-mode app declaration, derive a semantic tree snapshot, and expose stable identifiers without adding protocol transport or automation concerns yet.
   - If the current `StrictModeSDK` skeleton needs additional compile-time hooks for fixture lowering, add the smallest surface necessary and keep the public API explicit.
@@ -45,10 +45,17 @@
     3. Replace the placeholder `RuntimeTreeBridge.lastRenderedTreeIdentifier` with retained tree snapshot state plus small query helpers for the latest root identifier, navigation state, modal state, and alert payload.
     4. Keep the implementation fixture-scoped: no JSON-RPC transport, no async session management, and no renderer coupling in this step.
     5. Add focused runtime-host tests for fixture loading and retained snapshot inspection before moving on to renderer work.
+  - Completed on 2026-04-27 by adding `RuntimeTreeSnapshot`, rewriting `RuntimeAppLoader` around fixture-lowering closures to avoid package cycles, replacing `RuntimeTreeBridge` placeholder state with retained snapshot queries, and extending the runtime-host contract tests to cover strict-mode fixture loading plus snapshot inspection.
 - [ ] Step 2.3: Build the browser renderer package shell that can render a semantic tree inside an iPhone-like browser frame.
   - Files: update `packages/browser-renderer/package.json`; create `packages/browser-renderer/src/` entry points, render helpers, styles, and fixture bootstrap code; add any local config files needed to run renderer tests or builds.
   - Focus on a deterministic shell with semantic markup for the currently supported primitives: text, button, text field, list, stacks, navigation, modal, tab view, and alerts.
   - Keep the visual system intentionally simple but structured so later device simulation and automation hooks can extend it without rewrites.
+  - Implementation plan:
+    1. Choose the smallest browser package toolchain that can expose repeatable local `build` and `test` commands from `packages/browser-renderer/package.json` without introducing a monorepo-wide frontend framework.
+    2. Create a fixture bootstrap entry that imports a checked-in semantic tree fixture and mounts the renderer into a deterministic app root with viewport metadata for the eventual iPhone-like frame.
+    3. Add renderer primitives and semantic markup for the currently supported UI tree roles, keeping styling and DOM structure stable enough for later snapshot-style assertions.
+    4. Build the iPhone-like shell, including a constrained viewport, surface chrome, and semantic hooks that make renderer output inspectable without coupling to automation transport yet.
+    5. Add at least one focused renderer test or smoke check in the selected toolchain before moving on to docs/examples in Step 2.4.
 - [ ] Step 2.4: Add fixture examples and developer documentation for the Phase 2 rendering path.
   - Files: update `README.md`; expand `examples/strict-mode-baseline/`; add renderer usage notes under `examples/` or `docs/` if a new doc path is needed.
   - Document how a strict-mode fixture app flows from SDK declaration through runtime tree generation into the browser renderer, including current limitations and any manual steps needed to preview the renderer locally.
