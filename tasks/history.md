@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 3 Step 3.5 by updating the root README and strict baseline example docs for the new automation SDK flow, and by adding a checked-in `automation-example.ts` script that demonstrates launch, query, interaction, semantic inspection, logs, and screenshot placeholder metadata against the strict baseline fixture.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings after the documentation and sample-script update.
 - Completed Phase 3 Step 3.4 by implementing the `@iphone-emulator/automation-sdk` package with a fixture-backed in-memory `Emulator` client, Playwright-style locator helpers, semantic tree inspection, deterministic `tap` and `fill` updates, log retrieval, and screenshot placeholder metadata.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` all passed cleanly with no warnings after the SDK implementation landed.
 - Completed Phase 3 Step 3.3 by adding an in-memory `RuntimeAutomationCoordinator` in `RuntimeHost` that launches the strict baseline fixture, resolves semantic queries by text/role/identifier, applies deterministic `tap` and `fill` snapshot updates, and returns logs plus screenshot placeholder metadata through the existing automation protocol types.

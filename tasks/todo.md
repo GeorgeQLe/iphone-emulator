@@ -59,7 +59,7 @@
     - Implement `packages/automation-sdk/src/index.ts` with `Emulator.launch` returning a fixture-backed session object that mirrors the current `RuntimeAutomationCoordinator` surface and baseline fixture behavior.
     - Add locator helpers for `getByText`, `getByRole`, and `getByTestId`, with `tap`, `fill`, and `inspect` implemented against an in-memory semantic tree plus deterministic logs/screenshot placeholders.
     - Wire `package.json` scripts and any small TypeScript config gaps so `npm --prefix packages/automation-sdk run typecheck`, `test`, and `build` all execute locally before expanding end-to-end examples in Step 3.5.
-- [ ] Step 3.5: Add fixture-driven automation examples and developer documentation.
+- [x] Step 3.5: Add fixture-driven automation examples and developer documentation.
   - Files: update `README.md`; expand `examples/strict-mode-baseline/README.md`; add example automation usage under `examples/strict-mode-baseline/` or `packages/automation-sdk/` if a checked-in sample script clarifies the supported API.
   - Document the end-to-end Phase 3 flow from strict-mode fixture declaration through runtime automation session launch into the TypeScript SDK, including the exact local commands to validate the automation package.
   - Call out the current limitations explicitly: in-memory transport only, fixture-scoped state updates, no live browser session coordination, and screenshot support limited to placeholder metadata or stubbed hooks until later phases.
@@ -73,6 +73,10 @@
   - Files: extend the Swift and TypeScript test suites created earlier; add fixture-specific assertions only where they improve Phase 3 acceptance coverage without making the API brittle.
   - Cover a representative end-to-end flow where a TypeScript-side test launches a fixture app, finds elements by text and role, performs `tap` and `fill`, inspects the updated semantic tree, and retrieves logs or placeholder screenshot metadata.
   - Keep assertions structural and deterministic: prefer stable semantic identifiers, explicit role/text expectations, and small serialized payload checks over large snapshots.
+  - Next execution plan:
+    - Extend `packages/automation-sdk/src/index.test.ts` with one representative end-to-end automation flow that asserts deterministic tree updates, appended log messages, and screenshot placeholder metadata after `tap` and `fill`.
+    - Add or expand `tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` coverage only where it strengthens the shared query/update contract without duplicating the TypeScript-side scenario assertions.
+    - Keep assertions focused on stable identifiers, roles, alert payload state, field values, and short log payloads rather than large serialized tree snapshots.
 - [ ] Step 3.7: Run the full validation surface for the Swift workspace, browser renderer, and automation SDK.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and the matching `packages/automation-sdk` `typecheck`/`test`/`build` commands introduced in this phase.
