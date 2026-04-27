@@ -46,7 +46,7 @@
     4. Keep the implementation fixture-scoped: no JSON-RPC transport, no async session management, and no renderer coupling in this step.
     5. Add focused runtime-host tests for fixture loading and retained snapshot inspection before moving on to renderer work.
   - Completed on 2026-04-27 by adding `RuntimeTreeSnapshot`, rewriting `RuntimeAppLoader` around fixture-lowering closures to avoid package cycles, replacing `RuntimeTreeBridge` placeholder state with retained snapshot queries, and extending the runtime-host contract tests to cover strict-mode fixture loading plus snapshot inspection.
-- [ ] Step 2.3: Build the browser renderer package shell that can render a semantic tree inside an iPhone-like browser frame.
+- [x] Step 2.3: Build the browser renderer package shell that can render a semantic tree inside an iPhone-like browser frame.
   - Files: update `packages/browser-renderer/package.json`; create `packages/browser-renderer/src/` entry points, render helpers, styles, and fixture bootstrap code; add any local config files needed to run renderer tests or builds.
   - Focus on a deterministic shell with semantic markup for the currently supported primitives: text, button, text field, list, stacks, navigation, modal, tab view, and alerts.
   - Keep the visual system intentionally simple but structured so later device simulation and automation hooks can extend it without rewrites.
@@ -56,9 +56,16 @@
     3. Add renderer primitives and semantic markup for the currently supported UI tree roles, keeping styling and DOM structure stable enough for later snapshot-style assertions.
     4. Build the iPhone-like shell, including a constrained viewport, surface chrome, and semantic hooks that make renderer output inspectable without coupling to automation transport yet.
     5. Add at least one focused renderer test or smoke check in the selected toolchain before moving on to docs/examples in Step 2.4.
+  - Completed on 2026-04-27 by adding a local Vite/Vitest/TypeScript toolchain, a checked-in semantic tree fixture, a deterministic DOM renderer for the current UI roles, an iPhone-like browser shell, and a focused renderer smoke test.
 - [ ] Step 2.4: Add fixture examples and developer documentation for the Phase 2 rendering path.
   - Files: update `README.md`; expand `examples/strict-mode-baseline/`; add renderer usage notes under `examples/` or `docs/` if a new doc path is needed.
   - Document how a strict-mode fixture app flows from SDK declaration through runtime tree generation into the browser renderer, including current limitations and any manual steps needed to preview the renderer locally.
+  - Implementation plan:
+    1. Update `README.md` to describe the new browser renderer package, its fixed fixture scope, and the exact local commands for `typecheck`, `test`, and `build`.
+    2. Expand `examples/strict-mode-baseline/README.md` with the end-to-end flow from `StrictModeSDK` declarations to `RuntimeHost` semantic trees to browser rendering, including which file now provides the checked-in renderer fixture.
+    3. Add or extend example assets under `examples/strict-mode-baseline/` only if they clarify the renderer path without creating a second source of truth for the semantic tree contract.
+    4. Call out current limitations explicitly: fixed fixture input, no transport/session layer, no live runtime updates, and no automation hooks yet.
+    5. Re-run the documentation-adjacent validation surface (`npm test`, `npm run build`, and `swift test`) only if the docs step changes executable examples or referenced commands.
 
 ### Green
 - [ ] Step 2.5: Add regression tests covering semantic tree generation and renderer output for a fixed strict-mode fixture.
