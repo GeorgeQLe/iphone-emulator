@@ -2,6 +2,9 @@
 
 ## 2026-04-27
 
+- Completed Phase 3 Step 3.8 as an intentional no-op boundary review after re-reading the `RuntimeHost` automation value types and the in-memory TypeScript automation SDK surface together. No runtime or SDK code changes were justified because the current split remains the smallest coherent pre-transport seam for fixture-backed automation.
+- Validation: reused the existing green validation surface already captured for Step 3.7 rather than re-running commands, because Step 3.8 concluded with task-doc updates only and introduced no code changes.
+- Archived the completed Phase 3 plan to `tasks/phases/phase-3.md`, marked Phase 3 complete in `tasks/roadmap.md`, and generated the detailed Phase 4 execution plan in `tasks/todo.md` for the compatibility diagnostics milestone.
 - Completed Phase 3 Step 3.7 by running the full validation surface for the Swift workspace, browser renderer, and automation SDK without needing any code or config changes.
 - Validation: `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings in the captured output.
 - Completed Phase 3 Step 3.6 by strengthening the automation SDK regression coverage into one representative fixture-backed flow that launches the app, queries by text/role/test ID, performs deterministic `tap` and `fill` updates, then asserts the updated semantic tree, appended logs, and screenshot placeholder metadata.

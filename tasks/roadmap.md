@@ -43,7 +43,7 @@
 **Coordination Notes:** SDK/runtime UI tree work and browser renderer work can likely be separated by an explicit serialized UI tree contract. The contract itself is the shared chokepoint.
 
 ## Phase 3: M1 Automation SDK and Semantic Inspection
-**Status:** current.
+**Status:** complete on 2026-04-27.
 
 **Goal:** Provide a Playwright-style TypeScript automation API over the runtime and renderer.
 
@@ -63,6 +63,7 @@
 **Coordination Notes:** Protocol shape, runtime behavior, SDK API, and test harness are tightly coupled. Parallel exploration can compare API designs, but implementation should remain integrated.
 
 ## Phase 4: M2 SwiftUI-Subset Compatibility Diagnostics
+**Status:** current.
 
 **Goal:** Add best-effort compatibility handling for plain Swift logic and a documented SwiftUI-inspired subset, led by diagnostics rather than opaque failure.
 

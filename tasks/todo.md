@@ -5,8 +5,9 @@
 - [x] `$ship-end --no-deploy` - configured `origin` and pushed the initial `main` commit to `https://github.com/GeorgeQLe/iphone-emulator.git` on 2026-04-27 14:22:55 EDT.
 - [x] Phase 1 completed on 2026-04-27 after confirming the current `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore` package split is the smallest coherent scaffold and re-running `swift test` plus `swift build`.
 - [x] Phase 2 completed on 2026-04-27 after aligning the renderer-side scene-kind contract with `RuntimeHost`, re-running the full Swift and browser-renderer validation surface, and confirming the UI tree and browser boundary needs no broader cleanup before automation work begins.
+- [x] Phase 3 completed on 2026-04-27 after confirming the runtime automation value types and the in-memory automation SDK remain the smallest coherent pre-transport boundary, with the full Swift, renderer, and automation validation surface already green.
 
-## Phase 3: M1 Automation SDK and Semantic Inspection
+## Phase 4: M2 SwiftUI-Subset Compatibility Diagnostics
 > Test strategy: tdd
 
 ### Execution Profile
@@ -16,88 +17,84 @@
 **Review gates:** correctness, tests, docs/API conformance
 
 **Subagent lanes:**
-- Lane: protocol-shape-research
+- Lane: compatibility-matrix-research
   - Agent: explorer
   - Role: explorer
   - Mode: read-only
-  - Scope: inspect the current `RuntimeHost` snapshot APIs and Phase 3 spec language to recommend the smallest automation protocol envelope that can cover launch, element lookup, interactions, logs, and snapshot inspection without locking in transport details too early.
+  - Scope: inspect the spec, current strict-mode SDK, and runtime UI tree to recommend the smallest v1 SwiftUI-subset compatibility matrix that can truthfully distinguish supported lowering paths from diagnostics-only gaps.
   - Depends on: none
-  - Deliverable: a short recommendation for request/response message shapes, error handling, and stable semantic query fields.
-- Lane: automation-sdk-surface-research
+  - Deliverable: a short recommendation for supported imports, view/layout/state primitives, and the first explicitly unsupported framework areas that should produce diagnostics.
+- Lane: diagnostics-scan-research
   - Agent: explorer
   - Role: explorer
   - Mode: read-only
-  - Scope: inspect the browser renderer fixture coverage, the `packages/automation-sdk` placeholder, and the roadmap API examples to recommend the minimum TypeScript package surface needed for a Playwright-style fixture runner in this phase.
+  - Scope: inspect `DiagnosticsCore`, existing SwiftPM tests, and candidate fixture shapes to recommend the lightest analyzer surface that can report unsupported imports, symbols, modifiers, and lifecycle hooks with stable source locations.
   - Depends on: none
-  - Deliverable: a short recommendation for SDK entry points, locator ergonomics, and the lightest local Node toolchain that supports repeatable tests.
+  - Deliverable: a short recommendation for analyzer entry points, report types, and fixture/test organization.
 
 ### Tests First
-- [x] Step 3.1: Write failing contract tests for the automation protocol and SDK surface.
-  - Files: expand `tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; create automation SDK tests under `packages/automation-sdk/` such as `src/index.test.ts` or `test/**/*.test.ts`; update `packages/automation-sdk/package.json` and local TypeScript/Vitest config only as needed to run those tests.
-  - Add Swift-side contract tests for a runtime automation session value, protocol request/response envelopes, semantic query lookup, and deterministic fixture command handling.
-  - Add TypeScript-side failing tests that lock the intended Phase 3 user surface: `Emulator.launch(...)`, `app.close()`, locator lookup by text and role, `tap()`, `fill()`, semantic tree inspection, and log collection.
-  - The new tests must fail initially because the runtime automation types and automation SDK entry points do not exist yet.
+- [ ] Step 4.1: Write failing diagnostics contract tests for compatibility reports, matrix metadata, and analyzer entry points.
+  - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`; create any new focused diagnostics fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` if the analyzer needs checked-in source inputs; update `Package.swift` only if a new SwiftPM test target becomes necessary.
+  - Add failing assertions for a structured compatibility report value, a documented compatibility matrix surface, analyzer results for unsupported imports and symbols, and summary counts grouped by category or severity.
+  - Keep the red-phase tests focused on deterministic public API shape and report contents rather than parser implementation details.
+- [ ] Step 4.2: Write failing tests for the first supported compatibility fixture and adaptation guidance path.
+  - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` or create a dedicated compatibility-mode contract suite under `tests/`; add representative Swift source fixtures that exercise both a supported SwiftUI-inspired subset and explicitly unsupported APIs.
+  - Add one failing test that proves a narrow supported fixture can pass analysis without unsupported diagnostics and expose enough structured output to lower into the existing semantic tree/runtime model later in the phase.
+  - Add one failing test that proves unsupported lifecycle hooks, platform APIs, or modifiers produce source-linked diagnostics with suggested strict-mode adaptations.
 
 ### Implementation
-- [x] Step 3.2: Define the runtime automation protocol and session state in `RuntimeHost`.
-  - Files: create automation support files under `packages/runtime-host/Sources/RuntimeHost/Automation/` for launch configuration, session identity, semantic query types, command enums, response payloads, and protocol errors; update `Package.swift` only if target wiring changes are needed.
-  - Keep the transport layer abstract at the value-type level: Phase 3 needs stable request/response shapes that could later travel over JSON-RPC or WebSocket, but this step should not require a live server yet.
-  - Model only the commands the roadmap promises for this phase: launch/close, tap, fill/type, wait/query, semantic snapshot inspection, screenshot placeholder metadata, and log retrieval.
+- [ ] Step 4.3: Define the diagnostics-core compatibility report, matrix, and analyzer contract types.
+  - Files: expand `packages/diagnostics/Sources/DiagnosticsCore/` with value types for report summaries, diagnostic categories/severity, compatibility matrix entries, analyzer inputs, and analyzer outputs; update `Package.swift` only if target wiring changes are required.
+  - Keep the surface value-oriented and deterministic. This step should establish the public contract without committing to a full parser architecture.
   - Next execution plan:
-    - Add an `Automation/` folder under `RuntimeHost` with value-only types for session identity, launch configuration, semantic queries, commands, events, logs, screenshot metadata, and protocol errors.
-    - Make the command/result enums `Codable`, `Hashable`, and `Sendable` so the Swift contract matches the eventual SDK transport seam without introducing server code yet.
-    - Implement only the initializer and case shapes needed to make the new `RuntimeHostContractTests` compile and pass before moving to fixture-backed runtime behavior in Step 3.3.
-- [x] Step 3.3: Implement deterministic runtime automation handling over fixture-backed snapshots.
-  - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, `RuntimeTreeSnapshot.swift`, and add any new runtime automation coordinator files under `packages/runtime-host/Sources/RuntimeHost/Automation/`.
-  - Add the smallest runtime session coordinator that can launch a strict-mode fixture app, retain the latest semantic tree snapshot, resolve semantic queries by text/role/stable identifier, and apply deterministic fixture-scoped interaction updates for tap and fill commands.
-  - Keep the scope fixture-driven and synchronous where possible. Do not add browser transport, async multiplexing, or compatibility-mode concerns in this step.
-- [x] Step 3.4: Build the TypeScript automation SDK package around the runtime contract.
-  - Files: update `packages/automation-sdk/package.json`; create `packages/automation-sdk/src/` entry points, locator helpers, session client types, fixture transport stubs, and any local TypeScript/Vitest config files needed for repeatable `typecheck`, `test`, and `build` commands.
-  - Expose a narrow Playwright-style surface that matches the roadmap example closely: `Emulator.launch`, `close`, `getByText`, `getByRole`, locator `tap`, locator `fill`, semantic snapshot access, and log retrieval.
-  - Use a local in-memory transport/client seam for this phase so the SDK can exercise the runtime automation contract before a real JSON-RPC or WebSocket server exists.
+    - Add report and matrix types that make supported, partially supported, unsupported, and deferred compatibility areas explicit.
+    - Define analyzer entry points that can accept Swift source text or fixture file paths and return structured diagnostics plus support summaries.
+    - Keep adaptation guidance as project-owned suggestion text rather than opaque parser errors.
+- [ ] Step 4.4: Implement a lightweight source analyzer for unsupported imports, symbols, modifiers, lifecycle hooks, and platform APIs.
+  - Files: add analyzer implementation files under `packages/diagnostics/Sources/DiagnosticsCore/`; add checked-in Swift compatibility fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` as needed.
+  - Start with deterministic source scanning for the first narrow slice rather than a broad compiler plugin or full AST integration.
+  - The analyzer must report stable source locations and preserve enough context for later migration reporting.
   - Next execution plan:
-    - Implement `packages/automation-sdk/src/index.ts` with `Emulator.launch` returning a fixture-backed session object that mirrors the current `RuntimeAutomationCoordinator` surface and baseline fixture behavior.
-    - Add locator helpers for `getByText`, `getByRole`, and `getByTestId`, with `tap`, `fill`, and `inspect` implemented against an in-memory semantic tree plus deterministic logs/screenshot placeholders.
-    - Wire `package.json` scripts and any small TypeScript config gaps so `npm --prefix packages/automation-sdk run typecheck`, `test`, and `build` all execute locally before expanding end-to-end examples in Step 3.5.
-- [x] Step 3.5: Add fixture-driven automation examples and developer documentation.
-  - Files: update `README.md`; expand `examples/strict-mode-baseline/README.md`; add example automation usage under `examples/strict-mode-baseline/` or `packages/automation-sdk/` if a checked-in sample script clarifies the supported API.
-  - Document the end-to-end Phase 3 flow from strict-mode fixture declaration through runtime automation session launch into the TypeScript SDK, including the exact local commands to validate the automation package.
-  - Call out the current limitations explicitly: in-memory transport only, fixture-scoped state updates, no live browser session coordination, and screenshot support limited to placeholder metadata or stubbed hooks until later phases.
+    - Detect the first explicitly unsupported imports such as `UIKit` and other Apple-only framework entry points.
+    - Detect a bounded set of unsupported symbols or modifiers that are outside the current strict-mode or compatibility subset.
+    - Return grouped diagnostics with suggested strict-mode adaptations where the mapping is already clear.
+- [ ] Step 4.5: Add the first supported SwiftUI-subset lowering or compatibility handoff path into the existing runtime model.
+  - Files: modify `packages/swift-sdk/Sources/StrictModeSDK/`, `packages/runtime-host/Sources/RuntimeHost/`, and `packages/diagnostics/Sources/DiagnosticsCore/` only where needed to prove the supported subset path; add fixture sources under `examples/compatibility-fixtures/`.
+  - Keep scope narrow: support only the smallest fixture subset that cleanly lowers into the existing semantic tree contract and can be defended by tests.
+  - Do not widen into general SwiftUI coverage, UIKit shims, or transport work.
   - Next execution plan:
-    - Update the root `README.md` Phase 3 status and validation section to include the new `@iphone-emulator/automation-sdk` package, its local commands, and the current in-memory-only transport limitations.
-    - Expand `examples/strict-mode-baseline/README.md` with a concrete automation walkthrough that starts from the strict fixture, launches `Emulator`, queries by text/role/test ID, performs `tap` and `fill`, and inspects the semantic tree plus logs.
-    - Add a checked-in sample script under `packages/automation-sdk/` or `examples/strict-mode-baseline/` that mirrors the documented flow closely enough to serve as a copy-paste starting point for Step 3.6 regression coverage.
+    - Choose one representative compatibility fixture that uses only supported subset primitives already close to the strict-mode model.
+    - Reuse the existing semantic UI tree and runtime snapshot structures rather than inventing a second rendering model.
+    - Fail closed when unsupported APIs are present so compatibility mode remains diagnostics-led.
+- [ ] Step 4.6: Document the v1 compatibility matrix, limitations, and migration guidance.
+  - Files: update `README.md`; add a dedicated compatibility document such as `docs/compatibility-matrix.md` if needed; expand `examples/compatibility-fixtures/README.md` or nearby fixture docs.
+  - Document which imports, symbols, layouts, state primitives, and lifecycle hooks are supported, partially supported, unsupported, or deferred in Phase 4.
+  - Include exact validation commands and explicit limitations so the compatibility lane does not overclaim simulator fidelity.
 
 ### Green
-- [x] Step 3.6: Run regression tests covering representative automation flows and semantic inspection.
-  - Files: extend the Swift and TypeScript test suites created earlier; add fixture-specific assertions only where they improve Phase 3 acceptance coverage without making the API brittle.
-  - Cover a representative end-to-end flow where a TypeScript-side test launches a fixture app, finds elements by text and role, performs `tap` and `fill`, inspects the updated semantic tree, and retrieves logs or placeholder screenshot metadata.
-  - Keep assertions structural and deterministic: prefer stable semantic identifiers, explicit role/text expectations, and small serialized payload checks over large snapshots.
-  - Next execution plan:
-    - Extend `packages/automation-sdk/src/index.test.ts` with one representative end-to-end automation flow that asserts deterministic tree updates, appended log messages, and screenshot placeholder metadata after `tap` and `fill`.
-    - Add or expand `tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` coverage only where it strengthens the shared query/update contract without duplicating the TypeScript-side scenario assertions.
-    - Keep assertions focused on stable identifiers, roles, alert payload state, field values, and short log payloads rather than large serialized tree snapshots.
-- [x] Step 3.7: Run the full validation surface for the Swift workspace, browser renderer, and automation SDK.
+- [ ] Step 4.7: Add regression tests covering supported and unsupported compatibility fixtures.
+  - Files: extend the diagnostics and runtime test suites created earlier; add fixture-specific assertions only where they improve acceptance coverage without overfitting to parser internals.
+  - Cover one supported fixture that passes analysis and lowers into the shared runtime model, plus unsupported fixtures that produce stable source-linked diagnostics and adaptation guidance.
+  - Keep assertions structural and deterministic: prefer import names, symbol names, categories, line/column data, and compact support summaries over large serialized reports.
+- [ ] Step 4.8: Run the full validation surface for the Swift workspace plus any compatibility-specific tooling introduced in this phase.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
-  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and the matching `packages/automation-sdk` `typecheck`/`test`/`build` commands introduced in this phase.
-  - Inspect warnings as well as failures. Do not close the phase with missing SDK validation wiring.
-- [ ] Step 3.8: Refactor the runtime and SDK boundary if needed while keeping the new tests green.
-  - Re-read the runtime automation value types and TypeScript SDK entry points before changing names or file boundaries.
-  - Keep refactors limited to clarifying ownership between the runtime contract and SDK client, reducing duplication, or tightening deterministic semantic query semantics. Do not widen scope into browser transport or compatibility diagnostics work.
-  - If no meaningful cleanup is justified after the validation run, record this as an intentional no-op boundary review rather than introducing churn.
+  - Run `swift test`, `swift build`, and any compatibility-focused commands added during this phase. Re-run the browser renderer and automation SDK validation commands only if shared contracts or docs/examples they consume changed.
+- [ ] Step 4.9: Refactor the compatibility and diagnostics boundary if needed while keeping the new tests green.
+  - Re-read the diagnostics report types, supported subset handoff path, and any new compatibility fixtures before changing names or file boundaries.
+  - Keep refactors limited to clarifying ownership between diagnostics analysis, supported-subset lowering, and the existing runtime contract. Do not widen scope into device simulation, network fixtures, or React Native evaluation.
   - Next execution plan:
-    - Re-read `packages/runtime-host/Sources/RuntimeHost/Automation/` and `packages/automation-sdk/src/` together, looking specifically for duplicated query semantics, redundant placeholder types, or naming mismatches that make the runtime contract harder for the SDK to mirror.
-    - If a small boundary cleanup is justified, keep the write scope narrow and rerun only the affected validation commands plus a final full pass if shared types move or rename.
-    - If the current split is already the smallest coherent boundary, record Step 3.8 as an intentional no-op review, then mark the remaining milestone acceptance criteria complete for the phase.
+    - Inspect `packages/diagnostics/Sources/DiagnosticsCore/`, the supported compatibility fixture path, and any runtime handoff helpers for duplicated semantics or confusing ownership.
+    - If no meaningful simplification is justified, record Step 4.9 as an intentional no-op review rather than forcing churn.
+    - If a narrow cleanup is justified, keep the write scope small and rerun only the affected validation commands before the final full pass.
 
-### Milestone: M1 Automation SDK and Semantic Inspection
+### Milestone: M2 SwiftUI-Subset Compatibility Diagnostics
 **Acceptance Criteria:**
-- [ ] A TypeScript test can launch a fixture app and interact with supported UI primitives.
-- [ ] Semantic queries can find elements by text, role, and stable identifiers.
-- [ ] Automation commands update runtime state deterministically.
-- [ ] Logs and semantic snapshots are available through the SDK.
-- [x] All phase tests pass.
-- [x] No regressions in previous phase tests.
+- [ ] Compatibility mode can analyze a representative existing Swift codebase fixture.
+- [ ] Unsupported Apple-only APIs produce structured diagnostics instead of crashes.
+- [ ] Supported subset examples lower into the strict runtime model.
+- [ ] The compatibility matrix documents supported, partially supported, unsupported, and deferred areas.
+- [ ] All phase tests pass.
+- [ ] No regressions in previous phase tests.
 
 **On Completion:**
 - Deviations from plan: none yet
