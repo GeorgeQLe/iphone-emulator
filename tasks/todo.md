@@ -47,7 +47,7 @@
     - Keep the red phase contract scoped to report contents and suggested guidance text, not lowering implementation details.
 
 ### Implementation
-- [ ] Step 4.3: Define the diagnostics-core compatibility report, matrix, and analyzer contract types.
+- [x] Step 4.3: Define the diagnostics-core compatibility report, matrix, and analyzer contract types.
   - Files: expand `packages/diagnostics/Sources/DiagnosticsCore/` with value types for report summaries, diagnostic categories/severity, compatibility matrix entries, analyzer inputs, and analyzer outputs; update `Package.swift` only if target wiring changes are required.
   - Keep the surface value-oriented and deterministic. This step should establish the public contract without committing to a full parser architecture.
   - Next execution plan:

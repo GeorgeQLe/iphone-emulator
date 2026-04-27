@@ -1,4 +1,6 @@
-public struct SourceLocation: Sendable {
+import Foundation
+
+public struct SourceLocation: Sendable, Hashable {
     public let file: String
     public let line: Int
     public let column: Int
@@ -10,7 +12,7 @@ public struct SourceLocation: Sendable {
     }
 }
 
-public struct SuggestedAdaptation: Sendable {
+public struct SuggestedAdaptation: Sendable, Hashable {
     public let message: String
 
     public init(message: String) {
@@ -18,7 +20,7 @@ public struct SuggestedAdaptation: Sendable {
     }
 }
 
-public struct UnsupportedImportDiagnostic: Sendable {
+public struct UnsupportedImportDiagnostic: Sendable, Hashable {
     public let importName: String
     public let location: SourceLocation
     public let suggestedAdaptation: SuggestedAdaptation?
@@ -34,7 +36,7 @@ public struct UnsupportedImportDiagnostic: Sendable {
     }
 }
 
-public struct UnsupportedSymbolDiagnostic: Sendable {
+public struct UnsupportedSymbolDiagnostic: Sendable, Hashable {
     public let symbolName: String
     public let location: SourceLocation
     public let suggestedAdaptation: SuggestedAdaptation?
@@ -47,5 +49,505 @@ public struct UnsupportedSymbolDiagnostic: Sendable {
         self.symbolName = symbolName
         self.location = location
         self.suggestedAdaptation = suggestedAdaptation
+    }
+}
+
+public struct UnsupportedModifierDiagnostic: Sendable, Hashable {
+    public let modifierName: String
+    public let location: SourceLocation
+    public let suggestedAdaptation: SuggestedAdaptation?
+
+    public init(
+        modifierName: String,
+        location: SourceLocation,
+        suggestedAdaptation: SuggestedAdaptation? = nil
+    ) {
+        self.modifierName = modifierName
+        self.location = location
+        self.suggestedAdaptation = suggestedAdaptation
+    }
+}
+
+public struct UnsupportedLifecycleHookDiagnostic: Sendable, Hashable {
+    public let hookName: String
+    public let location: SourceLocation
+    public let suggestedAdaptation: SuggestedAdaptation?
+
+    public init(
+        hookName: String,
+        location: SourceLocation,
+        suggestedAdaptation: SuggestedAdaptation? = nil
+    ) {
+        self.hookName = hookName
+        self.location = location
+        self.suggestedAdaptation = suggestedAdaptation
+    }
+}
+
+public enum CompatibilitySupportLevel: String, Sendable, Hashable {
+    case supported
+    case partial
+    case unsupported
+    case deferred
+}
+
+public enum CompatibilityDiagnosticCategory: String, Sendable, Hashable {
+    case imports
+    case symbols
+    case modifiers
+    case lifecycleHooks
+    case platformAPIs
+}
+
+public enum CompatibilityDiagnosticSeverity: String, Sendable, Hashable {
+    case error
+    case warning
+    case info
+}
+
+public struct CompatibilityMatrix: Sendable, Hashable {
+    public struct Entry: Sendable, Hashable {
+        public let area: String
+        public let supportLevel: CompatibilitySupportLevel
+        public let notes: String
+
+        public init(area: String, supportLevel: CompatibilitySupportLevel, notes: String) {
+            self.area = area
+            self.supportLevel = supportLevel
+            self.notes = notes
+        }
+    }
+
+    public let version: String
+    public let entries: [Entry]
+
+    public init(version: String, entries: [Entry]) {
+        self.version = version
+        self.entries = entries
+    }
+
+    public static let v1 = CompatibilityMatrix(
+        version: "v1",
+        entries: [
+            Entry(area: "Imports: SwiftUI", supportLevel: .supported, notes: "Supported entry import for the initial subset."),
+            Entry(area: "Layouts: VStack", supportLevel: .partial, notes: "Supported for the first lowering fixture only."),
+            Entry(area: "Platform APIs: UIKit", supportLevel: .unsupported, notes: "Apple-only framework imports should produce structured diagnostics."),
+            Entry(area: "Lifecycle hooks", supportLevel: .deferred, notes: "Lifecycle behavior remains diagnostics-only in v1."),
+        ]
+    )
+}
+
+public enum CompatibilityDiagnostic: Sendable, Hashable {
+    case unsupportedImport(UnsupportedImportDiagnostic)
+    case unsupportedSymbol(UnsupportedSymbolDiagnostic)
+    case unsupportedModifier(UnsupportedModifierDiagnostic)
+    case unsupportedLifecycleHook(UnsupportedLifecycleHookDiagnostic)
+
+    public var category: CompatibilityDiagnosticCategory {
+        switch self {
+        case .unsupportedImport:
+            return .imports
+        case .unsupportedSymbol:
+            return .symbols
+        case .unsupportedModifier:
+            return .modifiers
+        case .unsupportedLifecycleHook:
+            return .lifecycleHooks
+        }
+    }
+
+    public var severity: CompatibilityDiagnosticSeverity {
+        .error
+    }
+
+    public var sourceLocation: SourceLocation {
+        switch self {
+        case let .unsupportedImport(diagnostic):
+            return diagnostic.location
+        case let .unsupportedSymbol(diagnostic):
+            return diagnostic.location
+        case let .unsupportedModifier(diagnostic):
+            return diagnostic.location
+        case let .unsupportedLifecycleHook(diagnostic):
+            return diagnostic.location
+        }
+    }
+
+    public var suggestedAdaptation: SuggestedAdaptation? {
+        switch self {
+        case let .unsupportedImport(diagnostic):
+            return diagnostic.suggestedAdaptation
+        case let .unsupportedSymbol(diagnostic):
+            return diagnostic.suggestedAdaptation
+        case let .unsupportedModifier(diagnostic):
+            return diagnostic.suggestedAdaptation
+        case let .unsupportedLifecycleHook(diagnostic):
+            return diagnostic.suggestedAdaptation
+        }
+    }
+}
+
+public struct CompatibilityReport: Sendable, Hashable {
+    public struct Summary: Sendable, Hashable {
+        public let totalCount: Int
+        public let countsByCategory: [CompatibilityDiagnosticCategory: Int]
+        public let countsBySeverity: [CompatibilityDiagnosticSeverity: Int]
+
+        public init(
+            totalCount: Int,
+            countsByCategory: [CompatibilityDiagnosticCategory: Int],
+            countsBySeverity: [CompatibilityDiagnosticSeverity: Int]
+        ) {
+            self.totalCount = totalCount
+            self.countsByCategory = countsByCategory
+            self.countsBySeverity = countsBySeverity
+        }
+    }
+
+    public let matrix: CompatibilityMatrix
+    public let diagnostics: [CompatibilityDiagnostic]
+    public let summary: Summary
+
+    public init(matrix: CompatibilityMatrix, diagnostics: [CompatibilityDiagnostic]) {
+        self.matrix = matrix
+        self.diagnostics = diagnostics
+
+        let countsByCategory = diagnostics.reduce(into: [CompatibilityDiagnosticCategory: Int]()) {
+            $0[$1.category, default: 0] += 1
+        }
+        let countsBySeverity = diagnostics.reduce(into: [CompatibilityDiagnosticSeverity: Int]()) {
+            $0[$1.severity, default: 0] += 1
+        }
+        self.summary = Summary(
+            totalCount: diagnostics.count,
+            countsByCategory: countsByCategory,
+            countsBySeverity: countsBySeverity
+        )
+    }
+}
+
+public enum CompatibilityFeatureKind: String, Sendable, Hashable {
+    case `import`
+    case view
+    case layout
+    case state
+}
+
+public struct CompatibilitySupportedFeature: Sendable, Hashable {
+    public let kind: CompatibilityFeatureKind
+    public let name: String
+
+    public init(kind: CompatibilityFeatureKind, name: String) {
+        self.kind = kind
+        self.name = name
+    }
+}
+
+public enum CompatibilityNodeRole: String, Sendable, Hashable {
+    case text
+    case button
+    case vStack
+    case modal
+}
+
+public struct CompatibilityNode: Sendable, Hashable {
+    public let role: CompatibilityNodeRole
+    public let children: [CompatibilityNode]
+
+    public init(role: CompatibilityNodeRole, children: [CompatibilityNode] = []) {
+        self.role = role
+        self.children = children
+    }
+}
+
+public enum CompatibilitySceneKind: String, Sendable, Hashable {
+    case modal
+}
+
+public struct CompatibilityScenePreview: Sendable, Hashable {
+    public let kind: CompatibilitySceneKind
+    public let rootNode: CompatibilityNode
+
+    public init(kind: CompatibilitySceneKind, rootNode: CompatibilityNode) {
+        self.kind = kind
+        self.rootNode = rootNode
+    }
+}
+
+public struct CompatibilityLoweringPreview: Sendable, Hashable {
+    public let appIdentifier: String
+    public let scene: CompatibilityScenePreview
+
+    public init(appIdentifier: String, scene: CompatibilityScenePreview) {
+        self.appIdentifier = appIdentifier
+        self.scene = scene
+    }
+}
+
+public struct CompatibilityAnalysis: Sendable, Hashable {
+    public let report: CompatibilityReport
+    public let supportedFeatures: [CompatibilitySupportedFeature]
+    public let loweringPreview: CompatibilityLoweringPreview?
+
+    public init(
+        report: CompatibilityReport,
+        supportedFeatures: [CompatibilitySupportedFeature],
+        loweringPreview: CompatibilityLoweringPreview?
+    ) {
+        self.report = report
+        self.supportedFeatures = supportedFeatures
+        self.loweringPreview = loweringPreview
+    }
+}
+
+public struct CompatibilityAnalyzer: Sendable {
+    public enum Input: Sendable, Hashable {
+        case sourceText(String, file: String)
+        case fixturePath(String)
+    }
+
+    public let matrix: CompatibilityMatrix
+
+    public init(matrix: CompatibilityMatrix) {
+        self.matrix = matrix
+    }
+
+    public func analyze(_ input: Input) throws -> CompatibilityAnalysis {
+        let resolvedInput = try ResolvedInput(input: input)
+        let source = resolvedInput.source
+        let lines = source.components(separatedBy: .newlines)
+        var diagnostics: [CompatibilityDiagnostic] = []
+
+        diagnostics.append(contentsOf: importDiagnostics(in: lines, file: resolvedInput.file))
+        diagnostics.append(contentsOf: symbolDiagnostics(in: lines, file: resolvedInput.file))
+        diagnostics.append(contentsOf: lifecycleDiagnostics(in: lines, file: resolvedInput.file))
+        diagnostics.append(contentsOf: modifierDiagnostics(in: lines, file: resolvedInput.file))
+
+        let supportedFeatures = detectedSupportedFeatures(in: source)
+        let loweringPreview = makeLoweringPreview(
+            for: resolvedInput,
+            diagnostics: diagnostics,
+            supportedFeatures: supportedFeatures
+        )
+
+        return CompatibilityAnalysis(
+            report: CompatibilityReport(matrix: matrix, diagnostics: diagnostics),
+            supportedFeatures: supportedFeatures,
+            loweringPreview: loweringPreview
+        )
+    }
+}
+
+private extension CompatibilityAnalyzer {
+    struct ResolvedInput {
+        let source: String
+        let file: String
+        let appIdentifier: String
+
+        init(input: CompatibilityAnalyzer.Input) throws {
+            switch input {
+            case let .sourceText(source, file):
+                self.source = source
+                self.file = file
+                self.appIdentifier = URL(fileURLWithPath: file).deletingPathExtension().lastPathComponent
+            case let .fixturePath(path):
+                self.source = try String(contentsOfFile: path, encoding: .utf8)
+                self.file = path
+                self.appIdentifier = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            }
+        }
+    }
+
+    func importDiagnostics(in lines: [String], file: String) -> [CompatibilityDiagnostic] {
+        var diagnostics: [CompatibilityDiagnostic] = []
+
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("import ") else {
+                continue
+            }
+
+            let importName = String(trimmed.dropFirst("import ".count))
+            guard importName == "UIKit" else {
+                continue
+            }
+
+            diagnostics.append(
+                .unsupportedImport(
+                    UnsupportedImportDiagnostic(
+                        importName: importName,
+                        location: SourceLocation(file: file, line: index + 1, column: 8),
+                        suggestedAdaptation: SuggestedAdaptation(
+                            message: "Replace UIKit imports with StrictModeSDK primitives."
+                        )
+                    )
+                )
+            )
+        }
+
+        return diagnostics
+    }
+
+    func symbolDiagnostics(in lines: [String], file: String) -> [CompatibilityDiagnostic] {
+        symbolDiagnostics(
+            in: lines,
+            file: file,
+            symbolName: "UIViewControllerRepresentable",
+            message: "Move imperative bridge code behind a strict-mode adapter."
+        )
+    }
+
+    func symbolDiagnostics(
+        in lines: [String],
+        file: String,
+        symbolName: String,
+        message: String
+    ) -> [CompatibilityDiagnostic] {
+        var diagnostics: [CompatibilityDiagnostic] = []
+
+        for (index, line) in lines.enumerated() where line.contains(symbolName) {
+            diagnostics.append(
+                .unsupportedSymbol(
+                    UnsupportedSymbolDiagnostic(
+                        symbolName: symbolName,
+                        location: SourceLocation(
+                            file: file,
+                            line: index + 1,
+                            column: column(in: line, matching: symbolName)
+                        ),
+                        suggestedAdaptation: SuggestedAdaptation(message: message)
+                    )
+                )
+            )
+        }
+
+        return diagnostics
+    }
+
+    func lifecycleDiagnostics(in lines: [String], file: String) -> [CompatibilityDiagnostic] {
+        unsupportedMemberDiagnostics(
+            in: lines,
+            file: file,
+            memberName: ".onAppear",
+            lineOffset: 0
+        ) { location in
+            .unsupportedLifecycleHook(
+                UnsupportedLifecycleHookDiagnostic(
+                    hookName: "onAppear",
+                    location: location,
+                    suggestedAdaptation: SuggestedAdaptation(
+                        message: "Move onAppear work into an explicit strict-mode runtime lifecycle adapter."
+                    )
+                )
+            )
+        }
+    }
+
+    func modifierDiagnostics(in lines: [String], file: String) -> [CompatibilityDiagnostic] {
+        unsupportedMemberDiagnostics(
+            in: lines,
+            file: file,
+            memberName: ".padding",
+            lineOffset: 1
+        ) { location in
+            .unsupportedModifier(
+                UnsupportedModifierDiagnostic(
+                    modifierName: "padding",
+                    location: location,
+                    suggestedAdaptation: SuggestedAdaptation(
+                        message: "Replace padding with an explicit strict-mode layout container or spacing metadata."
+                    )
+                )
+            )
+        }
+    }
+
+    func unsupportedMemberDiagnostics(
+        in lines: [String],
+        file: String,
+        memberName: String,
+        lineOffset: Int,
+        makeDiagnostic: (SourceLocation) -> CompatibilityDiagnostic
+    ) -> [CompatibilityDiagnostic] {
+        var diagnostics: [CompatibilityDiagnostic] = []
+
+        for (index, line) in lines.enumerated() where line.contains(memberName) {
+            diagnostics.append(
+                makeDiagnostic(
+                    SourceLocation(
+                        file: file,
+                        line: index + 1 + lineOffset,
+                        column: column(in: line, matching: memberName)
+                    )
+                )
+            )
+        }
+
+        return diagnostics
+    }
+
+    func detectedSupportedFeatures(in source: String) -> [CompatibilitySupportedFeature] {
+        var features: [CompatibilitySupportedFeature] = []
+
+        if source.contains("import SwiftUI") {
+            features.append(CompatibilitySupportedFeature(kind: .import, name: "SwiftUI"))
+        }
+        if source.contains("Text(") {
+            features.append(CompatibilitySupportedFeature(kind: .view, name: "Text"))
+        }
+        if source.contains("VStack") {
+            features.append(CompatibilitySupportedFeature(kind: .layout, name: "VStack"))
+        }
+        if source.contains("Button(") {
+            features.append(CompatibilitySupportedFeature(kind: .view, name: "Button"))
+        }
+        if source.contains("@State") {
+            features.append(CompatibilitySupportedFeature(kind: .state, name: "State"))
+        }
+
+        return features
+    }
+
+    func makeLoweringPreview(
+        for input: ResolvedInput,
+        diagnostics: [CompatibilityDiagnostic],
+        supportedFeatures: [CompatibilitySupportedFeature]
+    ) -> CompatibilityLoweringPreview? {
+        guard diagnostics.isEmpty else {
+            return nil
+        }
+
+        let featureNames = Set(supportedFeatures.map(\.name))
+        let requiredNames: Set<String> = ["SwiftUI", "Text", "VStack", "Button", "State"]
+        guard featureNames.isSuperset(of: requiredNames) else {
+            return nil
+        }
+
+        return CompatibilityLoweringPreview(
+            appIdentifier: input.appIdentifier,
+            scene: CompatibilityScenePreview(
+                kind: .modal,
+                rootNode: CompatibilityNode(
+                    role: .modal,
+                    children: [
+                        CompatibilityNode(
+                            role: .vStack,
+                            children: [
+                                CompatibilityNode(role: .text),
+                                CompatibilityNode(role: .button),
+                            ]
+                        ),
+                    ]
+                )
+            )
+        )
+    }
+
+    func column(in line: String, matching token: String) -> Int {
+        guard let range = line.range(of: token) else {
+            return 1
+        }
+
+        return line.distance(from: line.startIndex, to: range.lowerBound) + 1
     }
 }
