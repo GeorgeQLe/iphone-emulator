@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 2 milestone turns strict-mode declarations into a semantic UI tree and renders a fixed fixture inside an iPhone-like browser surface.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 3 milestone adds a fixture-backed automation SDK on top of the strict-mode semantic tree and deterministic browser preview surface.
 
 ## Goals
 
@@ -34,13 +34,15 @@ The harness is designed to remain implementable with open-source tooling and pro
 
 ## Current Phase Status
 
-Phase 2 currently provides:
+Phase 3 currently provides:
 
 - `StrictModeSDK` entry points for strict-mode `App`, `Scene`, layout primitives, navigation, alerts, and state, plus lowering hooks that produce the shared semantic tree contract.
 - `RuntimeHost` value types for semantic UI tree snapshots, fixture loading, lifecycle metadata, and retained tree inspection.
+- `RuntimeHost` automation protocol types and an in-memory fixture coordinator that can launch the strict baseline fixture, resolve semantic queries, apply deterministic `tap` and `fill` updates, and expose logs plus screenshot placeholder metadata.
 - `DiagnosticsCore` placeholder diagnostics contracts for later compatibility analysis work.
 - `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell.
-- SwiftPM and Vitest coverage that locks the current tree-generation and renderer behavior before later phases add transport, live updates, or automation.
+- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, locator queries by text/role/test ID, semantic tree inspection, log retrieval, and screenshot placeholder metadata through an in-memory fixture client.
+- SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface before later phases add transport or live session coordination.
 
 ## Workspace Layout
 
@@ -48,13 +50,13 @@ Phase 2 currently provides:
 - `packages/runtime-host` for the runtime host package
 - `packages/diagnostics` for the diagnostics package
 - `packages/browser-renderer` for the future browser renderer package
-- `packages/automation-sdk` for the future TypeScript automation SDK package
+- `packages/automation-sdk` for the current TypeScript automation SDK package
 - `examples` for fixture apps and usage sketches
 - `tests` for non-SwiftPM test assets when later phases need them
 
 ## Example
 
-See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot surface, and the browser renderer mounts the checked-in fixture used for deterministic browser previews.
+See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation sample demonstrates the current TypeScript SDK flow.
 
 ## Validation
 
@@ -62,13 +64,43 @@ The current validation surface is:
 
 ```sh
 swift test
+swift build
 npm --prefix packages/browser-renderer run typecheck
 npm --prefix packages/browser-renderer test
 npm --prefix packages/browser-renderer run build
+npm --prefix packages/automation-sdk run typecheck
+npm --prefix packages/automation-sdk test
+npm --prefix packages/automation-sdk run build
+```
+
+## Automation SDK Example
+
+The current automation SDK mirrors the fixture-backed runtime contract rather than a live browser or device transport. A representative flow looks like:
+
+```ts
+import { Emulator } from "@iphone-emulator/automation-sdk";
+
+const app = await Emulator.launch({
+  appIdentifier: "FixtureApp",
+  fixtureName: "strict-mode-baseline",
+});
+
+await app.getByText("Save").tap();
+await app.getByRole("textField", { text: "Name" }).fill("Taylor");
+
+const field = await app.getByTestId("name-field").inspect();
+const tree = await app.semanticTree();
+const logs = await app.logs();
+
+console.log(field.value, tree.scene.alertPayload?.title, logs);
+
+await app.close();
 ```
 
 ## Current Limitations
 
 - The browser renderer mounts a checked-in fixture tree from `packages/browser-renderer/src/fixtureTree.ts`; it does not yet consume runtime-exported snapshots directly.
 - There is no JSON-RPC or WebSocket transport between Swift and the browser renderer yet.
-- Runtime updates are fixture-scoped and deterministic; live interaction, session management, and automation hooks are deferred to later phases.
+- The automation SDK is in-memory only. It mirrors the runtime contract and fixture behavior locally; it does not yet speak to a live Swift host, browser process, or real device.
+- Runtime updates are fixture-scoped and deterministic; live interaction, multi-session coordination, and transport-backed automation hooks are deferred to later phases.
+- Screenshot support is limited to placeholder metadata (`name`, `format`, `byteCount`) until a later phase adds a real artifact pipeline.
