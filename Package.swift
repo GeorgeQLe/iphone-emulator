@@ -15,5 +15,8 @@ let package = Package(
             name: "ScaffoldValidationTests",
             dependencies: ["ScaffoldTestSupport"]
         ),
+        .testTarget(
+            name: "StrictModeSDKContractTests"
+        ),
     ]
 )

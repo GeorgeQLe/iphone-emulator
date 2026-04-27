@@ -10,3 +10,5 @@
 - Validation: skipped because the repo has no build, test, lint, package, or toolchain manifests yet.
 - Added a minimal root SwiftPM test harness and red-phase scaffold validation tests for required Phase 1 directories and manifests.
 - Validation: `swift test` failed as expected in the red phase on the missing scaffold directories and manifest files for the planned multi-package layout.
+- Added a dedicated red-phase SwiftPM contract suite for the future `StrictModeSDK` module and its strict-mode public entry points.
+- Validation: `swift test` failed as expected in the red phase on `no such module 'StrictModeSDK'`, proving the SDK contract tests are wired and waiting on the implementation skeleton.

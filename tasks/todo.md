@@ -21,7 +21,7 @@
   - Cover required directories for SDK, runtime, diagnostics, renderer, automation SDK, examples, and tests.
   - Cover required package or workspace manifest presence.
   - Tests MUST fail before the scaffold exists.
-- Step 1.2: Create failing tests for the strict-mode SDK contract skeleton.
+- [x] Step 1.2: Create failing tests for the strict-mode SDK contract skeleton.
   - Files: create tests under the SDK package test path selected in Step 1.1.
   - Cover app declaration, scene, text, button, text field, list, stack layout, navigation, modal, tab, alert, and state entry-point symbols.
   - Tests MUST fail until SDK symbols exist.
@@ -32,6 +32,8 @@
   - Files: create tests under runtime and diagnostics package test paths.
   - Cover app lifecycle entry points, future protocol boundary placeholder, unsupported import diagnostics, unsupported symbol diagnostics, and source-location shape.
   - Tests MUST fail until runtime and diagnostics skeletons exist.
+  - Use dedicated SwiftPM test suites under `Tests/` and assert missing contracts by importing planned future modules such as `RuntimeHost` and `DiagnosticsCore`.
+  - Split coverage so runtime tests focus on lifecycle and protocol-boundary placeholders, while diagnostics tests focus on unsupported-import reports, unsupported-symbol reports, suggested adaptations, and source-location structs.
 
 ### Implementation
 - Step 1.4: Select and add the root workspace/package structure for this multi-language harness.
