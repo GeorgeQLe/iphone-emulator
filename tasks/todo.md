@@ -32,7 +32,7 @@
   - Deliverable: a short recommendation for SDK entry points, locator ergonomics, and the lightest local Node toolchain that supports repeatable tests.
 
 ### Tests First
-- [ ] Step 3.1: Write failing contract tests for the automation protocol and SDK surface.
+- [x] Step 3.1: Write failing contract tests for the automation protocol and SDK surface.
   - Files: expand `tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; create automation SDK tests under `packages/automation-sdk/` such as `src/index.test.ts` or `test/**/*.test.ts`; update `packages/automation-sdk/package.json` and local TypeScript/Vitest config only as needed to run those tests.
   - Add Swift-side contract tests for a runtime automation session value, protocol request/response envelopes, semantic query lookup, and deterministic fixture command handling.
   - Add TypeScript-side failing tests that lock the intended Phase 3 user surface: `Emulator.launch(...)`, `app.close()`, locator lookup by text and role, `tap()`, `fill()`, semantic tree inspection, and log collection.
@@ -43,6 +43,10 @@
   - Files: create automation support files under `packages/runtime-host/Sources/RuntimeHost/Automation/` for launch configuration, session identity, semantic query types, command enums, response payloads, and protocol errors; update `Package.swift` only if target wiring changes are needed.
   - Keep the transport layer abstract at the value-type level: Phase 3 needs stable request/response shapes that could later travel over JSON-RPC or WebSocket, but this step should not require a live server yet.
   - Model only the commands the roadmap promises for this phase: launch/close, tap, fill/type, wait/query, semantic snapshot inspection, screenshot placeholder metadata, and log retrieval.
+  - Next execution plan:
+    - Add an `Automation/` folder under `RuntimeHost` with value-only types for session identity, launch configuration, semantic queries, commands, events, logs, screenshot metadata, and protocol errors.
+    - Make the command/result enums `Codable`, `Hashable`, and `Sendable` so the Swift contract matches the eventual SDK transport seam without introducing server code yet.
+    - Implement only the initializer and case shapes needed to make the new `RuntimeHostContractTests` compile and pass before moving to fixture-backed runtime behavior in Step 3.3.
 - [ ] Step 3.3: Implement deterministic runtime automation handling over fixture-backed snapshots.
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, `RuntimeTreeSnapshot.swift`, and add any new runtime automation coordinator files under `packages/runtime-host/Sources/RuntimeHost/Automation/`.
   - Add the smallest runtime session coordinator that can launch a strict-mode fixture app, retain the latest semantic tree snapshot, resolve semantic queries by text/role/stable identifier, and apply deterministic fixture-scoped interaction updates for tap and fill commands.

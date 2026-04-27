@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 3 Step 3.1 by adding red-phase Swift automation protocol contract tests plus a minimal automation SDK Vitest/TypeScript harness with failing `Emulator` surface tests.
+- Validation: `swift test --filter RuntimeHostContractTests` failed as expected on missing `RuntimeAutomation*` protocol/session symbols in `RuntimeHost`, and `npm --prefix packages/automation-sdk test` failed as expected on the missing `packages/automation-sdk/src/index.ts` entry point.
 - Created the initial open-source iPhone-like Swift app harness specification and interview log.
 - Created `tasks/roadmap.md` with six milestone-aligned phases from M0 scaffold through React Native evaluation.
 - Seeded `tasks/todo.md` with the Phase 1 implementation plan and priority queue.

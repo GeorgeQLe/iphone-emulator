@@ -200,4 +200,121 @@ struct RuntimeHostContractTests {
         #expect(bridge.latestAlertPayload?.message == "Saved")
         #expect(bridge.latestSnapshot?.revision == 2)
     }
+
+    @Test("runtime automation protocol surface exists for fixture-backed sessions")
+    func automationProtocolSurfaceExists() throws {
+        let exportedSymbols: [Any.Type] = [
+            RuntimeAutomationSession.self,
+            RuntimeAutomationLaunchConfiguration.self,
+            RuntimeAutomationSemanticQuery.self,
+            RuntimeAutomationCommand.self,
+            RuntimeAutomationRequest.self,
+            RuntimeAutomationResponse.self,
+            RuntimeAutomationEvent.self,
+            RuntimeAutomationLogEntry.self,
+            RuntimeAutomationScreenshotMetadata.self,
+            RuntimeAutomationError.self,
+        ]
+
+        #expect(exportedSymbols.count == 10)
+
+        let session = RuntimeAutomationSession(
+            id: "session-1",
+            appIdentifier: "FixtureApp",
+            snapshot: RuntimeTreeSnapshot(
+                appIdentifier: "FixtureApp",
+                tree: SemanticUITree(
+                    appIdentifier: "FixtureApp",
+                    scene: UITreeScene(
+                        id: "root-screen",
+                        kind: .screen,
+                        rootNode: UITreeNode(
+                            id: "save-button",
+                            role: .button,
+                            label: "Save"
+                        )
+                    )
+                )
+            )
+        )
+
+        #expect(session.id == "session-1")
+        #expect(session.appIdentifier == "FixtureApp")
+        #expect(session.snapshot.tree.scene.rootNode?.id == "save-button")
+    }
+
+    @Test("runtime automation request and response envelopes capture deterministic interactions")
+    func automationRequestResponseEnvelopesDeterministic() throws {
+        let query = RuntimeAutomationSemanticQuery(
+            role: .button,
+            text: "Save",
+            identifier: "save-button"
+        )
+        let request = RuntimeAutomationRequest(
+            id: "req-1",
+            command: .tap(query)
+        )
+        let response = RuntimeAutomationResponse(
+            requestID: request.id,
+            result: .interactionCompleted(
+                snapshot: RuntimeTreeSnapshot(
+                    appIdentifier: "FixtureApp",
+                    tree: SemanticUITree(
+                        appIdentifier: "FixtureApp",
+                        scene: UITreeScene(
+                            id: "root-screen",
+                            kind: .screen,
+                            rootNode: UITreeNode(
+                                id: "save-button",
+                                role: .button,
+                                label: "Saved"
+                            ),
+                            alertPayload: UIAlertPayload(title: "Done", message: "Saved")
+                        )
+                    )
+                ),
+                logs: [
+                    RuntimeAutomationLogEntry(
+                        level: .info,
+                        message: "Tapped save-button"
+                    )
+                ]
+            )
+        )
+
+        #expect(query.role == .button)
+        #expect(query.text == "Save")
+        #expect(query.identifier == "save-button")
+        #expect(request.id == "req-1")
+        #expect(response.requestID == "req-1")
+    }
+
+    @Test("runtime automation command surface includes semantic inspection and artifact hooks")
+    func automationCommandSurfaceIncludesInspectionAndArtifacts() throws {
+        let launch = RuntimeAutomationCommand.launch(
+            RuntimeAutomationLaunchConfiguration(
+                appIdentifier: "FixtureApp",
+                fixtureName: "strict-mode-baseline"
+            )
+        )
+        let inspect = RuntimeAutomationCommand.inspect(
+            RuntimeAutomationSemanticQuery(role: .textField, text: "Name")
+        )
+        let screenshot = RuntimeAutomationResponse.Result.screenshot(
+            RuntimeAutomationScreenshotMetadata(
+                name: "placeholder-home",
+                format: "png",
+                byteCount: 0
+            )
+        )
+        let logs = RuntimeAutomationEvent.logsUpdated(
+            [
+                RuntimeAutomationLogEntry(level: .debug, message: "fixture loaded")
+            ]
+        )
+
+        #expect(launch != inspect)
+        #expect(screenshot != .logs([]))
+        #expect(logs != .sessionClosed)
+    }
 }
