@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.7 by tightening the compatibility regression suite around the checked-in supported and unsupported fixtures, adding deterministic assertions for source columns, category ordering, empty-summary behavior on the supported path, and stable fixture-backed support summaries.
+- Validation: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests` both passed cleanly with no warnings after the test-only update. One intermediate compiler failure in `DiagnosticsCoreContractTests` came from optional chaining against a non-optional lowering-preview root node and was fixed before the final green run.
 - Completed Phase 4 Step 4.6 by updating `README.md` to describe the diagnostics-led compatibility lane accurately, adding `docs/compatibility-matrix.md` for the v1 supported/partial/unsupported/deferred matrix, and adding `Tests/fixtures/compatibility/README.md` so the checked-in fixtures document the current supported subset and diagnostics expectations.
 - Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test --filter RuntimeHostContractTests`, and `swift build` all passed cleanly with no warnings after the documentation updates. Two parallel SwiftPM invocations emitted temporary `.build` lock-wait output and were treated as stale contention noise once the final runs completed cleanly.
 - Completed Phase 4 Step 4.5 by wiring `DiagnosticsCore`'s first supported-subset path to emit a real `RuntimeHost.SemanticUITree`, adding a narrow `RuntimeAppLoader.loadCompatibilityTree` handoff, and shifting the compatibility contracts from preview-only assertions to shared runtime-model coverage.

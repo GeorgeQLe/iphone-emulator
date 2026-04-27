@@ -80,7 +80,7 @@
     - Document the exact validation commands already in use for this lane: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests`, plus the later full-phase `swift test` / `swift build` pass still pending in Step 4.8.
 
 ### Green
-- [ ] Step 4.7: Add regression tests covering supported and unsupported compatibility fixtures.
+- [x] Step 4.7: Add regression tests covering supported and unsupported compatibility fixtures.
   - Files: extend the diagnostics and runtime test suites created earlier; add fixture-specific assertions only where they improve acceptance coverage without overfitting to parser internals.
   - Cover one supported fixture that passes analysis and lowers into the shared runtime model, plus unsupported fixtures that produce stable source-linked diagnostics and adaptation guidance.
   - Keep assertions structural and deterministic: prefer import names, symbol names, categories, line/column data, and compact support summaries over large serialized reports.
@@ -106,7 +106,7 @@
 - [ ] Supported subset examples lower into the strict runtime model.
 - [ ] The compatibility matrix documents supported, partially supported, unsupported, and deferred areas.
 - [ ] All phase tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] No regressions in previous phase tests.
 
 **On Completion:**
 - Deviations from plan: none yet

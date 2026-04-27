@@ -126,6 +126,10 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.report.diagnostics.map(\.category) == [.imports, .symbols])
         #expect(analysis.report.diagnostics.map(\.severity) == [.error, .error])
         #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [1, 4])
+        #expect(analysis.report.diagnostics.map(\.sourceLocation.column) == [8, 20])
+        #expect(analysis.report.summary.countsByCategory[.imports] == 1)
+        #expect(analysis.report.summary.countsByCategory[.symbols] == 1)
+        #expect(analysis.report.summary.countsBySeverity[.error] == 2)
     }
 
     @Test("compatibility analyzer reports platform APIs separately from generic unsupported symbols")
@@ -151,6 +155,7 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.report.diagnostics.map(\.category) == [.platformAPIs])
         #expect(analysis.report.diagnostics.map(\.severity) == [.error])
         #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [5])
+        #expect(analysis.report.diagnostics.map(\.sourceLocation.column) == [9])
         #expect(analysis.report.diagnostics.map(\.suggestedAdaptation?.message) == [
             "Replace UIApplication usage with strict-mode environment and runtime controls."
         ])
@@ -165,6 +170,8 @@ struct DiagnosticsCoreContractTests {
         )
 
         #expect(analysis.report.summary.totalCount == 0)
+        #expect(analysis.report.summary.countsByCategory.isEmpty)
+        #expect(analysis.report.summary.countsBySeverity.isEmpty)
         #expect(analysis.supportedFeatures.map(\.kind) == [.import, .view, .layout, .view, .state])
         #expect(analysis.supportedFeatures.map(\.name) == [
             "SwiftUI",
@@ -193,11 +200,50 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.report.summary.totalCount == 2)
         #expect(analysis.report.diagnostics.map(\.category) == [.lifecycleHooks, .modifiers])
         #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [6, 10])
+        #expect(analysis.report.diagnostics.map(\.sourceLocation.column) == [13, 13])
+        #expect(analysis.report.summary.countsByCategory[.lifecycleHooks] == 1)
+        #expect(analysis.report.summary.countsByCategory[.modifiers] == 1)
         #expect(analysis.report.diagnostics.allSatisfy { $0.suggestedAdaptation != nil })
         #expect(analysis.report.diagnostics.map(\.suggestedAdaptation?.message) == [
             "Move onAppear work into an explicit strict-mode runtime lifecycle adapter.",
             "Replace padding with an explicit strict-mode layout container or spacing metadata.",
         ])
         #expect(analysis.loweredTree == nil)
+    }
+
+    @Test("compatibility fixtures keep regression summaries and ordering stable")
+    func compatibilityFixturesKeepRegressionSummariesStable() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let supported = try analyzer.analyze(
+            .fixturePath("tests/fixtures/compatibility/SupportedSubsetFixture.swift")
+        )
+        let unsupportedImports = try analyzer.analyze(
+            .fixturePath("tests/fixtures/compatibility/UnsupportedImportsFixture.swift")
+        )
+        let unsupportedLifecycle = try analyzer.analyze(
+            .fixturePath("tests/fixtures/compatibility/UnsupportedLifecycleFixture.swift")
+        )
+
+        #expect(supported.report.diagnostics.isEmpty)
+        #expect(supported.supportedFeatures.map(\.name) == ["SwiftUI", "Text", "VStack", "Button", "State"])
+        #expect(supported.loweringPreview?.scene.rootNode.children.map(\.role) == [.vStack])
+
+        #expect(unsupportedImports.report.diagnostics.map(\.category) == [.imports])
+        #expect(unsupportedImports.report.diagnostics.map(\.sourceLocation.file) == [
+            "tests/fixtures/compatibility/UnsupportedImportsFixture.swift"
+        ])
+        #expect(unsupportedImports.report.diagnostics.map(\.sourceLocation.line) == [2])
+        #expect(unsupportedImports.report.diagnostics.map(\.sourceLocation.column) == [8])
+
+        #expect(unsupportedLifecycle.report.diagnostics.map(\.category) == [.lifecycleHooks, .modifiers])
+        #expect(unsupportedLifecycle.report.diagnostics.map(\.sourceLocation.file) == [
+            "tests/fixtures/compatibility/UnsupportedLifecycleFixture.swift",
+            "tests/fixtures/compatibility/UnsupportedLifecycleFixture.swift",
+        ])
+        #expect(unsupportedLifecycle.report.summary.countsByCategory == [
+            .lifecycleHooks: 1,
+            .modifiers: 1,
+        ])
     }
 }
