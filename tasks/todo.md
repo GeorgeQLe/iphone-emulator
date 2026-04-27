@@ -2,7 +2,7 @@
 
 ## Priority Task Queue
 
-- [ ] `$ship-end --no-deploy` - configure a Git remote and push the initial `main` commit before continuing task work because `git remote -v` returned no remotes after initial commit creation on 2026-04-27 14:17:17 EDT.
+- [x] `$ship-end --no-deploy` - configured `origin` and pushed the initial `main` commit to `https://github.com/GeorgeQLe/iphone-emulator.git` on 2026-04-27 14:22:55 EDT.
 
 ## Phase 1: M0 Repo Scaffold and Strict Runtime Skeleton
 > Test strategy: tdd
