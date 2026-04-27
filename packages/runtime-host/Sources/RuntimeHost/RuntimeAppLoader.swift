@@ -30,4 +30,15 @@ public struct RuntimeAppLoader {
             lifecycleState: lifecycleState ?? defaultLifecycleState
         )
     }
+
+    public func loadCompatibilityTree(
+        _ tree: SemanticUITree,
+        lifecycleState: RuntimeAppLifecycle.State? = nil
+    ) -> RuntimeTreeSnapshot {
+        RuntimeTreeSnapshot(
+            appIdentifier: tree.appIdentifier,
+            tree: tree,
+            lifecycleState: lifecycleState ?? defaultLifecycleState
+        )
+    }
 }

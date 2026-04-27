@@ -33,6 +33,7 @@ let package = Package(
         ),
         .target(
             name: "DiagnosticsCore",
+            dependencies: ["RuntimeHost"],
             path: "packages/diagnostics/Sources/DiagnosticsCore"
         ),
         .target(

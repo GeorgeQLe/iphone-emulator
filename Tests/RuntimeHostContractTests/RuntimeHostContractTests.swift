@@ -1,6 +1,7 @@
 import Testing
 import RuntimeHost
 import StrictModeSDK
+import DiagnosticsCore
 
 struct RuntimeHostContractTests {
     @Test("runtime host public entry points exist")
@@ -474,5 +475,28 @@ struct RuntimeHostContractTests {
         #expect(tree.scene.alertPayload?.message == "Saved")
         #expect(tree.scene.rootNode?.children.first?.children.first?.children[1].children.first?.value == "Jordan")
         #expect(coordinator.bridge.latestSnapshot?.revision == 3)
+    }
+
+    @Test("runtime app loader retains compatibility-lowered semantic trees")
+    func loaderRetainsCompatibilityLoweredTree() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+        let analysis = try analyzer.analyze(
+            .fixturePath("tests/fixtures/compatibility/SupportedSubsetFixture.swift")
+        )
+        let tree = try #require(analysis.loweredTree)
+
+        let loader = RuntimeAppLoader()
+        let snapshot = loader.loadCompatibilityTree(tree)
+
+        #expect(snapshot.appIdentifier == "SupportedSubsetFixture")
+        #expect(snapshot.lifecycleState == .active)
+        #expect(snapshot.tree.scene.kind == .modal)
+        #expect(snapshot.tree.scene.rootNode?.id == "compatibility-modal")
+        #expect(snapshot.tree.scene.rootNode?.children.first?.id == "compatibility-stack")
+        #expect(snapshot.tree.scene.rootNode?.children.first?.children.map(\.id.rawValue) == [
+            "compatibility-text",
+            "compatibility-button",
+        ])
+        #expect(snapshot.tree.scene.modalState?.presentedNode?.id == "compatibility-modal")
     }
 }

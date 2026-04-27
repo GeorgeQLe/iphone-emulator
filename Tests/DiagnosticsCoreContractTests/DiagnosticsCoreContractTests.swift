@@ -1,5 +1,6 @@
 import Testing
 import DiagnosticsCore
+import RuntimeHost
 
 struct DiagnosticsCoreContractTests {
     @Test("diagnostics core public entry points exist")
@@ -172,9 +173,13 @@ struct DiagnosticsCoreContractTests {
             "Button",
             "State",
         ])
+        #expect(analysis.loweredTree?.appIdentifier == "SupportedSubsetFixture")
+        #expect(analysis.loweredTree?.scene.kind == .modal)
+        #expect(analysis.loweredTree?.scene.rootNode?.role == .modal)
+        #expect(analysis.loweredTree?.scene.rootNode?.children.map(\.role) == [.vStack])
+        #expect(analysis.loweredTree?.scene.rootNode?.children.first?.children.map(\.role) == [.text, .button])
+        #expect(analysis.loweredTree?.scene.modalState?.isPresented == true)
         #expect(analysis.loweringPreview?.appIdentifier == "SupportedSubsetFixture")
-        #expect(analysis.loweringPreview?.scene.kind == .modal)
-        #expect(analysis.loweringPreview?.scene.rootNode.children.map(\.role) == [.vStack])
     }
 
     @Test("compatibility analyzer reports adaptation guidance for unsupported lifecycle hooks and modifiers")
@@ -193,5 +198,6 @@ struct DiagnosticsCoreContractTests {
             "Move onAppear work into an explicit strict-mode runtime lifecycle adapter.",
             "Replace padding with an explicit strict-mode layout container or spacing metadata.",
         ])
+        #expect(analysis.loweredTree == nil)
     }
 }

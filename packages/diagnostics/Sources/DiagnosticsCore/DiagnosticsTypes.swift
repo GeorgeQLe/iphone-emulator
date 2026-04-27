@@ -1,4 +1,5 @@
 import Foundation
+import RuntimeHost
 
 public struct SourceLocation: Sendable, Hashable {
     public let file: String
@@ -311,15 +312,18 @@ public struct CompatibilityAnalysis: Sendable, Hashable {
     public let report: CompatibilityReport
     public let supportedFeatures: [CompatibilitySupportedFeature]
     public let loweringPreview: CompatibilityLoweringPreview?
+    public let loweredTree: SemanticUITree?
 
     public init(
         report: CompatibilityReport,
         supportedFeatures: [CompatibilitySupportedFeature],
-        loweringPreview: CompatibilityLoweringPreview?
+        loweringPreview: CompatibilityLoweringPreview?,
+        loweredTree: SemanticUITree?
     ) {
         self.report = report
         self.supportedFeatures = supportedFeatures
         self.loweringPreview = loweringPreview
+        self.loweredTree = loweredTree
     }
 }
 
@@ -348,16 +352,18 @@ public struct CompatibilityAnalyzer: Sendable {
         diagnostics.append(contentsOf: platformAPIDiagnostics(in: lines, file: resolvedInput.file))
 
         let supportedFeatures = detectedSupportedFeatures(in: source)
-        let loweringPreview = makeLoweringPreview(
+        let loweredTree = makeLoweredTree(
             for: resolvedInput,
             diagnostics: diagnostics,
             supportedFeatures: supportedFeatures
         )
+        let loweringPreview = loweredTree.map(makeLoweringPreview)
 
         return CompatibilityAnalysis(
             report: CompatibilityReport(matrix: matrix, diagnostics: diagnostics),
             supportedFeatures: supportedFeatures,
-            loweringPreview: loweringPreview
+            loweringPreview: loweringPreview,
+            loweredTree: loweredTree
         )
     }
 }
@@ -554,11 +560,11 @@ private extension CompatibilityAnalyzer {
         return features
     }
 
-    func makeLoweringPreview(
+    func makeLoweredTree(
         for input: ResolvedInput,
         diagnostics: [CompatibilityDiagnostic],
         supportedFeatures: [CompatibilitySupportedFeature]
-    ) -> CompatibilityLoweringPreview? {
+    ) -> SemanticUITree? {
         guard diagnostics.isEmpty else {
             return nil
         }
@@ -569,8 +575,38 @@ private extension CompatibilityAnalyzer {
             return nil
         }
 
-        return CompatibilityLoweringPreview(
+        let rootNode = UITreeNode(
+            id: "compatibility-modal",
+            role: .modal,
+            children: [
+                UITreeNode(
+                    id: "compatibility-stack",
+                    role: .vStack,
+                    children: [
+                        UITreeNode(id: "compatibility-text", role: .text, label: "Supported subset"),
+                        UITreeNode(id: "compatibility-button", role: .button, label: "Tap me"),
+                    ]
+                ),
+            ]
+        )
+
+        return SemanticUITree(
             appIdentifier: input.appIdentifier,
+            scene: UITreeScene(
+                id: rootNode.id,
+                kind: .modal,
+                rootNode: rootNode,
+                modalState: UIModalState(
+                    isPresented: true,
+                    presentedNode: rootNode
+                )
+            )
+        )
+    }
+
+    func makeLoweringPreview(from tree: SemanticUITree) -> CompatibilityLoweringPreview {
+        CompatibilityLoweringPreview(
+            appIdentifier: tree.appIdentifier,
             scene: CompatibilityScenePreview(
                 kind: .modal,
                 rootNode: CompatibilityNode(
