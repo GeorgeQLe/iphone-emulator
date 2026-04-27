@@ -4,104 +4,80 @@
 
 - [x] `$ship-end --no-deploy` - configured `origin` and pushed the initial `main` commit to `https://github.com/GeorgeQLe/iphone-emulator.git` on 2026-04-27 14:22:55 EDT.
 - [x] Phase 1 completed on 2026-04-27 after confirming the current `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore` package split is the smallest coherent scaffold and re-running `swift test` plus `swift build`.
+- [x] Phase 2 completed on 2026-04-27 after aligning the renderer-side scene-kind contract with `RuntimeHost`, re-running the full Swift and browser-renderer validation surface, and confirming the UI tree and browser boundary needs no broader cleanup before automation work begins.
 
-## Phase 2: M1 UI Tree Engine and Browser Renderer
-> Test strategy: tests-after
+## Phase 3: M1 Automation SDK and Semantic Inspection
+> Test strategy: tdd
 
 ### Execution Profile
 **Parallel mode:** research-only
 **Integration owner:** main agent
 **Conflict risk:** high
-**Review gates:** correctness, tests, docs/API conformance, UX
+**Review gates:** correctness, tests, docs/API conformance
 
 **Subagent lanes:**
-- Lane: ui-tree-contract-research
+- Lane: protocol-shape-research
   - Agent: explorer
   - Role: explorer
   - Mode: read-only
-  - Scope: inspect the existing strict-mode SDK and runtime placeholders to recommend the narrowest semantic UI tree contract for Phase 2.
+  - Scope: inspect the current `RuntimeHost` snapshot APIs and Phase 3 spec language to recommend the smallest automation protocol envelope that can cover launch, element lookup, interactions, logs, and snapshot inspection without locking in transport details too early.
   - Depends on: none
-  - Deliverable: a short contract recommendation covering tree nodes, stable identifiers, and runtime handoff boundaries.
-- Lane: renderer-shell-research
+  - Deliverable: a short recommendation for request/response message shapes, error handling, and stable semantic query fields.
+- Lane: automation-sdk-surface-research
   - Agent: explorer
   - Role: explorer
   - Mode: read-only
-  - Scope: inspect the browser-renderer placeholder package and recommend the minimum shell structure needed for a deterministic iPhone-like surface in the browser.
+  - Scope: inspect the browser renderer fixture coverage, the `packages/automation-sdk` placeholder, and the roadmap API examples to recommend the minimum TypeScript package surface needed for a Playwright-style fixture runner in this phase.
   - Depends on: none
-  - Deliverable: a short package-layout recommendation for the renderer shell, fixture bootstrapping, and semantic metadata hooks.
+  - Deliverable: a short recommendation for SDK entry points, locator ergonomics, and the lightest local Node toolchain that supports repeatable tests.
+
+### Tests First
+- [ ] Step 3.1: Write failing contract tests for the automation protocol and SDK surface.
+  - Files: expand `tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; create automation SDK tests under `packages/automation-sdk/` such as `src/index.test.ts` or `test/**/*.test.ts`; update `packages/automation-sdk/package.json` and local TypeScript/Vitest config only as needed to run those tests.
+  - Add Swift-side contract tests for a runtime automation session value, protocol request/response envelopes, semantic query lookup, and deterministic fixture command handling.
+  - Add TypeScript-side failing tests that lock the intended Phase 3 user surface: `Emulator.launch(...)`, `app.close()`, locator lookup by text and role, `tap()`, `fill()`, semantic tree inspection, and log collection.
+  - The new tests must fail initially because the runtime automation types and automation SDK entry points do not exist yet.
 
 ### Implementation
-- [x] Step 2.1: Define the semantic UI tree contract shared by `StrictModeSDK`, `RuntimeHost`, and the renderer.
-  - Files: create `packages/runtime-host/Sources/RuntimeHost/UITree/` types for semantic nodes, roles, view identifiers, navigation state, modal state, tab state, and alert payloads; modify `packages/swift-sdk/Sources/StrictModeSDK/` to introduce the minimum protocols or builders needed to lower strict-mode declarations into that tree.
-  - Keep the contract narrow and deterministic. Prefer project-owned value types over early protocol abstraction so the renderer and automation work can share a stable serialized shape later.
-  - Update `Package.swift` only if additional source folders or target dependencies are required; avoid introducing new packages in this phase.
-- [x] Step 2.2: Connect the runtime host placeholder APIs to produce and retain semantic UI tree snapshots for strict-mode fixtures.
-  - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, and related new support files under `packages/runtime-host/Sources/RuntimeHost/`.
-  - Extend the compile-only placeholders into behavior-light fixtures that can load a known strict-mode app declaration, derive a semantic tree snapshot, and expose stable identifiers without adding protocol transport or automation concerns yet.
-  - If the current `StrictModeSDK` skeleton needs additional compile-time hooks for fixture lowering, add the smallest surface necessary and keep the public API explicit.
-  - Implementation plan:
-    1. Add a typed runtime snapshot wrapper in `RuntimeHost` that stores `appIdentifier`, the current `SemanticUITree`, and any lightweight lifecycle metadata needed for fixture inspection.
-    2. Replace the placeholder `RuntimeAppLoader` string-only shape with a generic or closure-based loader that can accept a strict-mode fixture app and immediately lower it through `App.makeSemanticTree(...)`.
-    3. Replace the placeholder `RuntimeTreeBridge.lastRenderedTreeIdentifier` with retained tree snapshot state plus small query helpers for the latest root identifier, navigation state, modal state, and alert payload.
-    4. Keep the implementation fixture-scoped: no JSON-RPC transport, no async session management, and no renderer coupling in this step.
-    5. Add focused runtime-host tests for fixture loading and retained snapshot inspection before moving on to renderer work.
-  - Completed on 2026-04-27 by adding `RuntimeTreeSnapshot`, rewriting `RuntimeAppLoader` around fixture-lowering closures to avoid package cycles, replacing `RuntimeTreeBridge` placeholder state with retained snapshot queries, and extending the runtime-host contract tests to cover strict-mode fixture loading plus snapshot inspection.
-- [x] Step 2.3: Build the browser renderer package shell that can render a semantic tree inside an iPhone-like browser frame.
-  - Files: update `packages/browser-renderer/package.json`; create `packages/browser-renderer/src/` entry points, render helpers, styles, and fixture bootstrap code; add any local config files needed to run renderer tests or builds.
-  - Focus on a deterministic shell with semantic markup for the currently supported primitives: text, button, text field, list, stacks, navigation, modal, tab view, and alerts.
-  - Keep the visual system intentionally simple but structured so later device simulation and automation hooks can extend it without rewrites.
-  - Implementation plan:
-    1. Choose the smallest browser package toolchain that can expose repeatable local `build` and `test` commands from `packages/browser-renderer/package.json` without introducing a monorepo-wide frontend framework.
-    2. Create a fixture bootstrap entry that imports a checked-in semantic tree fixture and mounts the renderer into a deterministic app root with viewport metadata for the eventual iPhone-like frame.
-    3. Add renderer primitives and semantic markup for the currently supported UI tree roles, keeping styling and DOM structure stable enough for later snapshot-style assertions.
-    4. Build the iPhone-like shell, including a constrained viewport, surface chrome, and semantic hooks that make renderer output inspectable without coupling to automation transport yet.
-    5. Add at least one focused renderer test or smoke check in the selected toolchain before moving on to docs/examples in Step 2.4.
-  - Completed on 2026-04-27 by adding a local Vite/Vitest/TypeScript toolchain, a checked-in semantic tree fixture, a deterministic DOM renderer for the current UI roles, an iPhone-like browser shell, and a focused renderer smoke test.
-- [x] Step 2.4: Add fixture examples and developer documentation for the Phase 2 rendering path.
-  - Files: update `README.md`; expand `examples/strict-mode-baseline/`; add renderer usage notes under `examples/` or `docs/` if a new doc path is needed.
-  - Document how a strict-mode fixture app flows from SDK declaration through runtime tree generation into the browser renderer, including current limitations and any manual steps needed to preview the renderer locally.
-  - Implementation plan:
-    1. Update `README.md` to describe the new browser renderer package, its fixed fixture scope, and the exact local commands for `typecheck`, `test`, and `build`.
-    2. Expand `examples/strict-mode-baseline/README.md` with the end-to-end flow from `StrictModeSDK` declarations to `RuntimeHost` semantic trees to browser rendering, including which file now provides the checked-in renderer fixture.
-    3. Add or extend example assets under `examples/strict-mode-baseline/` only if they clarify the renderer path without creating a second source of truth for the semantic tree contract.
-    4. Call out current limitations explicitly: fixed fixture input, no transport/session layer, no live runtime updates, and no automation hooks yet.
-    5. Re-run the documentation-adjacent validation surface (`npm test`, `npm run build`, and `swift test`) only if the docs step changes executable examples or referenced commands.
-  - Completed on 2026-04-27 by rewriting the root README around the current Phase 2 renderer milestone, documenting the exact browser-renderer validation commands, expanding the strict-mode baseline example README with the SDK -> runtime snapshot -> checked-in renderer fixture flow, and calling out the fixed-fixture limitation explicitly.
+- [ ] Step 3.2: Define the runtime automation protocol and session state in `RuntimeHost`.
+  - Files: create automation support files under `packages/runtime-host/Sources/RuntimeHost/Automation/` for launch configuration, session identity, semantic query types, command enums, response payloads, and protocol errors; update `Package.swift` only if target wiring changes are needed.
+  - Keep the transport layer abstract at the value-type level: Phase 3 needs stable request/response shapes that could later travel over JSON-RPC or WebSocket, but this step should not require a live server yet.
+  - Model only the commands the roadmap promises for this phase: launch/close, tap, fill/type, wait/query, semantic snapshot inspection, screenshot placeholder metadata, and log retrieval.
+- [ ] Step 3.3: Implement deterministic runtime automation handling over fixture-backed snapshots.
+  - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, `RuntimeTreeSnapshot.swift`, and add any new runtime automation coordinator files under `packages/runtime-host/Sources/RuntimeHost/Automation/`.
+  - Add the smallest runtime session coordinator that can launch a strict-mode fixture app, retain the latest semantic tree snapshot, resolve semantic queries by text/role/stable identifier, and apply deterministic fixture-scoped interaction updates for tap and fill commands.
+  - Keep the scope fixture-driven and synchronous where possible. Do not add browser transport, async multiplexing, or compatibility-mode concerns in this step.
+- [ ] Step 3.4: Build the TypeScript automation SDK package around the runtime contract.
+  - Files: update `packages/automation-sdk/package.json`; create `packages/automation-sdk/src/` entry points, locator helpers, session client types, fixture transport stubs, and any local TypeScript/Vitest config files needed for repeatable `typecheck`, `test`, and `build` commands.
+  - Expose a narrow Playwright-style surface that matches the roadmap example closely: `Emulator.launch`, `close`, `getByText`, `getByRole`, locator `tap`, locator `fill`, semantic snapshot access, and log retrieval.
+  - Use a local in-memory transport/client seam for this phase so the SDK can exercise the runtime automation contract before a real JSON-RPC or WebSocket server exists.
+- [ ] Step 3.5: Add fixture-driven automation examples and developer documentation.
+  - Files: update `README.md`; expand `examples/strict-mode-baseline/README.md`; add example automation usage under `examples/strict-mode-baseline/` or `packages/automation-sdk/` if a checked-in sample script clarifies the supported API.
+  - Document the end-to-end Phase 3 flow from strict-mode fixture declaration through runtime automation session launch into the TypeScript SDK, including the exact local commands to validate the automation package.
+  - Call out the current limitations explicitly: in-memory transport only, fixture-scoped state updates, no live browser session coordination, and screenshot support limited to placeholder metadata or stubbed hooks until later phases.
 
 ### Green
-- [x] Step 2.5: Add regression tests covering semantic tree generation and renderer output for a fixed strict-mode fixture.
-  - Files: create `Tests/RuntimeHostSemanticTreeTests/` and any renderer-side tests under `packages/browser-renderer/` such as `src/**/*.test.ts` or the nearest conventional test path selected for the package.
-  - Cover tree structure, stable semantic identifiers, navigation or modal state shape, and deterministic renderer output for a known fixture viewport.
-  - Prefer snapshots or structured assertions that are stable under the intended Phase 2 renderer shell.
-  - Implementation plan:
-    1. Inspect the current `StrictModeSDK` semantic-tree lowering coverage and `RuntimeHostContractTests` fixture-loading assertions to decide whether a new `RuntimeHostSemanticTreeTests` target is warranted or whether the existing contract suite should be expanded without duplicating coverage.
-    2. Add a focused Swift regression test that exercises a known fixture tree end to end, asserting stable node identifiers plus navigation, modal, tab, and alert state on the retained `SemanticUITree`.
-    3. Extend the renderer-side Vitest suite beyond the current smoke check to assert deterministic DOM output for the checked-in fixture, including semantic roles, labels, and selected state markers that later automation can rely on.
-    4. Keep assertions structural rather than styling-fragile: prefer DOM queries and serialized subtree checks over large visual snapshots unless a very small snapshot clearly improves signal.
-    5. Re-run the combined Swift and browser-renderer test surface after the new tests land before moving to full-phase validation in Step 2.6.
-  - Completed on 2026-04-27 by expanding `RuntimeHostContractTests` with end-to-end fixture regression coverage for stable semantic tree identifiers and retained state, and by extending the renderer Vitest suite with deterministic structural DOM assertions for the checked-in fixture.
-- [x] Step 2.6: Run the full validation surface for the combined Swift and browser-renderer toolchains.
+- [ ] Step 3.6: Run regression tests covering representative automation flows and semantic inspection.
+  - Files: extend the Swift and TypeScript test suites created earlier; add fixture-specific assertions only where they improve Phase 3 acceptance coverage without making the API brittle.
+  - Cover a representative end-to-end flow where a TypeScript-side test launches a fixture app, finds elements by text and role, performs `tap` and `fill`, inspects the updated semantic tree, and retrieves logs or placeholder screenshot metadata.
+  - Keep assertions structural and deterministic: prefer stable semantic identifiers, explicit role/text expectations, and small serialized payload checks over large snapshots.
+- [ ] Step 3.7: Run the full validation surface for the Swift workspace, browser renderer, and automation SDK.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
-  - Run the relevant Swift and Node test/build commands selected by the implementation. Confirm the renderer package exposes repeatable local validation commands before closing the phase.
-  - Completed on 2026-04-27 by running `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`, all green with no warnings or follow-up wiring fixes needed.
-- [ ] Step 2.7: Refactor the UI tree and renderer boundary if needed while keeping the new tests green.
-  - Re-read the semantic tree contract and renderer package entry points before changing names or file boundaries.
-  - Keep refactors limited to simplifying the shared contract, reducing duplication, or clarifying ownership between runtime and renderer. Do not widen scope into automation protocol or compatibility analysis work.
-  - Implementation plan:
-    1. Re-inspect the semantic tree surface under `packages/runtime-host/Sources/RuntimeHost/UITree/`, the lowering hooks in `packages/swift-sdk/Sources/StrictModeSDK/`, and the browser renderer entry points in `packages/browser-renderer/src/` to identify any remaining contract duplication or confusing ownership boundaries.
-    2. If no meaningful simplification is justified, record Step 2.7 as an intentional no-op boundary review rather than forcing churn.
-    3. If a narrow refactor is justified, keep it local to naming, file layout, or serialization-facing helpers that improve the runtime-renderer seam without adding new UI roles or protocol concerns.
-    4. Re-run the smallest affected validation surface during the refactor, then finish with the full green suite from Step 2.6 before closing the phase.
-    5. Update the milestone completion notes with any deviations, follow-ups, or confirmation that no additional boundary cleanup was needed.
+  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and the matching `packages/automation-sdk` `typecheck`/`test`/`build` commands introduced in this phase.
+  - Inspect warnings as well as failures. Do not close the phase with missing SDK validation wiring.
+- [ ] Step 3.8: Refactor the runtime and SDK boundary if needed while keeping the new tests green.
+  - Re-read the runtime automation value types and TypeScript SDK entry points before changing names or file boundaries.
+  - Keep refactors limited to clarifying ownership between the runtime contract and SDK client, reducing duplication, or tightening deterministic semantic query semantics. Do not widen scope into browser transport or compatibility diagnostics work.
+  - If no meaningful cleanup is justified after the validation run, record this as an intentional no-op boundary review rather than introducing churn.
 
-### Milestone: M1 UI Tree Engine and Browser Renderer
+### Milestone: M1 Automation SDK and Semantic Inspection
 **Acceptance Criteria:**
-- [x] A strict-mode fixture app can produce a semantic UI tree through the runtime host.
-- [x] The browser renderer displays the fixture app in an iPhone-like surface.
-- [x] Supported UI primitives render with stable structure and accessible semantic metadata.
-- [x] Renderer behavior is deterministic for a fixed fixture and viewport.
-- [x] All phase tests pass.
-- [x] No regressions in previous phase tests.
+- [ ] A TypeScript test can launch a fixture app and interact with supported UI primitives.
+- [ ] Semantic queries can find elements by text, role, and stable identifiers.
+- [ ] Automation commands update runtime state deterministically.
+- [ ] Logs and semantic snapshots are available through the SDK.
+- [ ] All phase tests pass.
+- [ ] No regressions in previous phase tests.
 
 **On Completion:**
 - Deviations from plan: none yet

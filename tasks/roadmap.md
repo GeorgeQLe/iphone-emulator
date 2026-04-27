@@ -23,7 +23,7 @@
 **Coordination Notes:** This phase defines shared package boundaries and naming conventions, so implementation should stay integrated until ownership surfaces are stable.
 
 ## Phase 2: M1 UI Tree Engine and Browser Renderer
-**Status:** current.
+**Status:** complete on 2026-04-27.
 
 **Goal:** Turn strict-mode app declarations into a semantic UI tree and render that tree inside an iPhone-like browser surface.
 
@@ -43,6 +43,7 @@
 **Coordination Notes:** SDK/runtime UI tree work and browser renderer work can likely be separated by an explicit serialized UI tree contract. The contract itself is the shared chokepoint.
 
 ## Phase 3: M1 Automation SDK and Semantic Inspection
+**Status:** current.
 
 **Goal:** Provide a Playwright-style TypeScript automation API over the runtime and renderer.
 

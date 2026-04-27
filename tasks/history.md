@@ -43,3 +43,6 @@
 - Validation: `swift test` passed cleanly with 10 tests across 4 suites, and `npm test` passed cleanly in `packages/browser-renderer` with 2 renderer regression tests green; one initial renderer failure exposed the missing nested `tabState` propagation and was fixed before the final green run.
 - Completed Phase 2 Step 2.6 by running the full combined validation surface for the Swift workspace and browser renderer with no additional wiring changes required.
 - Validation: `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` all passed cleanly with no warnings.
+- Completed Phase 2 Step 2.7 by tightening the runtime-renderer seam and removing the unsupported `navigationStack` scene-kind variant from the browser renderer's local `UITreeScene` type surface so it matches the Swift runtime contract exactly.
+- Validation: `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `swift test`, and `swift build` all passed cleanly with no warnings.
+- Archived the completed Phase 2 plan to `tasks/phases/phase-2.md`, marked the roadmap phase complete, and generated the detailed Phase 3 execution plan in `tasks/todo.md`.
