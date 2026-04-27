@@ -49,13 +49,17 @@
   - Prefer minimal compile-time skeleton types and exports only; do not add behavior that belongs to the later UI tree or renderer phases.
   - Re-run `swift test` after wiring the SDK symbols. Expected remaining failures after Step 1.5 are confined to `RuntimeHostContractTests` and `DiagnosticsCoreContractTests`.
   - Status: completed on 2026-04-27 after replacing the SDK placeholder with minimal compile-only public entry points for `App`, `Scene`, `View`, `Text`, `Button`, `TextField`, `List`, `VStack`, `HStack`, `NavigationStack`, `Modal`, `TabView`, `Alert`, and `State`.
-- [ ] Step 1.6: Implement the runtime host skeleton.
+- [x] Step 1.6: Implement the runtime host skeleton.
   - Files: create runtime package source files for lifecycle, app loading placeholder, UI tree handoff placeholder, logs, and future JSON-RPC/WebSocket boundary.
   - Start in `packages/runtime-host/Sources/RuntimeHost/` and replace the placeholder with the exact public symbols asserted by `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`: `RuntimeAppLifecycle`, `RuntimeAppLoader`, `RuntimeTreeBridge`, `RuntimeLogSink`, and `ProtocolBoundaryPlaceholder`.
   - Keep all runtime types behavior-light and dependency-free. This step is limited to contract-shaping types and public exports, not real app execution, renderer integration, or protocol transport.
   - Re-run `swift test` after wiring the runtime symbols. Expected remaining failures after Step 1.6 should be confined to `DiagnosticsCoreContractTests`.
+  - Status: completed on 2026-04-27 after replacing the runtime placeholder with compile-only public contract types for lifecycle state, app loading, tree bridging, log sink levels, and protocol-boundary transport placeholders. `swift test` now fails only in `DiagnosticsCoreContractTests`, matching the step expectation.
 - [ ] Step 1.7: Implement the diagnostics skeleton.
   - Files: create diagnostics package source files for unsupported import reports, unsupported symbol reports, source-location data structures, and suggested adaptation messages.
+  - Start in `packages/diagnostics/Sources/DiagnosticsCore/` and replace the placeholder with the exact public symbols asserted by `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`: `UnsupportedImportDiagnostic`, `UnsupportedSymbolDiagnostic`, `SuggestedAdaptation`, and `SourceLocation`.
+  - Keep the diagnostics types compile-only and structured. Prefer immutable stored properties for import names, symbol names, adaptation text, and file/line/column data, without implementing parser or analyzer behavior yet.
+  - Re-run `swift test` after wiring the diagnostics symbols. Expected remaining work after Step 1.7 is documentation/examples plus the full green validation pass in Steps 1.8 through 1.11.
 - [ ] Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
   - Files: update `README.md`; create example strict-mode app files and docs explaining goals, non-goals, strict mode, compatibility mode, and open-source-only constraints.
 
