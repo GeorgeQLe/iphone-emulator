@@ -55,13 +55,15 @@
   - Keep all runtime types behavior-light and dependency-free. This step is limited to contract-shaping types and public exports, not real app execution, renderer integration, or protocol transport.
   - Re-run `swift test` after wiring the runtime symbols. Expected remaining failures after Step 1.6 should be confined to `DiagnosticsCoreContractTests`.
   - Status: completed on 2026-04-27 after replacing the runtime placeholder with compile-only public contract types for lifecycle state, app loading, tree bridging, log sink levels, and protocol-boundary transport placeholders. `swift test` now fails only in `DiagnosticsCoreContractTests`, matching the step expectation.
-- [ ] Step 1.7: Implement the diagnostics skeleton.
+- [x] Step 1.7: Implement the diagnostics skeleton.
   - Files: create diagnostics package source files for unsupported import reports, unsupported symbol reports, source-location data structures, and suggested adaptation messages.
   - Start in `packages/diagnostics/Sources/DiagnosticsCore/` and replace the placeholder with the exact public symbols asserted by `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`: `UnsupportedImportDiagnostic`, `UnsupportedSymbolDiagnostic`, `SuggestedAdaptation`, and `SourceLocation`.
   - Keep the diagnostics types compile-only and structured. Prefer immutable stored properties for import names, symbol names, adaptation text, and file/line/column data, without implementing parser or analyzer behavior yet.
   - Re-run `swift test` after wiring the diagnostics symbols. Expected remaining work after Step 1.7 is documentation/examples plus the full green validation pass in Steps 1.8 through 1.11.
+  - Status: completed on 2026-04-27 after replacing the diagnostics placeholder with compile-only public types for source locations, suggested adaptations, unsupported imports, and unsupported symbols. `swift test` passes across all current suites, and the strict-mode contract test warning was removed by switching protocol existential references to `any App` and `any Scene`.
 - [ ] Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
   - Files: update `README.md`; create example strict-mode app files and docs explaining goals, non-goals, strict mode, compatibility mode, and open-source-only constraints.
+  - Implementation plan for next session: expand `README.md` with concise sections for project goals, explicit non-goals around Apple frameworks and simulator parity, strict-mode expectations, compatibility-mode intent, and the open-source-only constraint; add a minimal strict-mode example app under `examples/`; and include enough usage notes for a fresh reader to understand the repository layout and current scope before Phase 1 green validation.
 
 ### Green
 - [ ] Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
@@ -74,6 +76,7 @@
 - [ ] Strict-mode SDK types compile or are represented by enforceable scaffolding with documented intended contracts.
 - [ ] Runtime host and diagnostics modules have concrete entry points and tests or smoke checks appropriate for the chosen tooling.
 - [ ] The project README states goals, non-goals, strict mode, compatibility mode, and open-source-only constraints.
+- [ ] Example strict-mode app docs exist and match the baseline public SDK skeleton.
 - [ ] No compatibility shims beyond diagnostics skeleton are implemented in this phase.
 - [ ] All phase tests pass.
 - [ ] No regressions in previous phase tests.

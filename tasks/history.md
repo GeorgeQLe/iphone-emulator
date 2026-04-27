@@ -20,3 +20,5 @@
 - Validation: `swift test` now fails only in `RuntimeHostContractTests` and `DiagnosticsCoreContractTests`, which is the expected boundary after Step 1.5 while runtime and diagnostics entry points remain unimplemented.
 - Replaced the `RuntimeHost` placeholder with a minimal public runtime skeleton covering `RuntimeAppLifecycle`, `RuntimeAppLoader`, `RuntimeTreeBridge`, `RuntimeLogSink`, and `ProtocolBoundaryPlaceholder`.
 - Validation: `swift test` now fails only in `DiagnosticsCoreContractTests` on missing diagnostics symbols, which is the expected boundary after Step 1.6 while the diagnostics skeleton remains unimplemented.
+- Replaced the `DiagnosticsCore` placeholder with compile-only public diagnostics types covering `UnsupportedImportDiagnostic`, `UnsupportedSymbolDiagnostic`, `SuggestedAdaptation`, and `SourceLocation`.
+- Validation: `swift test` now passes across scaffold, SDK, runtime, and diagnostics contract suites, and the strict-mode contract test existential warning was removed by switching protocol references to `any App` and `any Scene`.

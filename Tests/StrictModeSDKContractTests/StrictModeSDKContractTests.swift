@@ -5,8 +5,8 @@ struct StrictModeSDKContractTests {
     @Test("strict mode public entry points exist")
     func publicEntryPointsExist() {
         let exportedSymbols: [Any.Type] = [
-            App.self,
-            Scene.self,
+            (any App).self,
+            (any Scene).self,
             Text.self,
             Button.self,
             TextField.self,
