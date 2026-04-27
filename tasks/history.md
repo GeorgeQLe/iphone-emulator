@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 3 Step 3.7 by running the full validation surface for the Swift workspace, browser renderer, and automation SDK without needing any code or config changes.
+- Validation: `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings in the captured output.
 - Completed Phase 3 Step 3.6 by strengthening the automation SDK regression coverage into one representative fixture-backed flow that launches the app, queries by text/role/test ID, performs deterministic `tap` and `fill` updates, then asserts the updated semantic tree, appended logs, and screenshot placeholder metadata.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings after the regression coverage update.
 - Completed Phase 3 Step 3.5 by updating the root README and strict baseline example docs for the new automation SDK flow, and by adding a checked-in `automation-example.ts` script that demonstrates launch, query, interaction, semantic inspection, logs, and screenshot placeholder metadata against the strict baseline fixture.

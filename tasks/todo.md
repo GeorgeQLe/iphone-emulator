@@ -77,7 +77,7 @@
     - Extend `packages/automation-sdk/src/index.test.ts` with one representative end-to-end automation flow that asserts deterministic tree updates, appended log messages, and screenshot placeholder metadata after `tap` and `fill`.
     - Add or expand `tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` coverage only where it strengthens the shared query/update contract without duplicating the TypeScript-side scenario assertions.
     - Keep assertions focused on stable identifiers, roles, alert payload state, field values, and short log payloads rather than large serialized tree snapshots.
-- [ ] Step 3.7: Run the full validation surface for the Swift workspace, browser renderer, and automation SDK.
+- [x] Step 3.7: Run the full validation surface for the Swift workspace, browser renderer, and automation SDK.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and the matching `packages/automation-sdk` `typecheck`/`test`/`build` commands introduced in this phase.
   - Inspect warnings as well as failures. Do not close the phase with missing SDK validation wiring.
@@ -85,6 +85,10 @@
   - Re-read the runtime automation value types and TypeScript SDK entry points before changing names or file boundaries.
   - Keep refactors limited to clarifying ownership between the runtime contract and SDK client, reducing duplication, or tightening deterministic semantic query semantics. Do not widen scope into browser transport or compatibility diagnostics work.
   - If no meaningful cleanup is justified after the validation run, record this as an intentional no-op boundary review rather than introducing churn.
+  - Next execution plan:
+    - Re-read `packages/runtime-host/Sources/RuntimeHost/Automation/` and `packages/automation-sdk/src/` together, looking specifically for duplicated query semantics, redundant placeholder types, or naming mismatches that make the runtime contract harder for the SDK to mirror.
+    - If a small boundary cleanup is justified, keep the write scope narrow and rerun only the affected validation commands plus a final full pass if shared types move or rename.
+    - If the current split is already the smallest coherent boundary, record Step 3.8 as an intentional no-op review, then mark the remaining milestone acceptance criteria complete for the phase.
 
 ### Milestone: M1 Automation SDK and Semantic Inspection
 **Acceptance Criteria:**
@@ -92,8 +96,8 @@
 - [ ] Semantic queries can find elements by text, role, and stable identifiers.
 - [ ] Automation commands update runtime state deterministically.
 - [ ] Logs and semantic snapshots are available through the SDK.
-- [ ] All phase tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] All phase tests pass.
+- [x] No regressions in previous phase tests.
 
 **On Completion:**
 - Deviations from plan: none yet
