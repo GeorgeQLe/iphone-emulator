@@ -31,3 +31,5 @@
 - Completed Phase 1 Step 1.11 as a no-op boundary review after confirming the current `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore` package split is still the smallest coherent scaffold for the repo's strict-mode, runtime, and diagnostics surfaces.
 - Validation: `swift test` passed cleanly with 5 tests across 4 suites and 0 failures, and `swift build` completed cleanly with no warnings or errors.
 - Archived the completed Phase 1 plan to `tasks/phases/phase-1.md`, marked the roadmap phase complete, and generated the detailed Phase 2 execution plan in `tasks/todo.md`.
+- Completed Phase 2 Step 2.1 by adding a concrete semantic UI tree contract under `RuntimeHost/UITree`, wiring `StrictModeSDK` to lower strict-mode scenes and views into `SemanticUITree`, and extending the contract tests to lock the new shared surface.
+- Validation: `swift test` passed with 7 tests across 4 suites, including semantic-tree lowering coverage, and `swift build` completed cleanly with no warnings or errors.

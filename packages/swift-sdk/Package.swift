@@ -7,6 +7,9 @@ let package = Package(
     platforms: [
         .macOS(.v15),
     ],
+    dependencies: [
+        .package(path: "../runtime-host"),
+    ],
     products: [
         .library(
             name: "StrictModeSDK",
@@ -14,6 +17,11 @@ let package = Package(
         ),
     ],
     targets: [
-        .target(name: "StrictModeSDK"),
+        .target(
+            name: "StrictModeSDK",
+            dependencies: [
+                .product(name: "RuntimeHost", package: "runtime-host"),
+            ]
+        ),
     ]
 )

@@ -31,7 +31,7 @@
   - Deliverable: a short package-layout recommendation for the renderer shell, fixture bootstrapping, and semantic metadata hooks.
 
 ### Implementation
-- [ ] Step 2.1: Define the semantic UI tree contract shared by `StrictModeSDK`, `RuntimeHost`, and the renderer.
+- [x] Step 2.1: Define the semantic UI tree contract shared by `StrictModeSDK`, `RuntimeHost`, and the renderer.
   - Files: create `packages/runtime-host/Sources/RuntimeHost/UITree/` types for semantic nodes, roles, view identifiers, navigation state, modal state, tab state, and alert payloads; modify `packages/swift-sdk/Sources/StrictModeSDK/` to introduce the minimum protocols or builders needed to lower strict-mode declarations into that tree.
   - Keep the contract narrow and deterministic. Prefer project-owned value types over early protocol abstraction so the renderer and automation work can share a stable serialized shape later.
   - Update `Package.swift` only if additional source folders or target dependencies are required; avoid introducing new packages in this phase.
@@ -39,6 +39,12 @@
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, and related new support files under `packages/runtime-host/Sources/RuntimeHost/`.
   - Extend the compile-only placeholders into behavior-light fixtures that can load a known strict-mode app declaration, derive a semantic tree snapshot, and expose stable identifiers without adding protocol transport or automation concerns yet.
   - If the current `StrictModeSDK` skeleton needs additional compile-time hooks for fixture lowering, add the smallest surface necessary and keep the public API explicit.
+  - Implementation plan:
+    1. Add a typed runtime snapshot wrapper in `RuntimeHost` that stores `appIdentifier`, the current `SemanticUITree`, and any lightweight lifecycle metadata needed for fixture inspection.
+    2. Replace the placeholder `RuntimeAppLoader` string-only shape with a generic or closure-based loader that can accept a strict-mode fixture app and immediately lower it through `App.makeSemanticTree(...)`.
+    3. Replace the placeholder `RuntimeTreeBridge.lastRenderedTreeIdentifier` with retained tree snapshot state plus small query helpers for the latest root identifier, navigation state, modal state, and alert payload.
+    4. Keep the implementation fixture-scoped: no JSON-RPC transport, no async session management, and no renderer coupling in this step.
+    5. Add focused runtime-host tests for fixture loading and retained snapshot inspection before moving on to renderer work.
 - [ ] Step 2.3: Build the browser renderer package shell that can render a semantic tree inside an iPhone-like browser frame.
   - Files: update `packages/browser-renderer/package.json`; create `packages/browser-renderer/src/` entry points, render helpers, styles, and fixture bootstrap code; add any local config files needed to run renderer tests or builds.
   - Focus on a deterministic shell with semantic markup for the currently supported primitives: text, button, text field, list, stacks, navigation, modal, tab view, and alerts.

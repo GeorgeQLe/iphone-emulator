@@ -24,6 +24,7 @@ let package = Package(
     targets: [
         .target(
             name: "StrictModeSDK",
+            dependencies: ["RuntimeHost"],
             path: "packages/swift-sdk/Sources/StrictModeSDK"
         ),
         .target(
