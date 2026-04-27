@@ -36,25 +36,29 @@
   - Split coverage so runtime tests focus on lifecycle and protocol-boundary placeholders, while diagnostics tests focus on unsupported-import reports, unsupported-symbol reports, suggested adaptations, and source-location structs.
 
 ### Implementation
-- Step 1.4: Select and add the root workspace/package structure for this multi-language harness.
+- [x] Step 1.4: Select and add the root workspace/package structure for this multi-language harness.
   - Files: create root package/workspace manifest files, `README.md`, and package directories for SDK, runtime, diagnostics, renderer, automation SDK, examples, and tests.
   - Extend the root `Package.swift` from test-only harness to workspace manifest with library targets for the future Swift modules and test-support utilities retained.
   - Create placeholder package manifests under `packages/swift-sdk`, `packages/runtime-host`, and `packages/diagnostics`, plus Node package manifests for `packages/browser-renderer` and `packages/automation-sdk`.
   - Create the required directory scaffold without implementing runtime behavior yet; this step is limited to package/workspace structure and placeholder manifests needed to unblock later green work.
+  - Status: completed on 2026-04-27 after the root workspace manifest, package directories, nested package manifests, placeholder module source files, and baseline `README.md` scaffold were added.
   - Add a baseline `README.md` stub only if needed to describe the workspace layout; deeper product positioning remains Step 1.8.
-- Step 1.5: Implement the strict-mode Swift SDK skeleton.
+- [ ] Step 1.5: Implement the strict-mode Swift SDK skeleton.
   - Files: create SDK package source files for app declarations, scenes, core views, navigation primitives, state primitives, and public API exports.
-- Step 1.6: Implement the runtime host skeleton.
+  - Start in `packages/swift-sdk/Sources/StrictModeSDK/` and keep the public surface limited to the symbols asserted by `Tests/StrictModeSDKContractTests/StrictModeSDKContractTests.swift`.
+  - Prefer minimal compile-time skeleton types and exports only; do not add behavior that belongs to the later UI tree or renderer phases.
+  - Re-run `swift test` after wiring the SDK symbols. Expected remaining failures after Step 1.5 are confined to `RuntimeHostContractTests` and `DiagnosticsCoreContractTests`.
+- [ ] Step 1.6: Implement the runtime host skeleton.
   - Files: create runtime package source files for lifecycle, app loading placeholder, UI tree handoff placeholder, logs, and future JSON-RPC/WebSocket boundary.
-- Step 1.7: Implement the diagnostics skeleton.
+- [ ] Step 1.7: Implement the diagnostics skeleton.
   - Files: create diagnostics package source files for unsupported import reports, unsupported symbol reports, source-location data structures, and suggested adaptation messages.
-- Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
+- [ ] Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
   - Files: update `README.md`; create example strict-mode app files and docs explaining goals, non-goals, strict mode, compatibility mode, and open-source-only constraints.
 
 ### Green
-- Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
-- Step 1.10: Run formatting, linting, or build checks available for the chosen toolchain.
-- Step 1.11: Refactor names and package boundaries if needed while keeping tests green.
+- [ ] Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
+- [ ] Step 1.10: Run formatting, linting, or build checks available for the chosen toolchain.
+- [ ] Step 1.11: Refactor names and package boundaries if needed while keeping tests green.
 
 ### Milestone: M0 Repo Scaffold and Strict Runtime Skeleton
 **Acceptance Criteria:**
