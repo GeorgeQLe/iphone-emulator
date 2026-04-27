@@ -39,7 +39,7 @@
   - The new tests must fail initially because the runtime automation types and automation SDK entry points do not exist yet.
 
 ### Implementation
-- [ ] Step 3.2: Define the runtime automation protocol and session state in `RuntimeHost`.
+- [x] Step 3.2: Define the runtime automation protocol and session state in `RuntimeHost`.
   - Files: create automation support files under `packages/runtime-host/Sources/RuntimeHost/Automation/` for launch configuration, session identity, semantic query types, command enums, response payloads, and protocol errors; update `Package.swift` only if target wiring changes are needed.
   - Keep the transport layer abstract at the value-type level: Phase 3 needs stable request/response shapes that could later travel over JSON-RPC or WebSocket, but this step should not require a live server yet.
   - Model only the commands the roadmap promises for this phase: launch/close, tap, fill/type, wait/query, semantic snapshot inspection, screenshot placeholder metadata, and log retrieval.

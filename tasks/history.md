@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 3 Step 3.2 by adding value-only `RuntimeHost` automation protocol types for sessions, launch configuration, semantic queries, commands, request/response envelopes, events, log entries, screenshot metadata, and protocol errors under `packages/runtime-host/Sources/RuntimeHost/Automation/`.
+- Validation: `swift test --filter RuntimeHostContractTests` passed cleanly with 8 automation and runtime-host contract tests green after the new `RuntimeAutomation*` symbols were added.
 - Completed Phase 3 Step 3.1 by adding red-phase Swift automation protocol contract tests plus a minimal automation SDK Vitest/TypeScript harness with failing `Emulator` surface tests.
 - Validation: `swift test --filter RuntimeHostContractTests` failed as expected on missing `RuntimeAutomation*` protocol/session symbols in `RuntimeHost`, and `npm --prefix packages/automation-sdk test` failed as expected on the missing `packages/automation-sdk/src/index.ts` entry point.
 - Created the initial open-source iPhone-like Swift app harness specification and interview log.
