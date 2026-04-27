@@ -70,7 +70,7 @@
     - Choose one representative compatibility fixture that uses only supported subset primitives already close to the strict-mode model.
     - Reuse the existing semantic UI tree and runtime snapshot structures rather than inventing a second rendering model.
     - Fail closed when unsupported APIs are present so compatibility mode remains diagnostics-led.
-- [ ] Step 4.6: Document the v1 compatibility matrix, limitations, and migration guidance.
+- [x] Step 4.6: Document the v1 compatibility matrix, limitations, and migration guidance.
   - Files: update `README.md`; add a dedicated compatibility document such as `docs/compatibility-matrix.md` if needed; expand `examples/compatibility-fixtures/README.md` or nearby fixture docs.
   - Document which imports, symbols, layouts, state primitives, and lifecycle hooks are supported, partially supported, unsupported, or deferred in Phase 4.
   - Include exact validation commands and explicit limitations so the compatibility lane does not overclaim simulator fidelity.
@@ -84,6 +84,10 @@
   - Files: extend the diagnostics and runtime test suites created earlier; add fixture-specific assertions only where they improve acceptance coverage without overfitting to parser internals.
   - Cover one supported fixture that passes analysis and lowers into the shared runtime model, plus unsupported fixtures that produce stable source-linked diagnostics and adaptation guidance.
   - Keep assertions structural and deterministic: prefer import names, symbol names, categories, line/column data, and compact support summaries over large serialized reports.
+  - Next execution plan:
+    - Extend `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` with regression assertions for source columns, category ordering, and support-summary stability across the supported and unsupported checked-in fixtures.
+    - Extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` only where needed to confirm the compatibility-lowered tree shape remains aligned with the current strict runtime contract.
+    - Keep the write scope inside existing test targets unless a new fixture case proves necessary.
 - [ ] Step 4.8: Run the full validation surface for the Swift workspace plus any compatibility-specific tooling introduced in this phase.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run `swift test`, `swift build`, and any compatibility-focused commands added during this phase. Re-run the browser renderer and automation SDK validation commands only if shared contracts or docs/examples they consume changed.

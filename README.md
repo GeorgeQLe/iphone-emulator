@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 3 milestone adds a fixture-backed automation SDK on top of the strict-mode semantic tree and deterministic browser preview surface.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 4 milestone adds diagnostics-led compatibility analysis for a narrow SwiftUI-inspired subset on top of the strict-mode semantic tree, deterministic browser preview surface, and fixture-backed automation SDK.
 
 ## Goals
 
@@ -24,9 +24,9 @@ Strict mode is still intentionally narrow. The public entry points lower fixture
 
 ### Compatibility Mode
 
-Compatibility mode is a planned later phase for analyzing plain Swift and a narrow SwiftUI-inspired subset. Its purpose is to produce structured diagnostics and, only where feasible, guide code toward strict mode.
+Compatibility mode is now available as a diagnostics-led v1 surface for analyzing plain Swift source and a narrow SwiftUI-inspired subset. Its purpose is to produce structured diagnostics first and only lower code into the strict runtime model when the source stays inside the documented supported subset.
 
-Compatibility mode is not implemented in the current scaffold. The current repository work remains focused on strict-mode declarations, semantic tree generation, and deterministic fixture rendering.
+The current v1 surface is intentionally small and fail-closed. It supports `import SwiftUI` plus the first lowering path for `VStack`, `Text`, `Button`, and `@State`, and it reports structured diagnostics for unsupported imports, platform APIs, lifecycle hooks, modifiers, and bridge symbols such as `UIKit`, `UIApplication`, `UIViewControllerRepresentable`, `.onAppear`, and `.padding`.
 
 ## Open-Source-Only Constraint
 
@@ -34,12 +34,12 @@ The harness is designed to remain implementable with open-source tooling and pro
 
 ## Current Phase Status
 
-Phase 3 currently provides:
+Phase 4 currently provides:
 
 - `StrictModeSDK` entry points for strict-mode `App`, `Scene`, layout primitives, navigation, alerts, and state, plus lowering hooks that produce the shared semantic tree contract.
 - `RuntimeHost` value types for semantic UI tree snapshots, fixture loading, lifecycle metadata, and retained tree inspection.
 - `RuntimeHost` automation protocol types and an in-memory fixture coordinator that can launch the strict baseline fixture, resolve semantic queries, apply deterministic `tap` and `fill` updates, and expose logs plus screenshot placeholder metadata.
-- `DiagnosticsCore` placeholder diagnostics contracts for later compatibility analysis work.
+- `DiagnosticsCore` compatibility contracts, a lightweight source analyzer, a documented v1 compatibility matrix, and a narrow supported-subset lowering path that emits the shared runtime tree when analysis succeeds without unsupported diagnostics.
 - `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell.
 - `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, locator queries by text/role/test ID, semantic tree inspection, log retrieval, and screenshot placeholder metadata through an in-memory fixture client.
 - SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface before later phases add transport or live session coordination.
@@ -56,7 +56,7 @@ Phase 3 currently provides:
 
 ## Example
 
-See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation sample demonstrates the current TypeScript SDK flow.
+See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility) and [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation sample demonstrates the current TypeScript SDK flow.
 
 ## Validation
 
@@ -71,6 +71,13 @@ npm --prefix packages/browser-renderer run build
 npm --prefix packages/automation-sdk run typecheck
 npm --prefix packages/automation-sdk test
 npm --prefix packages/automation-sdk run build
+```
+
+Compatibility-mode validation currently relies on:
+
+```sh
+swift test --filter DiagnosticsCoreContractTests
+swift test --filter RuntimeHostContractTests
 ```
 
 ## Automation SDK Example
@@ -104,3 +111,4 @@ await app.close();
 - The automation SDK is in-memory only. It mirrors the runtime contract and fixture behavior locally; it does not yet speak to a live Swift host, browser process, or real device.
 - Runtime updates are fixture-scoped and deterministic; live interaction, multi-session coordination, and transport-backed automation hooks are deferred to later phases.
 - Screenshot support is limited to placeholder metadata (`name`, `format`, `byteCount`) until a later phase adds a real artifact pipeline.
+- Compatibility mode is scanner-based rather than compiler-integrated. It only lowers the first documented SwiftUI-inspired subset and otherwise returns diagnostics instead of attempting broad SwiftUI or UIKit emulation.

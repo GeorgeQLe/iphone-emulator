@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.6 by updating `README.md` to describe the diagnostics-led compatibility lane accurately, adding `docs/compatibility-matrix.md` for the v1 supported/partial/unsupported/deferred matrix, and adding `Tests/fixtures/compatibility/README.md` so the checked-in fixtures document the current supported subset and diagnostics expectations.
+- Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test --filter RuntimeHostContractTests`, and `swift build` all passed cleanly with no warnings after the documentation updates. Two parallel SwiftPM invocations emitted temporary `.build` lock-wait output and were treated as stale contention noise once the final runs completed cleanly.
 - Completed Phase 4 Step 4.5 by wiring `DiagnosticsCore`'s first supported-subset path to emit a real `RuntimeHost.SemanticUITree`, adding a narrow `RuntimeAppLoader.loadCompatibilityTree` handoff, and shifting the compatibility contracts from preview-only assertions to shared runtime-model coverage.
 - Validation: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests` both passed cleanly with no warnings after the compatibility handoff landed. One initial parallel `swift test` invocation produced stale SwiftPM contention output and was discarded before the final serial green runs.
 - Completed Phase 4 Step 4.4 by extending `DiagnosticsCore`'s lightweight compatibility analyzer with a first-class platform-API diagnostic path for `UIApplication` while preserving deterministic source scanning for unsupported imports, symbols, lifecycle hooks, and modifiers.
