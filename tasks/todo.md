@@ -68,9 +68,13 @@
 ### Green
 - [x] Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
   - Status: completed on 2026-04-27 after `swift test` passed with 5 tests green across `ScaffoldValidationTests`, `StrictModeSDKContractTests`, `RuntimeHostContractTests`, and `DiagnosticsCoreContractTests` following the docs/example additions.
-- [ ] Step 1.10: Run formatting, linting, or build checks available for the chosen toolchain.
-  - Implementation plan for next session: run `swift build` at the repository root to verify the current SwiftPM workspace builds cleanly outside the test harness, inspect the output for warnings, and record that the root `package.json` still defines no lint, format, typecheck, or build scripts for the Node placeholder packages. If `swift build` exposes package-boundary or naming issues, fix them before advancing to the refactor pass in Step 1.11.
+- [x] Step 1.10: Run formatting, linting, or build checks available for the chosen toolchain.
+  - Status: completed on 2026-04-27 after `swift build` succeeded at the repository root with no warnings or errors. The root `package.json` and both placeholder Node workspace manifests still define no lint, format, typecheck, build, or test scripts, so there were no additional Node-side validation commands to run in this phase.
 - [ ] Step 1.11: Refactor names and package boundaries if needed while keeping tests green.
+  - Implementation plan for next session: review the root workspace naming and target boundaries in `Package.swift` plus the nested package manifests under `packages/` to decide whether the current split between `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore` is still the smallest coherent scaffold for Phase 1.
+  - Re-read the current public skeleton sources and contract tests before changing names so the refactor stays compile-only and does not widen the Phase 1 API surface.
+  - If no boundary or naming issues are found, treat this step as a no-op confirmation: document that the current package split stands, rerun `swift test` and `swift build`, and then mark the phase acceptance criteria complete.
+  - If issues are found, make the smallest package-manifest or source-namespace adjustments needed, then rerun `swift test` and `swift build` to confirm the refactor preserved the green state.
 
 ### Milestone: M0 Repo Scaffold and Strict Runtime Skeleton
 **Acceptance Criteria:**

@@ -26,3 +26,5 @@
 - Validation: `swift test` passed after the docs and example additions, with 5 tests green across `ScaffoldValidationTests`, `StrictModeSDKContractTests`, `RuntimeHostContractTests`, and `DiagnosticsCoreContractTests`.
 - Completed Phase 1 Step 1.9 by re-running the verification suite after the docs/example changes and recording the green status in the phase checklist.
 - Validation: `swift test` passed cleanly with 5 tests across 4 suites, 0 failures, and no warnings.
+- Completed Phase 1 Step 1.10 by running the non-test validation surface for the scaffolded workspace.
+- Validation: `swift build` completed cleanly at the repository root with no warnings or errors, and the root plus placeholder Node workspace manifests still expose no lint, typecheck, build, format, or test scripts for this phase.
