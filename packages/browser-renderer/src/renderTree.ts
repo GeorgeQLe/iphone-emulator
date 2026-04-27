@@ -140,14 +140,14 @@ function renderNode(
     case "list":
       return renderListNode(document, node);
     case "hStack":
-      return renderContainerNode(document, node, "node-hStack");
+      return renderContainerNode(document, node, "node-hStack", tabState);
     case "vStack":
-      return renderContainerNode(document, node, "node-stack");
+      return renderContainerNode(document, node, "node-stack", tabState);
     case "screen":
     case "navigationStack":
     case "modal":
     case "alert":
-      return renderContainerNode(document, node, `node-${node.role}`);
+      return renderContainerNode(document, node, `node-${node.role}`, tabState);
     case "tabView":
       return renderTabViewNode(document, node, tabState);
   }
@@ -225,7 +225,8 @@ function renderListNode(document: Document, node: UITreeNode): HTMLElement {
 function renderContainerNode(
   document: Document,
   node: UITreeNode,
-  className: string
+  className: string,
+  tabState?: UITabState
 ): HTMLElement {
   const element = document.createElement(STACK_ROLES.has(node.role) ? "section" : "div");
   element.className = className;
@@ -234,7 +235,7 @@ function renderContainerNode(
   }
 
   for (const child of node.children) {
-    element.append(renderNode(document, child));
+    element.append(renderNode(document, child, tabState));
   }
 
   applyNodeMetadata(element, node);
