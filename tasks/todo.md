@@ -80,21 +80,28 @@
     4. Keep assertions structural rather than styling-fragile: prefer DOM queries and serialized subtree checks over large visual snapshots unless a very small snapshot clearly improves signal.
     5. Re-run the combined Swift and browser-renderer test surface after the new tests land before moving to full-phase validation in Step 2.6.
   - Completed on 2026-04-27 by expanding `RuntimeHostContractTests` with end-to-end fixture regression coverage for stable semantic tree identifiers and retained state, and by extending the renderer Vitest suite with deterministic structural DOM assertions for the checked-in fixture.
-- [ ] Step 2.6: Run the full validation surface for the combined Swift and browser-renderer toolchains.
+- [x] Step 2.6: Run the full validation surface for the combined Swift and browser-renderer toolchains.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run the relevant Swift and Node test/build commands selected by the implementation. Confirm the renderer package exposes repeatable local validation commands before closing the phase.
+  - Completed on 2026-04-27 by running `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`, all green with no warnings or follow-up wiring fixes needed.
 - [ ] Step 2.7: Refactor the UI tree and renderer boundary if needed while keeping the new tests green.
   - Re-read the semantic tree contract and renderer package entry points before changing names or file boundaries.
   - Keep refactors limited to simplifying the shared contract, reducing duplication, or clarifying ownership between runtime and renderer. Do not widen scope into automation protocol or compatibility analysis work.
+  - Implementation plan:
+    1. Re-inspect the semantic tree surface under `packages/runtime-host/Sources/RuntimeHost/UITree/`, the lowering hooks in `packages/swift-sdk/Sources/StrictModeSDK/`, and the browser renderer entry points in `packages/browser-renderer/src/` to identify any remaining contract duplication or confusing ownership boundaries.
+    2. If no meaningful simplification is justified, record Step 2.7 as an intentional no-op boundary review rather than forcing churn.
+    3. If a narrow refactor is justified, keep it local to naming, file layout, or serialization-facing helpers that improve the runtime-renderer seam without adding new UI roles or protocol concerns.
+    4. Re-run the smallest affected validation surface during the refactor, then finish with the full green suite from Step 2.6 before closing the phase.
+    5. Update the milestone completion notes with any deviations, follow-ups, or confirmation that no additional boundary cleanup was needed.
 
 ### Milestone: M1 UI Tree Engine and Browser Renderer
 **Acceptance Criteria:**
-- [ ] A strict-mode fixture app can produce a semantic UI tree through the runtime host.
-- [ ] The browser renderer displays the fixture app in an iPhone-like surface.
-- [ ] Supported UI primitives render with stable structure and accessible semantic metadata.
-- [ ] Renderer behavior is deterministic for a fixed fixture and viewport.
-- [ ] All phase tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] A strict-mode fixture app can produce a semantic UI tree through the runtime host.
+- [x] The browser renderer displays the fixture app in an iPhone-like surface.
+- [x] Supported UI primitives render with stable structure and accessible semantic metadata.
+- [x] Renderer behavior is deterministic for a fixed fixture and viewport.
+- [x] All phase tests pass.
+- [x] No regressions in previous phase tests.
 
 **On Completion:**
 - Deviations from plan: none yet
