@@ -28,7 +28,7 @@
   - Use the SwiftPM test harness introduced in Step 1.1 and add a dedicated SDK contract suite under `Tests/`.
   - Assert the presence of the strict-mode public entry points by symbol or module import rather than by file existence.
   - Keep the test surface limited to contract shape only; runtime behavior belongs to later steps.
-- Step 1.3: Create failing tests for runtime host and diagnostics entry points.
+- [x] Step 1.3: Create failing tests for runtime host and diagnostics entry points.
   - Files: create tests under runtime and diagnostics package test paths.
   - Cover app lifecycle entry points, future protocol boundary placeholder, unsupported import diagnostics, unsupported symbol diagnostics, and source-location shape.
   - Tests MUST fail until runtime and diagnostics skeletons exist.
@@ -38,6 +38,10 @@
 ### Implementation
 - Step 1.4: Select and add the root workspace/package structure for this multi-language harness.
   - Files: create root package/workspace manifest files, `README.md`, and package directories for SDK, runtime, diagnostics, renderer, automation SDK, examples, and tests.
+  - Extend the root `Package.swift` from test-only harness to workspace manifest with library targets for the future Swift modules and test-support utilities retained.
+  - Create placeholder package manifests under `packages/swift-sdk`, `packages/runtime-host`, and `packages/diagnostics`, plus Node package manifests for `packages/browser-renderer` and `packages/automation-sdk`.
+  - Create the required directory scaffold without implementing runtime behavior yet; this step is limited to package/workspace structure and placeholder manifests needed to unblock later green work.
+  - Add a baseline `README.md` stub only if needed to describe the workspace layout; deeper product positioning remains Step 1.8.
 - Step 1.5: Implement the strict-mode Swift SDK skeleton.
   - Files: create SDK package source files for app declarations, scenes, core views, navigation primitives, state primitives, and public API exports.
 - Step 1.6: Implement the runtime host skeleton.

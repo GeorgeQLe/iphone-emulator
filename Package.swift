@@ -18,5 +18,11 @@ let package = Package(
         .testTarget(
             name: "StrictModeSDKContractTests"
         ),
+        .testTarget(
+            name: "RuntimeHostContractTests"
+        ),
+        .testTarget(
+            name: "DiagnosticsCoreContractTests"
+        ),
     ]
 )
