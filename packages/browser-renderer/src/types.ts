@@ -42,7 +42,7 @@ export interface UIAlertPayload {
 
 export interface UITreeScene {
   id: string;
-  kind: "screen" | "navigationStack" | "modal" | "tabView" | "alert";
+  kind: "screen" | "modal" | "tabView" | "alert";
   rootNode?: UITreeNode;
   navigationState?: UINavigationState;
   modalState?: UIModalState;
