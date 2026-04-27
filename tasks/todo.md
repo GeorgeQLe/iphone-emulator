@@ -54,7 +54,7 @@
     - Add report and matrix types that make supported, partially supported, unsupported, and deferred compatibility areas explicit.
     - Define analyzer entry points that can accept Swift source text or fixture file paths and return structured diagnostics plus support summaries.
     - Keep adaptation guidance as project-owned suggestion text rather than opaque parser errors.
-- [ ] Step 4.4: Implement a lightweight source analyzer for unsupported imports, symbols, modifiers, lifecycle hooks, and platform APIs.
+- [x] Step 4.4: Implement a lightweight source analyzer for unsupported imports, symbols, modifiers, lifecycle hooks, and platform APIs.
   - Files: add analyzer implementation files under `packages/diagnostics/Sources/DiagnosticsCore/`; add checked-in Swift compatibility fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` as needed.
   - Start with deterministic source scanning for the first narrow slice rather than a broad compiler plugin or full AST integration.
   - The analyzer must report stable source locations and preserve enough context for later migration reporting.

@@ -7,6 +7,7 @@ struct DiagnosticsCoreContractTests {
         let exportedSymbols: [Any.Type] = [
             UnsupportedImportDiagnostic.self,
             UnsupportedSymbolDiagnostic.self,
+            UnsupportedPlatformAPIDiagnostic.self,
             SuggestedAdaptation.self,
             SourceLocation.self,
             CompatibilityMatrix.self,
@@ -21,7 +22,7 @@ struct DiagnosticsCoreContractTests {
             CompatibilityAnalysis.self,
         ]
 
-        #expect(exportedSymbols.count == 14)
+        #expect(exportedSymbols.count == 15)
     }
 
     @Test("compatibility matrix exposes explicit support levels")
@@ -124,6 +125,34 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.report.diagnostics.map(\.category) == [.imports, .symbols])
         #expect(analysis.report.diagnostics.map(\.severity) == [.error, .error])
         #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [1, 4])
+    }
+
+    @Test("compatibility analyzer reports platform APIs separately from generic unsupported symbols")
+    func compatibilityAnalyzerReportsUnsupportedPlatformAPIs() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .sourceText(
+                """
+                import SwiftUI
+
+                struct LegacyApp {
+                    func open() {
+                        UIApplication.shared.open(URL(string: "https://example.com")!)
+                    }
+                }
+                """,
+                file: "LegacyApp.swift"
+            )
+        )
+
+        #expect(analysis.report.summary.totalCount == 1)
+        #expect(analysis.report.diagnostics.map(\.category) == [.platformAPIs])
+        #expect(analysis.report.diagnostics.map(\.severity) == [.error])
+        #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [5])
+        #expect(analysis.report.diagnostics.map(\.suggestedAdaptation?.message) == [
+            "Replace UIApplication usage with strict-mode environment and runtime controls."
+        ])
     }
 
     @Test("compatibility analyzer accepts the first supported SwiftUI-inspired subset fixture")

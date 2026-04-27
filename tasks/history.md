@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.4 by extending `DiagnosticsCore`'s lightweight compatibility analyzer with a first-class platform-API diagnostic path for `UIApplication` while preserving deterministic source scanning for unsupported imports, symbols, lifecycle hooks, and modifiers.
+- Validation: `swift build`, `swift test --filter DiagnosticsCoreContractTests`, and `swift test` all passed cleanly with no warnings after adding the platform-API contract coverage.
 - Completed Phase 4 Step 4.3 by replacing the `DiagnosticsCore` stub with a value-oriented compatibility contract surface: explicit support-level/category/severity enums, compatibility matrix entries, report summaries, supported-feature metadata, lowering-preview types, and a lightweight analyzer that accepts inline source or fixture paths and returns deterministic diagnostics plus the first supported-subset preview.
 - Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test`, and `swift build` all passed cleanly with no warnings after the compatibility contract implementation landed.
 - Completed Phase 4 Step 4.2 by extending `DiagnosticsCoreContractTests` with a supported-subset fixture contract and an unsupported lifecycle/modifier guidance contract, then adding checked-in fixtures at `tests/fixtures/compatibility/SupportedSubsetFixture.swift` and `tests/fixtures/compatibility/UnsupportedLifecycleFixture.swift` to force the analyzer surface to distinguish zero-diagnostic supported analysis from source-linked adaptation guidance.

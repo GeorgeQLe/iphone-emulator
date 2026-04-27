@@ -84,6 +84,22 @@ public struct UnsupportedLifecycleHookDiagnostic: Sendable, Hashable {
     }
 }
 
+public struct UnsupportedPlatformAPIDiagnostic: Sendable, Hashable {
+    public let apiName: String
+    public let location: SourceLocation
+    public let suggestedAdaptation: SuggestedAdaptation?
+
+    public init(
+        apiName: String,
+        location: SourceLocation,
+        suggestedAdaptation: SuggestedAdaptation? = nil
+    ) {
+        self.apiName = apiName
+        self.location = location
+        self.suggestedAdaptation = suggestedAdaptation
+    }
+}
+
 public enum CompatibilitySupportLevel: String, Sendable, Hashable {
     case supported
     case partial
@@ -142,6 +158,7 @@ public enum CompatibilityDiagnostic: Sendable, Hashable {
     case unsupportedSymbol(UnsupportedSymbolDiagnostic)
     case unsupportedModifier(UnsupportedModifierDiagnostic)
     case unsupportedLifecycleHook(UnsupportedLifecycleHookDiagnostic)
+    case unsupportedPlatformAPI(UnsupportedPlatformAPIDiagnostic)
 
     public var category: CompatibilityDiagnosticCategory {
         switch self {
@@ -153,6 +170,8 @@ public enum CompatibilityDiagnostic: Sendable, Hashable {
             return .modifiers
         case .unsupportedLifecycleHook:
             return .lifecycleHooks
+        case .unsupportedPlatformAPI:
+            return .platformAPIs
         }
     }
 
@@ -170,6 +189,8 @@ public enum CompatibilityDiagnostic: Sendable, Hashable {
             return diagnostic.location
         case let .unsupportedLifecycleHook(diagnostic):
             return diagnostic.location
+        case let .unsupportedPlatformAPI(diagnostic):
+            return diagnostic.location
         }
     }
 
@@ -182,6 +203,8 @@ public enum CompatibilityDiagnostic: Sendable, Hashable {
         case let .unsupportedModifier(diagnostic):
             return diagnostic.suggestedAdaptation
         case let .unsupportedLifecycleHook(diagnostic):
+            return diagnostic.suggestedAdaptation
+        case let .unsupportedPlatformAPI(diagnostic):
             return diagnostic.suggestedAdaptation
         }
     }
@@ -322,6 +345,7 @@ public struct CompatibilityAnalyzer: Sendable {
         diagnostics.append(contentsOf: symbolDiagnostics(in: lines, file: resolvedInput.file))
         diagnostics.append(contentsOf: lifecycleDiagnostics(in: lines, file: resolvedInput.file))
         diagnostics.append(contentsOf: modifierDiagnostics(in: lines, file: resolvedInput.file))
+        diagnostics.append(contentsOf: platformAPIDiagnostics(in: lines, file: resolvedInput.file))
 
         let supportedFeatures = detectedSupportedFeatures(in: source)
         let loweringPreview = makeLoweringPreview(
@@ -459,6 +483,28 @@ private extension CompatibilityAnalyzer {
                     )
                 )
             )
+        }
+    }
+
+    func platformAPIDiagnostics(in lines: [String], file: String) -> [CompatibilityDiagnostic] {
+        symbolDiagnostics(
+            in: lines,
+            file: file,
+            symbolName: "UIApplication",
+            message: "Replace UIApplication usage with strict-mode environment and runtime controls."
+        ).map { diagnostic in
+            switch diagnostic {
+            case let .unsupportedSymbol(symbolDiagnostic):
+                return .unsupportedPlatformAPI(
+                    UnsupportedPlatformAPIDiagnostic(
+                        apiName: symbolDiagnostic.symbolName,
+                        location: symbolDiagnostic.location,
+                        suggestedAdaptation: symbolDiagnostic.suggestedAdaptation
+                    )
+                )
+            default:
+                return diagnostic
+            }
         }
     }
 
