@@ -43,13 +43,17 @@
   - Create the required directory scaffold without implementing runtime behavior yet; this step is limited to package/workspace structure and placeholder manifests needed to unblock later green work.
   - Status: completed on 2026-04-27 after the root workspace manifest, package directories, nested package manifests, placeholder module source files, and baseline `README.md` scaffold were added.
   - Add a baseline `README.md` stub only if needed to describe the workspace layout; deeper product positioning remains Step 1.8.
-- [ ] Step 1.5: Implement the strict-mode Swift SDK skeleton.
+- [x] Step 1.5: Implement the strict-mode Swift SDK skeleton.
   - Files: create SDK package source files for app declarations, scenes, core views, navigation primitives, state primitives, and public API exports.
   - Start in `packages/swift-sdk/Sources/StrictModeSDK/` and keep the public surface limited to the symbols asserted by `Tests/StrictModeSDKContractTests/StrictModeSDKContractTests.swift`.
   - Prefer minimal compile-time skeleton types and exports only; do not add behavior that belongs to the later UI tree or renderer phases.
   - Re-run `swift test` after wiring the SDK symbols. Expected remaining failures after Step 1.5 are confined to `RuntimeHostContractTests` and `DiagnosticsCoreContractTests`.
+  - Status: completed on 2026-04-27 after replacing the SDK placeholder with minimal compile-only public entry points for `App`, `Scene`, `View`, `Text`, `Button`, `TextField`, `List`, `VStack`, `HStack`, `NavigationStack`, `Modal`, `TabView`, `Alert`, and `State`.
 - [ ] Step 1.6: Implement the runtime host skeleton.
   - Files: create runtime package source files for lifecycle, app loading placeholder, UI tree handoff placeholder, logs, and future JSON-RPC/WebSocket boundary.
+  - Start in `packages/runtime-host/Sources/RuntimeHost/` and replace the placeholder with the exact public symbols asserted by `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`: `RuntimeAppLifecycle`, `RuntimeAppLoader`, `RuntimeTreeBridge`, `RuntimeLogSink`, and `ProtocolBoundaryPlaceholder`.
+  - Keep all runtime types behavior-light and dependency-free. This step is limited to contract-shaping types and public exports, not real app execution, renderer integration, or protocol transport.
+  - Re-run `swift test` after wiring the runtime symbols. Expected remaining failures after Step 1.6 should be confined to `DiagnosticsCoreContractTests`.
 - [ ] Step 1.7: Implement the diagnostics skeleton.
   - Files: create diagnostics package source files for unsupported import reports, unsupported symbol reports, source-location data structures, and suggested adaptation messages.
 - [ ] Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
