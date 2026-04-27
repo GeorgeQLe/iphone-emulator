@@ -8,3 +8,5 @@
 - Created the initial `main` commit for the project task pipeline.
 - Created `GeorgeQLe/iphone-emulator` on GitHub, configured `origin`, and pushed `main`.
 - Validation: skipped because the repo has no build, test, lint, package, or toolchain manifests yet.
+- Added a minimal root SwiftPM test harness and red-phase scaffold validation tests for required Phase 1 directories and manifests.
+- Validation: `swift test` failed as expected in the red phase on the missing scaffold directories and manifest files for the planned multi-package layout.

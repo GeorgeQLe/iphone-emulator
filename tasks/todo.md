@@ -16,7 +16,7 @@
 **Subagent lanes:** none
 
 ### Tests First
-- Step 1.1: Create failing scaffold validation tests for the expected repository layout and package manifests.
+- [x] Step 1.1: Create failing scaffold validation tests for the expected repository layout and package manifests.
   - Files: create `tests/scaffold.test.*` or the nearest conventional test path after selecting the project test runner.
   - Cover required directories for SDK, runtime, diagnostics, renderer, automation SDK, examples, and tests.
   - Cover required package or workspace manifest presence.
@@ -25,6 +25,9 @@
   - Files: create tests under the SDK package test path selected in Step 1.1.
   - Cover app declaration, scene, text, button, text field, list, stack layout, navigation, modal, tab, alert, and state entry-point symbols.
   - Tests MUST fail until SDK symbols exist.
+  - Use the SwiftPM test harness introduced in Step 1.1 and add a dedicated SDK contract suite under `Tests/`.
+  - Assert the presence of the strict-mode public entry points by symbol or module import rather than by file existence.
+  - Keep the test surface limited to contract shape only; runtime behavior belongs to later steps.
 - Step 1.3: Create failing tests for runtime host and diagnostics entry points.
   - Files: create tests under runtime and diagnostics package test paths.
   - Cover app lifecycle entry points, future protocol boundary placeholder, unsupported import diagnostics, unsupported symbol diagnostics, and source-location shape.
