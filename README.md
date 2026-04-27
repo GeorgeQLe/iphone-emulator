@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. Phase 1 establishes the package scaffold and strict-mode public contracts for the SDK, runtime host, and diagnostics modules.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 2 milestone turns strict-mode declarations into a semantic UI tree and renders a fixed fixture inside an iPhone-like browser surface.
 
 ## Goals
 
@@ -12,7 +12,7 @@ This repository is building an open-source iPhone-like app harness for Swift cod
 
 - This project is not iOS, UIKit, SwiftUI, WebKit, or Xcode Simulator.
 - This project does not aim for binary compatibility with Apple frameworks or simulator fidelity.
-- This phase does not implement renderer behavior, app execution, protocol transport, or compatibility shims beyond diagnostics skeletons.
+- This project still does not implement iOS fidelity, Apple runtime compatibility, protocol transport, or a live runtime-to-browser session layer.
 
 ## Modes
 
@@ -20,13 +20,13 @@ This repository is building an open-source iPhone-like app harness for Swift cod
 
 Strict mode is the primary execution model for this repository. Code in this mode targets the project-owned `StrictModeSDK` surface directly and is expected to stay within the symbols exported by the harness.
 
-Phase 1 strict mode is intentionally minimal. The public entry points compile and are test-covered, but they do not yet provide meaningful runtime behavior or rendering.
+Strict mode is still intentionally narrow. The public entry points lower fixture apps into a project-owned semantic UI tree rather than attempting broad SwiftUI or UIKit compatibility.
 
 ### Compatibility Mode
 
 Compatibility mode is a planned later phase for analyzing plain Swift and a narrow SwiftUI-inspired subset. Its purpose is to produce structured diagnostics and, only where feasible, guide code toward strict mode.
 
-Compatibility mode is not implemented in the current scaffold. The only compatibility-adjacent work in Phase 1 is the diagnostics module contract that later phases will build on.
+Compatibility mode is not implemented in the current scaffold. The current repository work remains focused on strict-mode declarations, semantic tree generation, and deterministic fixture rendering.
 
 ## Open-Source-Only Constraint
 
@@ -34,12 +34,13 @@ The harness is designed to remain implementable with open-source tooling and pro
 
 ## Current Phase Status
 
-Phase 1 currently provides:
+Phase 2 currently provides:
 
-- `StrictModeSDK` compile-time entry points for `App`, `Scene`, basic views, navigation primitives, alerts, and state.
-- `RuntimeHost` placeholder types for lifecycle, loading, tree bridging, logging, and future protocol boundaries.
-- `DiagnosticsCore` placeholder types for unsupported import/symbol reporting and source locations.
-- SwiftPM contract tests that lock the current public surface before later phases add behavior.
+- `StrictModeSDK` entry points for strict-mode `App`, `Scene`, layout primitives, navigation, alerts, and state, plus lowering hooks that produce the shared semantic tree contract.
+- `RuntimeHost` value types for semantic UI tree snapshots, fixture loading, lifecycle metadata, and retained tree inspection.
+- `DiagnosticsCore` placeholder diagnostics contracts for later compatibility analysis work.
+- `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell.
+- SwiftPM and Vitest coverage that locks the current tree-generation and renderer behavior before later phases add transport, live updates, or automation.
 
 ## Workspace Layout
 
@@ -53,12 +54,21 @@ Phase 1 currently provides:
 
 ## Example
 
-See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for a minimal strict-mode usage sketch that matches the current SDK skeleton. The example demonstrates symbol shape only; it is not a runnable app emulator yet.
+See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot surface, and the browser renderer mounts the checked-in fixture used for deterministic browser previews.
 
 ## Validation
 
-The Phase 1 contract suites run with:
+The current validation surface is:
 
 ```sh
 swift test
+npm --prefix packages/browser-renderer run typecheck
+npm --prefix packages/browser-renderer test
+npm --prefix packages/browser-renderer run build
 ```
+
+## Current Limitations
+
+- The browser renderer mounts a checked-in fixture tree from `packages/browser-renderer/src/fixtureTree.ts`; it does not yet consume runtime-exported snapshots directly.
+- There is no JSON-RPC or WebSocket transport between Swift and the browser renderer yet.
+- Runtime updates are fixture-scoped and deterministic; live interaction, session management, and automation hooks are deferred to later phases.

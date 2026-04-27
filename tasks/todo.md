@@ -57,7 +57,7 @@
     4. Build the iPhone-like shell, including a constrained viewport, surface chrome, and semantic hooks that make renderer output inspectable without coupling to automation transport yet.
     5. Add at least one focused renderer test or smoke check in the selected toolchain before moving on to docs/examples in Step 2.4.
   - Completed on 2026-04-27 by adding a local Vite/Vitest/TypeScript toolchain, a checked-in semantic tree fixture, a deterministic DOM renderer for the current UI roles, an iPhone-like browser shell, and a focused renderer smoke test.
-- [ ] Step 2.4: Add fixture examples and developer documentation for the Phase 2 rendering path.
+- [x] Step 2.4: Add fixture examples and developer documentation for the Phase 2 rendering path.
   - Files: update `README.md`; expand `examples/strict-mode-baseline/`; add renderer usage notes under `examples/` or `docs/` if a new doc path is needed.
   - Document how a strict-mode fixture app flows from SDK declaration through runtime tree generation into the browser renderer, including current limitations and any manual steps needed to preview the renderer locally.
   - Implementation plan:
@@ -66,12 +66,19 @@
     3. Add or extend example assets under `examples/strict-mode-baseline/` only if they clarify the renderer path without creating a second source of truth for the semantic tree contract.
     4. Call out current limitations explicitly: fixed fixture input, no transport/session layer, no live runtime updates, and no automation hooks yet.
     5. Re-run the documentation-adjacent validation surface (`npm test`, `npm run build`, and `swift test`) only if the docs step changes executable examples or referenced commands.
+  - Completed on 2026-04-27 by rewriting the root README around the current Phase 2 renderer milestone, documenting the exact browser-renderer validation commands, expanding the strict-mode baseline example README with the SDK -> runtime snapshot -> checked-in renderer fixture flow, and calling out the fixed-fixture limitation explicitly.
 
 ### Green
 - [ ] Step 2.5: Add regression tests covering semantic tree generation and renderer output for a fixed strict-mode fixture.
   - Files: create `Tests/RuntimeHostSemanticTreeTests/` and any renderer-side tests under `packages/browser-renderer/` such as `src/**/*.test.ts` or the nearest conventional test path selected for the package.
   - Cover tree structure, stable semantic identifiers, navigation or modal state shape, and deterministic renderer output for a known fixture viewport.
   - Prefer snapshots or structured assertions that are stable under the intended Phase 2 renderer shell.
+  - Implementation plan:
+    1. Inspect the current `StrictModeSDK` semantic-tree lowering coverage and `RuntimeHostContractTests` fixture-loading assertions to decide whether a new `RuntimeHostSemanticTreeTests` target is warranted or whether the existing contract suite should be expanded without duplicating coverage.
+    2. Add a focused Swift regression test that exercises a known fixture tree end to end, asserting stable node identifiers plus navigation, modal, tab, and alert state on the retained `SemanticUITree`.
+    3. Extend the renderer-side Vitest suite beyond the current smoke check to assert deterministic DOM output for the checked-in fixture, including semantic roles, labels, and selected state markers that later automation can rely on.
+    4. Keep assertions structural rather than styling-fragile: prefer DOM queries and serialized subtree checks over large visual snapshots unless a very small snapshot clearly improves signal.
+    5. Re-run the combined Swift and browser-renderer test surface after the new tests land before moving to full-phase validation in Step 2.6.
 - [ ] Step 2.6: Run the full validation surface for the combined Swift and browser-renderer toolchains.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run the relevant Swift and Node test/build commands selected by the implementation. Confirm the renderer package exposes repeatable local validation commands before closing the phase.
