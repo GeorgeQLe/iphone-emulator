@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Phase 1: M0 Repo Scaffold and Strict Runtime Skeleton
+**Status:** complete on 2026-04-27.
 
 **Goal:** Establish the initial project structure and strict-mode foundation for the open-source iPhone-like Swift app harness.
 
@@ -22,6 +23,7 @@
 **Coordination Notes:** This phase defines shared package boundaries and naming conventions, so implementation should stay integrated until ownership surfaces are stable.
 
 ## Phase 2: M1 UI Tree Engine and Browser Renderer
+**Status:** current.
 
 **Goal:** Turn strict-mode app declarations into a semantic UI tree and render that tree inside an iPhone-like browser surface.
 
