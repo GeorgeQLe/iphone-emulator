@@ -61,12 +61,13 @@
   - Keep the diagnostics types compile-only and structured. Prefer immutable stored properties for import names, symbol names, adaptation text, and file/line/column data, without implementing parser or analyzer behavior yet.
   - Re-run `swift test` after wiring the diagnostics symbols. Expected remaining work after Step 1.7 is documentation/examples plus the full green validation pass in Steps 1.8 through 1.11.
   - Status: completed on 2026-04-27 after replacing the diagnostics placeholder with compile-only public types for source locations, suggested adaptations, unsupported imports, and unsupported symbols. `swift test` passes across all current suites, and the strict-mode contract test warning was removed by switching protocol existential references to `any App` and `any Scene`.
-- [ ] Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
+- [x] Step 1.8: Add baseline docs and examples for positioning and strict-mode usage.
   - Files: update `README.md`; create example strict-mode app files and docs explaining goals, non-goals, strict mode, compatibility mode, and open-source-only constraints.
-  - Implementation plan for next session: expand `README.md` with concise sections for project goals, explicit non-goals around Apple frameworks and simulator parity, strict-mode expectations, compatibility-mode intent, and the open-source-only constraint; add a minimal strict-mode example app under `examples/`; and include enough usage notes for a fresh reader to understand the repository layout and current scope before Phase 1 green validation.
+  - Status: completed on 2026-04-27 after expanding `README.md` with Phase 1 positioning, strict-mode and compatibility-mode guidance, open-source-only constraints, and validation notes; plus adding `examples/strict-mode-baseline/` with a minimal `StrictModeSDK` usage sketch aligned to the current compile-only API surface.
 
 ### Green
 - [ ] Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
+  - Implementation plan for next session: run `swift test`, confirm scaffold, SDK, runtime, and diagnostics suites all stay green after the docs/example additions, and capture the exact validation result in `tasks/history.md` and this phase checklist before moving on to formatting or build-oriented checks.
 - [ ] Step 1.10: Run formatting, linting, or build checks available for the chosen toolchain.
 - [ ] Step 1.11: Refactor names and package boundaries if needed while keeping tests green.
 
