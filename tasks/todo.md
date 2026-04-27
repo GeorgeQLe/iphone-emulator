@@ -69,7 +69,7 @@
     - Add a checked-in sample script under `packages/automation-sdk/` or `examples/strict-mode-baseline/` that mirrors the documented flow closely enough to serve as a copy-paste starting point for Step 3.6 regression coverage.
 
 ### Green
-- [ ] Step 3.6: Run regression tests covering representative automation flows and semantic inspection.
+- [x] Step 3.6: Run regression tests covering representative automation flows and semantic inspection.
   - Files: extend the Swift and TypeScript test suites created earlier; add fixture-specific assertions only where they improve Phase 3 acceptance coverage without making the API brittle.
   - Cover a representative end-to-end flow where a TypeScript-side test launches a fixture app, finds elements by text and role, performs `tap` and `fill`, inspects the updated semantic tree, and retrieves logs or placeholder screenshot metadata.
   - Keep assertions structural and deterministic: prefer stable semantic identifiers, explicit role/text expectations, and small serialized payload checks over large snapshots.

@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 3 Step 3.6 by strengthening the automation SDK regression coverage into one representative fixture-backed flow that launches the app, queries by text/role/test ID, performs deterministic `tap` and `fill` updates, then asserts the updated semantic tree, appended logs, and screenshot placeholder metadata.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings after the regression coverage update.
 - Completed Phase 3 Step 3.5 by updating the root README and strict baseline example docs for the new automation SDK flow, and by adding a checked-in `automation-example.ts` script that demonstrates launch, query, interaction, semantic inspection, logs, and screenshot placeholder metadata against the strict baseline fixture.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings after the documentation and sample-script update.
 - Completed Phase 3 Step 3.4 by implementing the `@iphone-emulator/automation-sdk` package with a fixture-backed in-memory `Emulator` client, Playwright-style locator helpers, semantic tree inspection, deterministic `tap` and `fill` updates, log retrieval, and screenshot placeholder metadata.
