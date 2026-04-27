@@ -47,7 +47,7 @@
     - Add an `Automation/` folder under `RuntimeHost` with value-only types for session identity, launch configuration, semantic queries, commands, events, logs, screenshot metadata, and protocol errors.
     - Make the command/result enums `Codable`, `Hashable`, and `Sendable` so the Swift contract matches the eventual SDK transport seam without introducing server code yet.
     - Implement only the initializer and case shapes needed to make the new `RuntimeHostContractTests` compile and pass before moving to fixture-backed runtime behavior in Step 3.3.
-- [ ] Step 3.3: Implement deterministic runtime automation handling over fixture-backed snapshots.
+- [x] Step 3.3: Implement deterministic runtime automation handling over fixture-backed snapshots.
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, `RuntimeTreeSnapshot.swift`, and add any new runtime automation coordinator files under `packages/runtime-host/Sources/RuntimeHost/Automation/`.
   - Add the smallest runtime session coordinator that can launch a strict-mode fixture app, retain the latest semantic tree snapshot, resolve semantic queries by text/role/stable identifier, and apply deterministic fixture-scoped interaction updates for tap and fill commands.
   - Keep the scope fixture-driven and synchronous where possible. Do not add browser transport, async multiplexing, or compatibility-mode concerns in this step.
@@ -55,6 +55,10 @@
   - Files: update `packages/automation-sdk/package.json`; create `packages/automation-sdk/src/` entry points, locator helpers, session client types, fixture transport stubs, and any local TypeScript/Vitest config files needed for repeatable `typecheck`, `test`, and `build` commands.
   - Expose a narrow Playwright-style surface that matches the roadmap example closely: `Emulator.launch`, `close`, `getByText`, `getByRole`, locator `tap`, locator `fill`, semantic snapshot access, and log retrieval.
   - Use a local in-memory transport/client seam for this phase so the SDK can exercise the runtime automation contract before a real JSON-RPC or WebSocket server exists.
+  - Next execution plan:
+    - Implement `packages/automation-sdk/src/index.ts` with `Emulator.launch` returning a fixture-backed session object that mirrors the current `RuntimeAutomationCoordinator` surface and baseline fixture behavior.
+    - Add locator helpers for `getByText`, `getByRole`, and `getByTestId`, with `tap`, `fill`, and `inspect` implemented against an in-memory semantic tree plus deterministic logs/screenshot placeholders.
+    - Wire `package.json` scripts and any small TypeScript config gaps so `npm --prefix packages/automation-sdk run typecheck`, `test`, and `build` all execute locally before expanding end-to-end examples in Step 3.5.
 - [ ] Step 3.5: Add fixture-driven automation examples and developer documentation.
   - Files: update `README.md`; expand `examples/strict-mode-baseline/README.md`; add example automation usage under `examples/strict-mode-baseline/` or `packages/automation-sdk/` if a checked-in sample script clarifies the supported API.
   - Document the end-to-end Phase 3 flow from strict-mode fixture declaration through runtime automation session launch into the TypeScript SDK, including the exact local commands to validate the automation package.

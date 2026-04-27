@@ -317,4 +317,162 @@ struct RuntimeHostContractTests {
         #expect(screenshot != .logs([]))
         #expect(logs != .sessionClosed)
     }
+
+    @Test("runtime automation coordinator launches baseline fixtures and resolves semantic queries")
+    func automationCoordinatorLaunchesAndQueriesFixture() throws {
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline"
+                    )
+                )
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        #expect(session.id == "session-1")
+        #expect(session.snapshot.appIdentifier == "FixtureApp")
+        #expect(session.snapshot.tree.scene.rootNode?.id == "root-stack")
+        #expect(session.snapshot.tree.scene.modalState?.presentedNode?.id == "welcome-modal")
+        #expect(coordinator.bridge.latestSnapshot?.appIdentifier == "FixtureApp")
+
+        let queryByText = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-query-text",
+                command: .query(
+                    RuntimeAutomationSemanticQuery(text: "Save")
+                )
+            )
+        )
+        let queryByRole = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-query-role",
+                command: .query(
+                    RuntimeAutomationSemanticQuery(role: .textField, text: "Name")
+                )
+            )
+        )
+        let inspectByID = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-inspect-id",
+                command: .inspect(
+                    RuntimeAutomationSemanticQuery(identifier: "name-field")
+                )
+            )
+        )
+        let screenshot = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-screenshot",
+                command: .screenshot(name: "baseline-home")
+            )
+        )
+        let logs = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-logs",
+                command: .logs()
+            )
+        )
+
+        guard case let .queryMatches(textMatches) = queryByText.result else {
+            Issue.record("expected queryMatches for text query")
+            return
+        }
+        guard case let .queryMatches(roleMatches) = queryByRole.result else {
+            Issue.record("expected queryMatches for role query")
+            return
+        }
+        guard case let .queryMatches(inspectMatches) = inspectByID.result else {
+            Issue.record("expected queryMatches for inspect query")
+            return
+        }
+        guard case let .screenshot(metadata) = screenshot.result else {
+            Issue.record("expected screenshot metadata")
+            return
+        }
+        guard case let .logs(logEntries) = logs.result else {
+            Issue.record("expected logs payload")
+            return
+        }
+
+        #expect(textMatches.map(\.id.rawValue) == ["save-button"])
+        #expect(roleMatches.map(\.id.rawValue) == ["name-field"])
+        #expect(inspectMatches.first?.value == "Taylor")
+        #expect(metadata.name == "baseline-home")
+        #expect(metadata.format == "png")
+        #expect(metadata.byteCount == 0)
+        #expect(logEntries.count == 1)
+        #expect(logEntries.first?.message == "Launched fixture strict-mode-baseline")
+    }
+
+    @Test("runtime automation coordinator applies deterministic tap and fill updates")
+    func automationCoordinatorAppliesDeterministicInteractionUpdates() throws {
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline"
+                    )
+                )
+            )
+        )
+
+        let tap = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-tap",
+                command: .tap(
+                    RuntimeAutomationSemanticQuery(identifier: "save-button")
+                )
+            )
+        )
+        let fill = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-fill",
+                command: .fill(
+                    RuntimeAutomationSemanticQuery(identifier: "name-field"),
+                    text: "Jordan"
+                )
+            )
+        )
+        let semanticSnapshot = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-tree",
+                command: .semanticSnapshot()
+            )
+        )
+
+        guard case let .interactionCompleted(tapSnapshot, tapLogs) = tap.result else {
+            Issue.record("expected interaction result for tap")
+            return
+        }
+        guard case let .interactionCompleted(fillSnapshot, fillLogs) = fill.result else {
+            Issue.record("expected interaction result for fill")
+            return
+        }
+        guard case let .semanticTree(tree) = semanticSnapshot.result else {
+            Issue.record("expected semantic tree snapshot")
+            return
+        }
+
+        #expect(tapSnapshot.revision == 2)
+        #expect(tapSnapshot.tree.scene.alertPayload?.title == "Done")
+        #expect(tapSnapshot.tree.scene.alertPayload?.message == "Saved")
+        #expect(tapLogs.last?.message == "Tapped save-button")
+
+        #expect(fillSnapshot.revision == 3)
+        #expect(fillLogs.last?.message == "Filled name-field with Jordan")
+        #expect(tree.scene.alertPayload?.message == "Saved")
+        #expect(tree.scene.rootNode?.children.first?.children.first?.children[1].children.first?.value == "Jordan")
+        #expect(coordinator.bridge.latestSnapshot?.revision == 3)
+    }
 }
