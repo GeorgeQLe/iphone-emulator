@@ -33,7 +33,7 @@
   - Deliverable: a short recommendation for analyzer entry points, report types, and fixture/test organization.
 
 ### Tests First
-- [ ] Step 4.1: Write failing diagnostics contract tests for compatibility reports, matrix metadata, and analyzer entry points.
+- [x] Step 4.1: Write failing diagnostics contract tests for compatibility reports, matrix metadata, and analyzer entry points.
   - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`; create any new focused diagnostics fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` if the analyzer needs checked-in source inputs; update `Package.swift` only if a new SwiftPM test target becomes necessary.
   - Add failing assertions for a structured compatibility report value, a documented compatibility matrix surface, analyzer results for unsupported imports and symbols, and summary counts grouped by category or severity.
   - Keep the red-phase tests focused on deterministic public API shape and report contents rather than parser implementation details.
@@ -41,6 +41,10 @@
   - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` or create a dedicated compatibility-mode contract suite under `tests/`; add representative Swift source fixtures that exercise both a supported SwiftUI-inspired subset and explicitly unsupported APIs.
   - Add one failing test that proves a narrow supported fixture can pass analysis without unsupported diagnostics and expose enough structured output to lower into the existing semantic tree/runtime model later in the phase.
   - Add one failing test that proves unsupported lifecycle hooks, platform APIs, or modifiers produce source-linked diagnostics with suggested strict-mode adaptations.
+  - Next execution plan:
+    - Add one supported SwiftUI-inspired fixture that uses only the first matrix-approved primitives and assert the analyzer returns a zero-unsupported-diagnostics report plus structured lowering-ready metadata.
+    - Add one unsupported fixture that uses a lifecycle hook or modifier outside the v1 subset and assert the analyzer emits source-linked adaptation guidance rather than only category counts.
+    - Keep the red phase contract scoped to report contents and suggested guidance text, not lowering implementation details.
 
 ### Implementation
 - [ ] Step 4.3: Define the diagnostics-core compatibility report, matrix, and analyzer contract types.

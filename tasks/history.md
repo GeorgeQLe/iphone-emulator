@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.1 by expanding `DiagnosticsCoreContractTests` into a red-phase compatibility contract suite that now specifies the missing compatibility matrix, support-status enums, report summaries, analyzer entry points, and structured import/symbol diagnostics; added a checked-in unsupported-import fixture at `tests/fixtures/compatibility/UnsupportedImportsFixture.swift` so the future analyzer must accept both inline source text and fixture paths.
+- Validation: `swift test --filter DiagnosticsCoreContractTests` failed as expected in the red phase on missing `CompatibilityMatrix`, `CompatibilityReport`, `CompatibilityAnalyzer`, `CompatibilityAnalysis`, and related compatibility-diagnostics symbols. No unrelated compile or test failures appeared in the captured output.
 - Completed Phase 3 Step 3.8 as an intentional no-op boundary review after re-reading the `RuntimeHost` automation value types and the in-memory TypeScript automation SDK surface together. No runtime or SDK code changes were justified because the current split remains the smallest coherent pre-transport seam for fixture-backed automation.
 - Validation: reused the existing green validation surface already captured for Step 3.7 rather than re-running commands, because Step 3.8 concluded with task-doc updates only and introduced no code changes.
 - Archived the completed Phase 3 plan to `tasks/phases/phase-3.md`, marked Phase 3 complete in `tasks/roadmap.md`, and generated the detailed Phase 4 execution plan in `tasks/todo.md` for the compatibility diagnostics milestone.
