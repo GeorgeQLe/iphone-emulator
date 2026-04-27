@@ -37,7 +37,7 @@
   - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`; create any new focused diagnostics fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` if the analyzer needs checked-in source inputs; update `Package.swift` only if a new SwiftPM test target becomes necessary.
   - Add failing assertions for a structured compatibility report value, a documented compatibility matrix surface, analyzer results for unsupported imports and symbols, and summary counts grouped by category or severity.
   - Keep the red-phase tests focused on deterministic public API shape and report contents rather than parser implementation details.
-- [ ] Step 4.2: Write failing tests for the first supported compatibility fixture and adaptation guidance path.
+- [x] Step 4.2: Write failing tests for the first supported compatibility fixture and adaptation guidance path.
   - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` or create a dedicated compatibility-mode contract suite under `tests/`; add representative Swift source fixtures that exercise both a supported SwiftUI-inspired subset and explicitly unsupported APIs.
   - Add one failing test that proves a narrow supported fixture can pass analysis without unsupported diagnostics and expose enough structured output to lower into the existing semantic tree/runtime model later in the phase.
   - Add one failing test that proves unsupported lifecycle hooks, platform APIs, or modifiers produce source-linked diagnostics with suggested strict-mode adaptations.

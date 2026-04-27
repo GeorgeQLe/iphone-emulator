@@ -125,4 +125,44 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.report.diagnostics.map(\.severity) == [.error, .error])
         #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [1, 4])
     }
+
+    @Test("compatibility analyzer accepts the first supported SwiftUI-inspired subset fixture")
+    func compatibilityAnalyzerAcceptsFirstSupportedSubsetFixture() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .fixturePath("tests/fixtures/compatibility/SupportedSubsetFixture.swift")
+        )
+
+        #expect(analysis.report.summary.totalCount == 0)
+        #expect(analysis.supportedFeatures.map(\.kind) == [.import, .view, .layout, .view, .state])
+        #expect(analysis.supportedFeatures.map(\.name) == [
+            "SwiftUI",
+            "Text",
+            "VStack",
+            "Button",
+            "State",
+        ])
+        #expect(analysis.loweringPreview?.appIdentifier == "SupportedSubsetFixture")
+        #expect(analysis.loweringPreview?.scene.kind == .modal)
+        #expect(analysis.loweringPreview?.scene.rootNode.children.map(\.role) == [.vStack])
+    }
+
+    @Test("compatibility analyzer reports adaptation guidance for unsupported lifecycle hooks and modifiers")
+    func compatibilityAnalyzerReportsAdaptationGuidanceForUnsupportedLifecycleHooksAndModifiers() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .fixturePath("tests/fixtures/compatibility/UnsupportedLifecycleFixture.swift")
+        )
+
+        #expect(analysis.report.summary.totalCount == 2)
+        #expect(analysis.report.diagnostics.map(\.category) == [.lifecycleHooks, .modifiers])
+        #expect(analysis.report.diagnostics.map(\.sourceLocation.line) == [6, 10])
+        #expect(analysis.report.diagnostics.allSatisfy { $0.suggestedAdaptation != nil })
+        #expect(analysis.report.diagnostics.map(\.suggestedAdaptation?.message) == [
+            "Move onAppear work into an explicit strict-mode runtime lifecycle adapter.",
+            "Replace padding with an explicit strict-mode layout container or spacing metadata.",
+        ])
+    }
 }
