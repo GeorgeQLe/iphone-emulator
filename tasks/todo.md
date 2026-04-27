@@ -69,7 +69,7 @@
   - Completed on 2026-04-27 by rewriting the root README around the current Phase 2 renderer milestone, documenting the exact browser-renderer validation commands, expanding the strict-mode baseline example README with the SDK -> runtime snapshot -> checked-in renderer fixture flow, and calling out the fixed-fixture limitation explicitly.
 
 ### Green
-- [ ] Step 2.5: Add regression tests covering semantic tree generation and renderer output for a fixed strict-mode fixture.
+- [x] Step 2.5: Add regression tests covering semantic tree generation and renderer output for a fixed strict-mode fixture.
   - Files: create `Tests/RuntimeHostSemanticTreeTests/` and any renderer-side tests under `packages/browser-renderer/` such as `src/**/*.test.ts` or the nearest conventional test path selected for the package.
   - Cover tree structure, stable semantic identifiers, navigation or modal state shape, and deterministic renderer output for a known fixture viewport.
   - Prefer snapshots or structured assertions that are stable under the intended Phase 2 renderer shell.
@@ -79,6 +79,7 @@
     3. Extend the renderer-side Vitest suite beyond the current smoke check to assert deterministic DOM output for the checked-in fixture, including semantic roles, labels, and selected state markers that later automation can rely on.
     4. Keep assertions structural rather than styling-fragile: prefer DOM queries and serialized subtree checks over large visual snapshots unless a very small snapshot clearly improves signal.
     5. Re-run the combined Swift and browser-renderer test surface after the new tests land before moving to full-phase validation in Step 2.6.
+  - Completed on 2026-04-27 by expanding `RuntimeHostContractTests` with end-to-end fixture regression coverage for stable semantic tree identifiers and retained state, and by extending the renderer Vitest suite with deterministic structural DOM assertions for the checked-in fixture.
 - [ ] Step 2.6: Run the full validation surface for the combined Swift and browser-renderer toolchains.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run the relevant Swift and Node test/build commands selected by the implementation. Confirm the renderer package exposes repeatable local validation commands before closing the phase.
