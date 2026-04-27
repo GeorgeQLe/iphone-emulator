@@ -88,16 +88,17 @@
     - Extend `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` with regression assertions for source columns, category ordering, and support-summary stability across the supported and unsupported checked-in fixtures.
     - Extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` only where needed to confirm the compatibility-lowered tree shape remains aligned with the current strict runtime contract.
     - Keep the write scope inside existing test targets unless a new fixture case proves necessary.
-- [ ] Step 4.8: Run the full validation surface for the Swift workspace plus any compatibility-specific tooling introduced in this phase.
+- [x] Step 4.8: Run the full validation surface for the Swift workspace plus any compatibility-specific tooling introduced in this phase.
   - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
   - Run `swift test`, `swift build`, and any compatibility-focused commands added during this phase. Re-run the browser renderer and automation SDK validation commands only if shared contracts or docs/examples they consume changed.
 - [ ] Step 4.9: Refactor the compatibility and diagnostics boundary if needed while keeping the new tests green.
   - Re-read the diagnostics report types, supported subset handoff path, and any new compatibility fixtures before changing names or file boundaries.
   - Keep refactors limited to clarifying ownership between diagnostics analysis, supported-subset lowering, and the existing runtime contract. Do not widen scope into device simulation, network fixtures, or React Native evaluation.
   - Next execution plan:
-    - Inspect `packages/diagnostics/Sources/DiagnosticsCore/`, the supported compatibility fixture path, and any runtime handoff helpers for duplicated semantics or confusing ownership.
+    - Inspect `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift`, `Tests/fixtures/compatibility/`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, and the compatibility handoff assertions in `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` for duplicated semantics or confusing ownership.
+    - Pay particular attention to the split between analyzer diagnostics, compatibility matrix metadata, supported-feature summaries, lowering previews, and the runtime `loadCompatibilityTree` handoff.
     - If no meaningful simplification is justified, record Step 4.9 as an intentional no-op review rather than forcing churn.
-    - If a narrow cleanup is justified, keep the write scope small and rerun only the affected validation commands before the final full pass.
+    - If a narrow cleanup is justified, keep the write scope small and rerun the affected compatibility filters before the final `swift test` / `swift build` pass.
 
 ### Milestone: M2 SwiftUI-Subset Compatibility Diagnostics
 **Acceptance Criteria:**

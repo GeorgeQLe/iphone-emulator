@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.8 by running the full Swift, compatibility-specific, browser renderer, and automation SDK validation surface without needing source or config changes.
+- Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test --filter RuntimeHostContractTests`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
 - Completed Phase 4 Step 4.7 by tightening the compatibility regression suite around the checked-in supported and unsupported fixtures, adding deterministic assertions for source columns, category ordering, empty-summary behavior on the supported path, and stable fixture-backed support summaries.
 - Validation: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests` both passed cleanly with no warnings after the test-only update. One intermediate compiler failure in `DiagnosticsCoreContractTests` came from optional chaining against a non-optional lowering-preview root node and was fixed before the final green run.
 - Completed Phase 4 Step 4.6 by updating `README.md` to describe the diagnostics-led compatibility lane accurately, adding `docs/compatibility-matrix.md` for the v1 supported/partial/unsupported/deferred matrix, and adding `Tests/fixtures/compatibility/README.md` so the checked-in fixtures document the current supported subset and diagnostics expectations.
