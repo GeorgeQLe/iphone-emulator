@@ -51,7 +51,7 @@
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/RuntimeAppLoader.swift`, `RuntimeTreeBridge.swift`, `RuntimeTreeSnapshot.swift`, and add any new runtime automation coordinator files under `packages/runtime-host/Sources/RuntimeHost/Automation/`.
   - Add the smallest runtime session coordinator that can launch a strict-mode fixture app, retain the latest semantic tree snapshot, resolve semantic queries by text/role/stable identifier, and apply deterministic fixture-scoped interaction updates for tap and fill commands.
   - Keep the scope fixture-driven and synchronous where possible. Do not add browser transport, async multiplexing, or compatibility-mode concerns in this step.
-- [ ] Step 3.4: Build the TypeScript automation SDK package around the runtime contract.
+- [x] Step 3.4: Build the TypeScript automation SDK package around the runtime contract.
   - Files: update `packages/automation-sdk/package.json`; create `packages/automation-sdk/src/` entry points, locator helpers, session client types, fixture transport stubs, and any local TypeScript/Vitest config files needed for repeatable `typecheck`, `test`, and `build` commands.
   - Expose a narrow Playwright-style surface that matches the roadmap example closely: `Emulator.launch`, `close`, `getByText`, `getByRole`, locator `tap`, locator `fill`, semantic snapshot access, and log retrieval.
   - Use a local in-memory transport/client seam for this phase so the SDK can exercise the runtime automation contract before a real JSON-RPC or WebSocket server exists.
@@ -63,6 +63,10 @@
   - Files: update `README.md`; expand `examples/strict-mode-baseline/README.md`; add example automation usage under `examples/strict-mode-baseline/` or `packages/automation-sdk/` if a checked-in sample script clarifies the supported API.
   - Document the end-to-end Phase 3 flow from strict-mode fixture declaration through runtime automation session launch into the TypeScript SDK, including the exact local commands to validate the automation package.
   - Call out the current limitations explicitly: in-memory transport only, fixture-scoped state updates, no live browser session coordination, and screenshot support limited to placeholder metadata or stubbed hooks until later phases.
+  - Next execution plan:
+    - Update the root `README.md` Phase 3 status and validation section to include the new `@iphone-emulator/automation-sdk` package, its local commands, and the current in-memory-only transport limitations.
+    - Expand `examples/strict-mode-baseline/README.md` with a concrete automation walkthrough that starts from the strict fixture, launches `Emulator`, queries by text/role/test ID, performs `tap` and `fill`, and inspects the semantic tree plus logs.
+    - Add a checked-in sample script under `packages/automation-sdk/` or `examples/strict-mode-baseline/` that mirrors the documented flow closely enough to serve as a copy-paste starting point for Step 3.6 regression coverage.
 
 ### Green
 - [ ] Step 3.6: Run regression tests covering representative automation flows and semantic inspection.
