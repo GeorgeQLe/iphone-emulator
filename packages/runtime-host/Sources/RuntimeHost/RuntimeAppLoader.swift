@@ -1,7 +1,33 @@
 public struct RuntimeAppLoader {
-    public var appIdentifier: String
+    public var defaultLifecycleState: RuntimeAppLifecycle.State
 
-    public init(appIdentifier: String = "strict-mode-app") {
-        self.appIdentifier = appIdentifier
+    public init(defaultLifecycleState: RuntimeAppLifecycle.State = .active) {
+        self.defaultLifecycleState = defaultLifecycleState
+    }
+
+    public func loadFixture(
+        lifecycleState: RuntimeAppLifecycle.State? = nil,
+        lowering makeSemanticTree: () -> SemanticUITree
+    ) -> RuntimeTreeSnapshot {
+        let tree = makeSemanticTree()
+        return RuntimeTreeSnapshot(
+            appIdentifier: tree.appIdentifier,
+            tree: tree,
+            lifecycleState: lifecycleState ?? defaultLifecycleState
+        )
+    }
+
+    public func loadFixture(
+        appIdentifier: String,
+        lifecycleState: RuntimeAppLifecycle.State? = nil,
+        lowering makeSemanticTree: () -> SemanticUITree
+    ) -> RuntimeTreeSnapshot {
+        var tree = makeSemanticTree()
+        tree.appIdentifier = appIdentifier
+        return RuntimeTreeSnapshot(
+            appIdentifier: appIdentifier,
+            tree: tree,
+            lifecycleState: lifecycleState ?? defaultLifecycleState
+        )
     }
 }

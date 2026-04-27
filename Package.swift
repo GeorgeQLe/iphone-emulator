@@ -48,7 +48,7 @@ let package = Package(
         ),
         .testTarget(
             name: "RuntimeHostContractTests",
-            dependencies: ["RuntimeHost"]
+            dependencies: ["RuntimeHost", "StrictModeSDK"]
         ),
         .testTarget(
             name: "DiagnosticsCoreContractTests",

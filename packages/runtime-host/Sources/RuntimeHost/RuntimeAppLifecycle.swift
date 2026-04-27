@@ -1,5 +1,5 @@
 public struct RuntimeAppLifecycle {
-    public enum State: Sendable {
+    public enum State: String, Hashable, Codable, Sendable {
         case inactive
         case active
         case background
