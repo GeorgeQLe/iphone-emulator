@@ -24,3 +24,5 @@
 - Validation: `swift test` now passes across scaffold, SDK, runtime, and diagnostics contract suites, and the strict-mode contract test existential warning was removed by switching protocol references to `any App` and `any Scene`.
 - Expanded `README.md` with Phase 1 project goals, non-goals, strict-mode guidance, compatibility-mode intent, open-source-only constraints, workspace layout, and validation instructions; added `examples/strict-mode-baseline/` with a minimal strict-mode usage sketch that matches the current compile-only SDK surface.
 - Validation: `swift test` passed after the docs and example additions, with 5 tests green across `ScaffoldValidationTests`, `StrictModeSDKContractTests`, `RuntimeHostContractTests`, and `DiagnosticsCoreContractTests`.
+- Completed Phase 1 Step 1.9 by re-running the verification suite after the docs/example changes and recording the green status in the phase checklist.
+- Validation: `swift test` passed cleanly with 5 tests across 4 suites, 0 failures, and no warnings.

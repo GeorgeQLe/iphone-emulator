@@ -66,9 +66,10 @@
   - Status: completed on 2026-04-27 after expanding `README.md` with Phase 1 positioning, strict-mode and compatibility-mode guidance, open-source-only constraints, and validation notes; plus adding `examples/strict-mode-baseline/` with a minimal `StrictModeSDK` usage sketch aligned to the current compile-only API surface.
 
 ### Green
-- [ ] Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
-  - Implementation plan for next session: run `swift test`, confirm scaffold, SDK, runtime, and diagnostics suites all stay green after the docs/example additions, and capture the exact validation result in `tasks/history.md` and this phase checklist before moving on to formatting or build-oriented checks.
+- [x] Step 1.9: Run the selected test suite and verify all Phase 1 tests pass.
+  - Status: completed on 2026-04-27 after `swift test` passed with 5 tests green across `ScaffoldValidationTests`, `StrictModeSDKContractTests`, `RuntimeHostContractTests`, and `DiagnosticsCoreContractTests` following the docs/example additions.
 - [ ] Step 1.10: Run formatting, linting, or build checks available for the chosen toolchain.
+  - Implementation plan for next session: run `swift build` at the repository root to verify the current SwiftPM workspace builds cleanly outside the test harness, inspect the output for warnings, and record that the root `package.json` still defines no lint, format, typecheck, or build scripts for the Node placeholder packages. If `swift build` exposes package-boundary or naming issues, fix them before advancing to the refactor pass in Step 1.11.
 - [ ] Step 1.11: Refactor names and package boundaries if needed while keeping tests green.
 
 ### Milestone: M0 Repo Scaffold and Strict Runtime Skeleton
@@ -79,8 +80,8 @@
 - [ ] The project README states goals, non-goals, strict mode, compatibility mode, and open-source-only constraints.
 - [ ] Example strict-mode app docs exist and match the baseline public SDK skeleton.
 - [ ] No compatibility shims beyond diagnostics skeleton are implemented in this phase.
-- [ ] All phase tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] All phase tests pass.
+- [x] No regressions in previous phase tests.
 
 **On Completion:**
 - Deviations from plan: none yet
