@@ -6,110 +6,104 @@
 - [x] Phase 1 completed on 2026-04-27 after confirming the current `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore` package split is the smallest coherent scaffold and re-running `swift test` plus `swift build`.
 - [x] Phase 2 completed on 2026-04-27 after aligning the renderer-side scene-kind contract with `RuntimeHost`, re-running the full Swift and browser-renderer validation surface, and confirming the UI tree and browser boundary needs no broader cleanup before automation work begins.
 - [x] Phase 3 completed on 2026-04-27 after confirming the runtime automation value types and the in-memory automation SDK remain the smallest coherent pre-transport boundary, with the full Swift, renderer, and automation validation surface already green.
+- [x] Phase 4 completed on 2026-04-27 after deriving compatibility previews from the runtime-lowered tree, confirming the diagnostics/runtime boundary remains clean, and re-running the Swift validation surface.
 
-## Phase 4: M2 SwiftUI-Subset Compatibility Diagnostics
+## Phase 5: M3 Agent Artifacts, Fixtures, and Device Simulation
 > Test strategy: tdd
 
 ### Execution Profile
-**Parallel mode:** research-only
+**Parallel mode:** implementation-safe
 **Integration owner:** main agent
-**Conflict risk:** high
-**Review gates:** correctness, tests, docs/API conformance
+**Conflict risk:** medium
+**Review gates:** correctness, tests, docs/API conformance, performance
 
 **Subagent lanes:**
-- Lane: compatibility-matrix-research
-  - Agent: explorer
-  - Role: explorer
-  - Mode: read-only
-  - Scope: inspect the spec, current strict-mode SDK, and runtime UI tree to recommend the smallest v1 SwiftUI-subset compatibility matrix that can truthfully distinguish supported lowering paths from diagnostics-only gaps.
+- Lane: artifact-contracts
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: define runtime artifact value types and Swift tests for screenshot/render metadata, semantic snapshots, logs, and HAR-like request records.
+  - Owns: `packages/runtime-host/Sources/RuntimeHost/Artifacts/`, `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`
+  - Must not edit: `packages/browser-renderer/**`, `packages/automation-sdk/**`, `tasks/**`
   - Depends on: none
-  - Deliverable: a short recommendation for supported imports, view/layout/state primitives, and the first explicitly unsupported framework areas that should produce diagnostics.
-- Lane: diagnostics-scan-research
-  - Agent: explorer
-  - Role: explorer
-  - Mode: read-only
-  - Scope: inspect `DiagnosticsCore`, existing SwiftPM tests, and candidate fixture shapes to recommend the lightest analyzer surface that can report unsupported imports, symbols, modifiers, and lifecycle hooks with stable source locations.
-  - Depends on: none
-  - Deliverable: a short recommendation for analyzer entry points, report types, and fixture/test organization.
+  - Deliverable: runtime artifact contract patch and passing focused Swift tests.
+- Lane: browser-renderer-artifacts
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: add browser renderer capture/fixture surfaces for deterministic render artifacts once the runtime artifact contract exists.
+  - Owns: `packages/browser-renderer/src/**`, `packages/browser-renderer/test/**`, `packages/browser-renderer/package.json`
+  - Must not edit: `packages/runtime-host/**`, `packages/automation-sdk/**`, `tasks/**`
+  - Depends on: Step 5.2
+  - Deliverable: renderer artifact patch and package validation output.
+- Lane: automation-artifacts
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: expose artifact, network fixture, and device simulation controls through the TypeScript automation SDK after runtime contracts stabilize.
+  - Owns: `packages/automation-sdk/src/**`, `packages/automation-sdk/test/**`, `packages/automation-sdk/package.json`
+  - Must not edit: `packages/runtime-host/**`, `packages/browser-renderer/**`, `tasks/**`
+  - Depends on: Step 5.2, Step 5.3, Step 5.4
+  - Deliverable: automation SDK patch and package validation output.
 
 ### Tests First
-- [x] Step 4.1: Write failing diagnostics contract tests for compatibility reports, matrix metadata, and analyzer entry points.
-  - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`; create any new focused diagnostics fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` if the analyzer needs checked-in source inputs; update `Package.swift` only if a new SwiftPM test target becomes necessary.
-  - Add failing assertions for a structured compatibility report value, a documented compatibility matrix surface, analyzer results for unsupported imports and symbols, and summary counts grouped by category or severity.
-  - Keep the red-phase tests focused on deterministic public API shape and report contents rather than parser implementation details.
-- [x] Step 4.2: Write failing tests for the first supported compatibility fixture and adaptation guidance path.
-  - Files: extend `tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` or create a dedicated compatibility-mode contract suite under `tests/`; add representative Swift source fixtures that exercise both a supported SwiftUI-inspired subset and explicitly unsupported APIs.
-  - Add one failing test that proves a narrow supported fixture can pass analysis without unsupported diagnostics and expose enough structured output to lower into the existing semantic tree/runtime model later in the phase.
-  - Add one failing test that proves unsupported lifecycle hooks, platform APIs, or modifiers produce source-linked diagnostics with suggested strict-mode adaptations.
+- [ ] Step 5.1: Write failing contract tests for artifact records, network fixtures, and device simulation settings.
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add TypeScript red-phase tests under `packages/automation-sdk/test/` only if the public SDK surface can be specified without implementation churn.
+  - Add assertions for screenshot/render artifact metadata, semantic snapshot records, runtime log bundles, HAR-like request/response records, deterministic network fixture lookup, and launch-time device settings.
+  - Keep the red phase focused on deterministic value shapes and fixture behavior rather than real browser screenshots or live network traffic.
   - Next execution plan:
-    - Add one supported SwiftUI-inspired fixture that uses only the first matrix-approved primitives and assert the analyzer returns a zero-unsupported-diagnostics report plus structured lowering-ready metadata.
-    - Add one unsupported fixture that uses a lifecycle hook or modifier outside the v1 subset and assert the analyzer emits source-linked adaptation guidance rather than only category counts.
-    - Keep the red phase contract scoped to report contents and suggested guidance text, not lowering implementation details.
+    - Add a Swift runtime contract test that names the artifact value types and proves a fixture-backed automation session can expose screenshot metadata, semantic snapshots, logs, and network records through one deterministic artifact bundle.
+    - Add a Swift runtime contract test for device settings covering viewport, color scheme, locale, clock, geolocation, and network state.
+    - Add an automation SDK red test only for the narrow client-facing methods that are already implied by the existing in-memory `Emulator` API.
 
 ### Implementation
-- [x] Step 4.3: Define the diagnostics-core compatibility report, matrix, and analyzer contract types.
-  - Files: expand `packages/diagnostics/Sources/DiagnosticsCore/` with value types for report summaries, diagnostic categories/severity, compatibility matrix entries, analyzer inputs, and analyzer outputs; update `Package.swift` only if target wiring changes are required.
-  - Keep the surface value-oriented and deterministic. This step should establish the public contract without committing to a full parser architecture.
-  - Next execution plan:
-    - Add report and matrix types that make supported, partially supported, unsupported, and deferred compatibility areas explicit.
-    - Define analyzer entry points that can accept Swift source text or fixture file paths and return structured diagnostics plus support summaries.
-    - Keep adaptation guidance as project-owned suggestion text rather than opaque parser errors.
-- [x] Step 4.4: Implement a lightweight source analyzer for unsupported imports, symbols, modifiers, lifecycle hooks, and platform APIs.
-  - Files: add analyzer implementation files under `packages/diagnostics/Sources/DiagnosticsCore/`; add checked-in Swift compatibility fixtures under `examples/compatibility-fixtures/` or `tests/fixtures/` as needed.
-  - Start with deterministic source scanning for the first narrow slice rather than a broad compiler plugin or full AST integration.
-  - The analyzer must report stable source locations and preserve enough context for later migration reporting.
-  - Next execution plan:
-    - Detect the first explicitly unsupported imports such as `UIKit` and other Apple-only framework entry points.
-    - Detect a bounded set of unsupported symbols or modifiers that are outside the current strict-mode or compatibility subset.
-    - Return grouped diagnostics with suggested strict-mode adaptations where the mapping is already clear.
-- [x] Step 4.5: Add the first supported SwiftUI-subset lowering or compatibility handoff path into the existing runtime model.
-  - Files: modify `packages/swift-sdk/Sources/StrictModeSDK/`, `packages/runtime-host/Sources/RuntimeHost/`, and `packages/diagnostics/Sources/DiagnosticsCore/` only where needed to prove the supported subset path; add fixture sources under `examples/compatibility-fixtures/`.
-  - Keep scope narrow: support only the smallest fixture subset that cleanly lowers into the existing semantic tree contract and can be defended by tests.
-  - Do not widen into general SwiftUI coverage, UIKit shims, or transport work.
-  - Next execution plan:
-    - Choose one representative compatibility fixture that uses only supported subset primitives already close to the strict-mode model.
-    - Reuse the existing semantic UI tree and runtime snapshot structures rather than inventing a second rendering model.
-    - Fail closed when unsupported APIs are present so compatibility mode remains diagnostics-led.
-- [x] Step 4.6: Document the v1 compatibility matrix, limitations, and migration guidance.
-  - Files: update `README.md`; add a dedicated compatibility document such as `docs/compatibility-matrix.md` if needed; expand `examples/compatibility-fixtures/README.md` or nearby fixture docs.
-  - Document which imports, symbols, layouts, state primitives, and lifecycle hooks are supported, partially supported, unsupported, or deferred in Phase 4.
-  - Include exact validation commands and explicit limitations so the compatibility lane does not overclaim simulator fidelity.
-  - Next execution plan:
-    - Update `README.md` to replace the stale "compatibility mode is not implemented" wording with the current diagnostics-led v1 subset status and its explicit limits.
-    - Add `docs/compatibility-matrix.md` that lists the supported `SwiftUI` import, `VStack`/`Text`/`Button`/`@State` subset path, the diagnostics-only unsupported `UIKit` and lifecycle/modifier gaps, and the deferred areas still out of scope.
-    - Document the exact validation commands already in use for this lane: `swift test --filter DiagnosticsCoreContractTests` and `swift test --filter RuntimeHostContractTests`, plus the later full-phase `swift test` / `swift build` pass still pending in Step 4.8.
+- [ ] Step 5.2: Implement runtime artifact bundle and deterministic capture placeholders.
+  - Files: add `packages/runtime-host/Sources/RuntimeHost/Artifacts/RuntimeArtifactTypes.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` and `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Reuse existing semantic tree snapshots and log entries instead of inventing a parallel runtime record model.
+  - Artifact capture should remain deterministic placeholders until browser screenshot plumbing exists.
+- [ ] Step 5.3: Add network fixture and HAR-like request recording support in the runtime layer.
+  - Files: add `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add checked-in fixtures under `Tests/fixtures/network/` if useful.
+  - Implement mocked route lookup and request/response records without live network calls.
+  - Preserve deterministic ordering and inspectable payload metadata for later reporting.
+- [ ] Step 5.4: Add launch-time device simulation settings to runtime sessions.
+  - Files: modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Cover viewport sizes, color scheme, locale, clock, geolocation, and network state as explicit value types.
+  - Keep simulation as metadata reflected in runtime/session state; do not attempt real OS simulator behavior.
+- [ ] Step 5.5: Surface artifacts, network fixtures, and device settings in the TypeScript automation SDK.
+  - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/test/emulator.test.ts`, and related package-local types if present.
+  - Extend the in-memory `Emulator` client with artifact retrieval, mocked route configuration, request-record inspection, and launch device options aligned with the runtime contracts.
+  - Keep the API Playwright-style where the existing SDK already sets that precedent.
+- [ ] Step 5.6: Add browser renderer support for deterministic render artifact metadata.
+  - Files: modify `packages/browser-renderer/src/` renderer entry points and `packages/browser-renderer/test/` coverage; update renderer fixtures only if artifact state needs a checked-in semantic tree sample.
+  - Produce deterministic render/capture metadata that can be consumed by the SDK without requiring native screenshot capture.
+  - Keep the browser shell visual behavior stable for existing tests.
+- [ ] Step 5.7: Expand examples and docs for agent artifact workflows.
+  - Files: update `README.md`; add or modify docs under `docs/`; extend `examples/strict-mode-baseline/automation-example.ts` or nearby example files.
+  - Document screenshot/render placeholders, semantic snapshots, logs, network fixtures, and device settings with exact validation commands.
+  - Avoid claiming full simulator fidelity or production screenshot support.
 
 ### Green
-- [x] Step 4.7: Add regression tests covering supported and unsupported compatibility fixtures.
-  - Files: extend the diagnostics and runtime test suites created earlier; add fixture-specific assertions only where they improve acceptance coverage without overfitting to parser internals.
-  - Cover one supported fixture that passes analysis and lowers into the shared runtime model, plus unsupported fixtures that produce stable source-linked diagnostics and adaptation guidance.
-  - Keep assertions structural and deterministic: prefer import names, symbol names, categories, line/column data, and compact support summaries over large serialized reports.
-  - Next execution plan:
-    - Extend `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift` with regression assertions for source columns, category ordering, and support-summary stability across the supported and unsupported checked-in fixtures.
-    - Extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` only where needed to confirm the compatibility-lowered tree shape remains aligned with the current strict runtime contract.
-    - Keep the write scope inside existing test targets unless a new fixture case proves necessary.
-- [x] Step 4.8: Run the full validation surface for the Swift workspace plus any compatibility-specific tooling introduced in this phase.
-  - Files: no intended source edits; update package scripts or config only if validation wiring is still missing after implementation.
-  - Run `swift test`, `swift build`, and any compatibility-focused commands added during this phase. Re-run the browser renderer and automation SDK validation commands only if shared contracts or docs/examples they consume changed.
-- [ ] Step 4.9: Refactor the compatibility and diagnostics boundary if needed while keeping the new tests green.
-  - Re-read the diagnostics report types, supported subset handoff path, and any new compatibility fixtures before changing names or file boundaries.
-  - Keep refactors limited to clarifying ownership between diagnostics analysis, supported-subset lowering, and the existing runtime contract. Do not widen scope into device simulation, network fixtures, or React Native evaluation.
-  - Next execution plan:
-    - Inspect `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift`, `Tests/fixtures/compatibility/`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, and the compatibility handoff assertions in `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift` for duplicated semantics or confusing ownership.
-    - Pay particular attention to the split between analyzer diagnostics, compatibility matrix metadata, supported-feature summaries, lowering previews, and the runtime `loadCompatibilityTree` handoff.
-    - If no meaningful simplification is justified, record Step 4.9 as an intentional no-op review rather than forcing churn.
-    - If a narrow cleanup is justified, keep the write scope small and rerun the affected compatibility filters before the final `swift test` / `swift build` pass.
+- [ ] Step 5.8: Add regression tests covering end-to-end artifact, network fixture, and device simulation flows.
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `packages/automation-sdk/test/emulator.test.ts`, and `packages/browser-renderer/test/` only where needed.
+  - Cover a representative strict-mode automation flow that produces artifacts, records a mocked network interaction, and reflects launch device settings.
+  - Keep assertions structural and deterministic.
+- [ ] Step 5.9: Run full validation across Swift, browser renderer, and automation SDK.
+  - Files: no intended source edits; update package scripts or config only if validation wiring is missing after implementation.
+  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
+- [ ] Step 5.10: Refactor artifact, network, and device simulation boundaries if needed while keeping tests green.
+  - Re-read the runtime artifact types, network fixture records, automation SDK surface, and browser renderer metadata before changing file boundaries.
+  - Keep refactors limited to clarifying ownership between runtime state, renderer metadata, and SDK client APIs.
 
-### Milestone: M2 SwiftUI-Subset Compatibility Diagnostics
+### Milestone: M3 Agent Artifacts, Fixtures, and Device Simulation
 **Acceptance Criteria:**
-- [ ] Compatibility mode can analyze a representative existing Swift codebase fixture.
-- [ ] Unsupported Apple-only APIs produce structured diagnostics instead of crashes.
-- [ ] Supported subset examples lower into the strict runtime model.
-- [ ] The compatibility matrix documents supported, partially supported, unsupported, and deferred areas.
+- [ ] Automation runs can produce screenshot/render artifacts, semantic snapshots, logs, and network request records.
+- [ ] Network fixtures are deterministic and inspectable.
+- [ ] Device simulation settings can be configured per launch and reflected in runtime behavior.
+- [ ] Example agent workflows demonstrate form entry, navigation, state changes, and network mocking.
 - [ ] All phase tests pass.
-- [x] No regressions in previous phase tests.
+- [ ] No regressions in previous phase tests.
 
 **On Completion:**
-- Deviations from plan: none yet
+- Deviations from plan: none yet.
 - Tech debt / follow-ups: none yet
 - Ready for next phase: no

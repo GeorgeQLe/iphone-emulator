@@ -2,6 +2,9 @@
 
 ## 2026-04-27
 
+- Completed Phase 4 Step 4.9 by confirming the diagnostics/runtime compatibility boundary remains clean and making one narrow cleanup: compatibility lowering previews now derive from the actual runtime-lowered `SemanticUITree` instead of duplicating a hard-coded preview shape.
+- Validation: initial focused Swift validation failed on an incorrect helper type name (`UITreeNodeRole` instead of `UITreeRole`), then `swift test --filter DiagnosticsCoreContractTests`, `swift test --filter RuntimeHostContractTests`, `swift test`, and `swift build` all passed cleanly with no warnings.
+- Archived the completed Phase 4 plan to `tasks/phases/phase-4.md`, marked Phase 4 complete in `tasks/roadmap.md`, and generated the detailed Phase 5 execution plan for agent artifacts, network fixtures, and device simulation.
 - Completed Phase 4 Step 4.8 by running the full Swift, compatibility-specific, browser renderer, and automation SDK validation surface without needing source or config changes.
 - Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test --filter RuntimeHostContractTests`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
 - Completed Phase 4 Step 4.7 by tightening the compatibility regression suite around the checked-in supported and unsupported fixtures, adding deterministic assertions for source columns, category ordering, empty-summary behavior on the supported path, and stable fixture-backed support summaries.

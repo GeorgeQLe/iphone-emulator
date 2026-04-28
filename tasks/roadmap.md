@@ -63,7 +63,7 @@
 **Coordination Notes:** Protocol shape, runtime behavior, SDK API, and test harness are tightly coupled. Parallel exploration can compare API designs, but implementation should remain integrated.
 
 ## Phase 4: M2 SwiftUI-Subset Compatibility Diagnostics
-**Status:** current.
+**Status:** complete on 2026-04-27.
 
 **Goal:** Add best-effort compatibility handling for plain Swift logic and a documented SwiftUI-inspired subset, led by diagnostics rather than opaque failure.
 
@@ -83,6 +83,7 @@
 **Coordination Notes:** Compatibility choices depend on strict runtime behavior and should avoid independent shim growth. Research can inventory likely SwiftUI subset APIs before implementation.
 
 ## Phase 5: M3 Agent Artifacts, Fixtures, and Device Simulation
+**Status:** current.
 
 **Goal:** Make the harness useful for agent-driven testing through artifacts, network fixtures, and deterministic device simulation.
 
@@ -100,6 +101,93 @@
 
 **Parallelization:** implementation-safe
 **Coordination Notes:** Artifact capture, network fixtures, and device simulation can be owned separately if their runtime extension points are already stable.
+
+> Test strategy: tdd
+
+### Execution Profile
+**Parallel mode:** implementation-safe
+**Integration owner:** main agent
+**Conflict risk:** medium
+**Review gates:** correctness, tests, docs/API conformance, performance
+
+**Subagent lanes:**
+- Lane: artifact-contracts
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: define runtime artifact value types and Swift tests for screenshot/render metadata, semantic snapshots, logs, and HAR-like request records.
+  - Owns: `packages/runtime-host/Sources/RuntimeHost/Artifacts/`, `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`
+  - Must not edit: `packages/browser-renderer/**`, `packages/automation-sdk/**`, `tasks/**`
+  - Depends on: none
+  - Deliverable: runtime artifact contract patch and passing focused Swift tests.
+- Lane: browser-renderer-artifacts
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: add browser renderer capture/fixture surfaces for deterministic render artifacts once the runtime artifact contract exists.
+  - Owns: `packages/browser-renderer/src/**`, `packages/browser-renderer/test/**`, `packages/browser-renderer/package.json`
+  - Must not edit: `packages/runtime-host/**`, `packages/automation-sdk/**`, `tasks/**`
+  - Depends on: Step 5.2
+  - Deliverable: renderer artifact patch and package validation output.
+- Lane: automation-artifacts
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: expose artifact, network fixture, and device simulation controls through the TypeScript automation SDK after runtime contracts stabilize.
+  - Owns: `packages/automation-sdk/src/**`, `packages/automation-sdk/test/**`, `packages/automation-sdk/package.json`
+  - Must not edit: `packages/runtime-host/**`, `packages/browser-renderer/**`, `tasks/**`
+  - Depends on: Step 5.2, Step 5.3, Step 5.4
+  - Deliverable: automation SDK patch and package validation output.
+
+### Tests First
+- Step 5.1: Write failing contract tests for artifact records, network fixtures, and device simulation settings
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add TypeScript red-phase tests under `packages/automation-sdk/test/` only if the public SDK surface can be specified without implementation churn.
+  - Add assertions for screenshot/render artifact metadata, semantic snapshot records, runtime log bundles, HAR-like request/response records, deterministic network fixture lookup, and launch-time device settings.
+  - Keep the red phase focused on deterministic value shapes and fixture behavior rather than real browser screenshots or live network traffic.
+
+### Implementation
+- Step 5.2: Implement runtime artifact bundle and deterministic capture placeholders
+  - Files: add `packages/runtime-host/Sources/RuntimeHost/Artifacts/RuntimeArtifactTypes.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` and `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Reuse existing semantic tree snapshots and log entries instead of inventing a parallel runtime record model.
+- Step 5.3: Add network fixture and HAR-like request recording support in the runtime layer
+  - Files: add `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add checked-in fixtures under `Tests/fixtures/network/` if useful.
+  - Implement mocked route lookup and request/response records without live network calls.
+- Step 5.4: Add launch-time device simulation settings to runtime sessions
+  - Files: modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Cover viewport sizes, color scheme, locale, clock, geolocation, and network state as explicit value types.
+- Step 5.5: Surface artifacts, network fixtures, and device settings in the TypeScript automation SDK
+  - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/test/emulator.test.ts`, and related package-local types if present.
+  - Extend the in-memory `Emulator` client with artifact retrieval, mocked route configuration, request-record inspection, and launch device options aligned with the runtime contracts.
+- Step 5.6: Add browser renderer support for deterministic render artifact metadata
+  - Files: modify `packages/browser-renderer/src/` renderer entry points and `packages/browser-renderer/test/` coverage; update renderer fixtures only if artifact state needs a checked-in semantic tree sample.
+  - Produce deterministic render/capture metadata that can be consumed by the SDK without requiring native screenshot capture.
+- Step 5.7: Expand examples and docs for agent artifact workflows
+  - Files: update `README.md`; add or modify docs under `docs/`; extend `examples/strict-mode-baseline/automation-example.ts` or nearby example files.
+  - Document screenshot/render placeholders, semantic snapshots, logs, network fixtures, and device settings with exact validation commands.
+
+### Green
+- Step 5.8: Add regression tests covering end-to-end artifact, network fixture, and device simulation flows
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `packages/automation-sdk/test/emulator.test.ts`, and `packages/browser-renderer/test/` only where needed.
+  - Cover a representative strict-mode automation flow that produces artifacts, records a mocked network interaction, and reflects launch device settings.
+- Step 5.9: Run full validation across Swift, browser renderer, and automation SDK
+  - Files: no intended source edits; update package scripts or config only if validation wiring is missing after implementation.
+  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
+- Step 5.10: Refactor artifact, network, and device simulation boundaries if needed while keeping tests green
+  - Re-read the runtime artifact types, network fixture records, automation SDK surface, and browser renderer metadata before changing file boundaries.
+
+### Milestone: M3 Agent Artifacts, Fixtures, and Device Simulation
+**Acceptance Criteria:**
+- [ ] Automation runs can produce screenshot/render artifacts, semantic snapshots, logs, and network request records.
+- [ ] Network fixtures are deterministic and inspectable.
+- [ ] Device simulation settings can be configured per launch and reflected in runtime behavior.
+- [ ] Example agent workflows demonstrate form entry, navigation, state changes, and network mocking.
+- [ ] All phase tests pass.
+- [ ] No regressions in previous phase tests.
+
+**On Completion:**
+- Deviations from plan: none yet
+- Tech debt / follow-ups: none yet
+- Ready for next phase: no
 
 ## Phase 6: M4 Reports, Migration Helpers, and React Native Evaluation
 
