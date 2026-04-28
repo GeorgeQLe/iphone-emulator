@@ -95,6 +95,11 @@
   - Re-read the diagnostics report types, migration guidance docs, React Native evaluation, and roadmap decision together.
   - Keep this an intentional no-op if the final split is clear; otherwise apply only narrow naming, organization, or duplicate-content cleanup.
   - Rerun any affected focused validation, then rerun the full Step 6.6 validation surface before marking the phase complete.
+  - Implementation plan:
+    1. Re-read `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift`, `docs/strict-mode-migration.md`, `docs/react-native-feasibility.md`, the Phase 6 roadmap section, and the Phase 6 checklist together.
+    2. Decide whether the compatibility report value surface, migration guidance, React Native evaluation, and roadmap decision are already cleanly separated. Treat the step as an intentional no-op if there is no real naming, organization, or duplication issue.
+    3. If cleanup is justified, keep edits narrow and limited to report/docs/task boundary clarity; do not add new compatibility analyzer behavior, CLI rendering, codemods, or React Native runtime scaffolding in this step.
+    4. Run focused validation for any changed surface first, then rerun the full Step 6.6 validation surface before marking the step complete.
 
 **On Completion:**
 - Deviations from plan: none yet.
