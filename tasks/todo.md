@@ -23,7 +23,7 @@
 - [ ] Compatibility reports are useful as product output for migration planning.
 - [ ] Migration guidance maps unsupported APIs to strict SDK alternatives where practical.
 - [ ] React Native evaluation covers JS runtime, native module mocking, renderer integration, automation reuse, and major risks.
-- [ ] The roadmap is updated with the next appropriate phase or research direction after the evaluation.
+- [x] The roadmap is updated with the next appropriate phase or research direction after the evaluation.
 
 **Parallelization:** serial
 **Coordination Notes:** This phase was originally scoped for an agent team, but the current execution environment is running it serially. Keep each step narrow, finish the diagnostics/reporting surface before documentation, and treat React Native as a written evaluation unless the roadmap is explicitly changed.
@@ -73,7 +73,7 @@
     4. Update `tasks/roadmap.md` only if the recommendation changes the planned direction or adds/removes a future phase.
     5. Validate docs against current implemented contracts; run `swift test --filter DiagnosticsCoreContractTests` if the evaluation references compatibility report fields, and run broader validation only if public type names or examples change.
 
-- [ ] Step 6.5: Update roadmap with the post-evaluation decision.
+- [x] Step 6.5: Update roadmap with the post-evaluation decision.
   - Files: modify `tasks/roadmap.md` and `tasks/todo.md`; optionally update `README.md` if the project positioning changes.
   - Record whether React Native becomes a later phase, remains deferred, or is explicitly dropped.
   - Ensure the roadmap's next phase or research direction matches the evaluation document.

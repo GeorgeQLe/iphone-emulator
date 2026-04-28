@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 6 Step 6.5 by updating `tasks/roadmap.md` with the post-evaluation React Native decision: React Native remains deferred research, while the next implementation direction stays focused on strict-mode live runtime-to-renderer transport and session coordination. Marked the roadmap acceptance criterion and Step 6.5 complete in `tasks/todo.md`.
+- Validation: inspected the docs/task diff only; no source, package, example, or public README content changed.
 - Completed Phase 6 Step 6.4 by adding `docs/react-native-feasibility.md`, which evaluates React Native against the stabilized runtime, renderer, automation SDK, artifact, network, and device contracts. The decision keeps React Native deferred as a later research/adapter lane until strict-mode live transport and session coordination are stable.
 - Validation: `swift test --filter DiagnosticsCoreContractTests` passed cleanly with no warnings.
 - Completed Phase 6 Step 6.3 by adding `docs/strict-mode-migration.md`, which maps unsupported imports, bridge symbols, platform APIs, lifecycle hooks, modifiers, state, fixtures, and device/network dependencies to current strict-mode SDK and runtime alternatives. Added a README pointer beside the compatibility matrix.

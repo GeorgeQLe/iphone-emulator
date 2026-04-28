@@ -190,6 +190,7 @@
 - Ready for next phase: no
 
 ## Phase 6: M4 Reports, Migration Helpers, and React Native Evaluation
+**Status:** in progress; React Native decision recorded on 2026-04-28.
 
 **Goal:** Improve compatibility reporting, provide migration guidance, and evaluate the deferred React Native compatibility lane.
 
@@ -204,6 +205,12 @@
 - Migration guidance maps unsupported APIs to strict SDK alternatives where practical.
 - React Native evaluation covers JS runtime, native module mocking, renderer integration, automation reuse, and major risks.
 - The roadmap is updated with the next appropriate phase or research direction after the evaluation.
+
+**Post-Evaluation Decision:**
+- React Native remains deferred research, not the next implementation phase.
+- The next implementation direction remains strict-mode live runtime-to-renderer transport and session coordination.
+- React Native should be reconsidered only after strict-mode live sessions prove one integrated loop for semantic tree updates, renderer updates, automation commands, artifacts, network fixtures, and device settings.
+- A future React Native lane should start as a constrained adapter contract that lowers a small React Native-like subset into `SemanticUITree`, reuses the existing automation SDK semantics, routes JS network calls through deterministic fixtures, captures JS logs as runtime logs, and fails closed on unsupported native modules.
 
 **Parallelization:** agent-team
 **Coordination Notes:** This phase spans reports, migration strategy, and a separate runtime ecosystem. It is better suited to isolated worktrees or a dedicated agent team once the core harness is stable.
