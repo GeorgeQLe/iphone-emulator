@@ -50,7 +50,7 @@
   - Avoid adding a command-line reporter in this step unless the tests prove the core value surface needs it.
   - Run `swift test --filter DiagnosticsCoreContractTests`, then `swift test` and `swift build` if shared diagnostics types changed.
 
-- [ ] Step 6.3: Add strict-mode migration guidance docs.
+- [x] Step 6.3: Add strict-mode migration guidance docs.
   - Files: update `README.md` only if it needs a short pointer; add or update focused docs under `docs/`.
   - Map common unsupported Swift/SwiftUI patterns to current strict-mode SDK alternatives: app lifecycle, views, navigation, state, unsupported platform APIs, and deterministic fixtures.
   - Be explicit about non-goals: no UIKit/SwiftUI/WebKit/Xcode Simulator compatibility and no native-device fidelity.
@@ -66,6 +66,12 @@
   - Cover JS runtime needs, native module mocking, renderer integration, semantic tree reuse, automation SDK reuse, network/device/artifact compatibility, packaging complexity, and major risks.
   - Decide one of: future implementation phase, deferred research, or dropped from near-term scope.
   - Keep this as product/architecture evaluation; do not scaffold React Native runtime code in this step.
+  - Implementation plan:
+    1. Re-read `README.md`, `docs/compatibility-matrix.md`, `docs/strict-mode-migration.md`, the runtime semantic tree and automation artifact types, browser renderer fixture/render artifact helpers, and automation SDK public surface.
+    2. Add `docs/react-native-feasibility.md` with sections for JS runtime strategy, native module mocking, renderer integration, semantic tree reuse, automation SDK reuse, network/device/artifact compatibility, packaging complexity, risks, and recommendation.
+    3. Keep the recommendation product/architecture-only: choose future implementation phase, deferred research, or dropped near-term scope without adding React Native runtime code.
+    4. Update `tasks/roadmap.md` only if the recommendation changes the planned direction or adds/removes a future phase.
+    5. Validate docs against current implemented contracts; run `swift test --filter DiagnosticsCoreContractTests` if the evaluation references compatibility report fields, and run broader validation only if public type names or examples change.
 
 - [ ] Step 6.5: Update roadmap with the post-evaluation decision.
   - Files: modify `tasks/roadmap.md` and `tasks/todo.md`; optionally update `README.md` if the project positioning changes.
@@ -85,5 +91,5 @@
 
 **On Completion:**
 - Deviations from plan: none yet.
-- Tech debt / follow-ups: Step 6.2 must implement the red-phase `CompatibilityReport` surface now specified by Step 6.1: `summary.affectedFileCount`, `summary.countsBySupportLevel`, deterministic `unsupportedGroups`, and `migrationSummary` next actions.
+- Tech debt / follow-ups: none yet.
 - Ready for next phase: no.

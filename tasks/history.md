@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 6 Step 6.3 by adding `docs/strict-mode-migration.md`, which maps unsupported imports, bridge symbols, platform APIs, lifecycle hooks, modifiers, state, fixtures, and device/network dependencies to current strict-mode SDK and runtime alternatives. Added a README pointer beside the compatibility matrix.
+- Validation: `swift test --filter DiagnosticsCoreContractTests` passed cleanly with 11 diagnostics tests and no warnings.
 - Completed Phase 6 Step 6.2 by implementing migration-ready compatibility report output: affected-file counts, support-level counts, first-seen unsupported API groups, grouped adaptation hints, migration summary next actions, and full platform API names for `UIApplication.shared.open`.
 - Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test`, and `swift build` passed cleanly with no warnings. An intermediate full-suite run crashed in Swift Testing's `#require` unwrap path for the runtime compatibility-lowered tree test; replacing that unwrap with an explicit guard made the isolated test and full suite pass without changing loader behavior.
 - Completed Phase 6 Step 6.1 by adding red-phase diagnostics contract coverage for migration-ready compatibility reports, including affected-file counts, support-level summaries, deterministic unsupported API grouping, grouped adaptation hints, and migration next-action output.
