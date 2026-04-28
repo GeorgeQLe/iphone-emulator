@@ -61,7 +61,7 @@
     3. Add a short README pointer only if the current README lacks a discoverable compatibility/migration docs link.
     4. Validate documentation references against the tested diagnostics fields with `swift test --filter DiagnosticsCoreContractTests`; run broader Swift validation only if examples or public type names change.
 
-- [ ] Step 6.4: Evaluate React Native feasibility against the stabilized runtime.
+- [x] Step 6.4: Evaluate React Native feasibility against the stabilized runtime.
   - Files: add a focused evaluation document under `docs/`; update `tasks/roadmap.md` only if the evaluation changes the next planned direction.
   - Cover JS runtime needs, native module mocking, renderer integration, semantic tree reuse, automation SDK reuse, network/device/artifact compatibility, packaging complexity, and major risks.
   - Decide one of: future implementation phase, deferred research, or dropped from near-term scope.
