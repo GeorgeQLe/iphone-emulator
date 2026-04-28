@@ -152,6 +152,11 @@ body {
   background: rgba(255, 255, 255, 0.92);
 }
 
+.node-textField input:focus {
+  outline: 3px solid rgba(25, 134, 255, 0.22);
+  border-color: #1986ff;
+}
+
 .node-list {
   display: flex;
   flex-direction: column;

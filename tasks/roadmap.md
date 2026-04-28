@@ -219,3 +219,138 @@
 - Deviations from plan: Step 6.7 completed as an intentional no-op boundary review; no report, migration, React Native, or roadmap cleanup was needed beyond task archival.
 - Tech debt / follow-ups: React Native remains deferred research until strict-mode live runtime-to-renderer transport and session coordination are stable.
 - Ready for next phase: no further implementation phase is currently queued; refresh research/spec/task docs before adding new build phases.
+
+## Phase 7: M6 Browser IDE Demo and Interactive Preview Loop
+**Status:** planned.
+
+**Goal:** Turn the renderer demo into a credible browser-based IDE harness that shows the intended agent/codegen workflow.
+
+**Scope:**
+- Provide a Monaco-based mock project editor with strict-mode source, agent test code, and README context.
+- Lower supported strict-mode declarations into a semantic UI tree for live preview.
+- Make preview interactions stateful: text input, keyboard, buttons, focus, and semantic inspector updates.
+- Show diagnostics and render/artifact metadata in the same browser surface.
+- Keep the demo honest: source lowering is illustrative until the live Swift runtime transport exists.
+
+**Acceptance Criteria:**
+- A user can edit the mock strict-mode app and see the iPhone-like preview update.
+- A user can interact with the preview and see semantic state/artifact metadata update.
+- The demo distinguishes mocked source lowering from real Swift execution.
+- Browser renderer typecheck, tests, and build pass.
+
+**Parallelization:** serial
+**Coordination Notes:** This phase touches the browser renderer entrypoint, demo styling, and semantic preview state. Keep implementation integrated until the demo interaction model stabilizes.
+
+> Test strategy: tests-after
+
+### Execution Profile
+**Parallel mode:** serial
+**Integration owner:** main agent
+**Conflict risk:** medium
+**Review gates:** correctness, tests, docs/API conformance, UX
+
+**Subagent lanes:** none
+
+### Implementation
+- Step 7.1: Stabilize the browser IDE demo shell around the current renderer package
+  - Files: modify `packages/browser-renderer/index.html`, `packages/browser-renderer/package.json`, `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/vite-env.d.ts`, `packages/browser-renderer/tsconfig.json`, `package-lock.json`
+  - Ensure Monaco loads through Vite, the demo has a local `dev` script, file selection works, and the shell clearly presents editor, preview, diagnostics, and inspector panes.
+- Step 7.2: Define the mock project and source-to-semantic lowering surface
+  - Files: create or modify `packages/browser-renderer/src/demoProject.ts`
+  - Represent mock strict-mode Swift, agent test, and README files; parse the supported illustrative declarations into `SemanticUITree`; produce diagnostics for unsupported framework imports and empty supported surfaces.
+- Step 7.3: Make preview interactions stateful inside the iPhone-like renderer
+  - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/renderTree.ts`, `packages/browser-renderer/src/styles.ts`, `packages/browser-renderer/src/demoStyles.ts`
+  - Support editable text fields, focus styling, mock keyboard display, keyboard insert/delete/done behavior, and semantic inspector updates after input changes.
+- Step 7.4: Keep the demo honest about mocked source lowering versus live Swift execution
+  - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoProject.ts`, `packages/browser-renderer/src/demoStyles.ts`, `README.md` or `examples/strict-mode-baseline/README.md` if a doc note is needed
+  - Surface copy or diagnostics that explain the demo is a browser IDE loop over illustrative strict-mode lowering until live Swift runtime transport exists.
+- Step 7.5: Polish responsive layout and preview ergonomics
+  - Files: modify `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/styles.ts`
+  - Ensure the editor, preview, keyboard, diagnostics, and inspector remain usable on desktop and narrower viewports without overlapping content.
+
+### Green
+- Step 7.6: Write regression tests covering the demo compiler and interactive renderer behavior
+  - Files: create or modify `packages/browser-renderer/src/demoProject.test.ts`, `packages/browser-renderer/src/renderTree.test.ts`, and only test helpers if needed
+  - Cover semantic tree generation from the mock strict-mode source, unsupported import diagnostics, editable text field rendering, and keyboard/input state update behavior where practical in jsdom.
+- Step 7.7: Run browser renderer validation
+  - Files: no intended source edits unless validation exposes missing package or TypeScript wiring
+  - Run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`.
+- Step 7.8: Refactor demo boundaries if needed while keeping validation green
+  - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoProject.ts`, `packages/browser-renderer/src/demoStyles.ts`, and `packages/browser-renderer/src/renderTree.ts` only as needed
+  - Keep demo-specific code separated from reusable renderer behavior so later native capability phases can reuse the renderer contracts.
+
+### Milestone: M6 Browser IDE Demo and Interactive Preview Loop
+**Acceptance Criteria:**
+- [ ] A user can edit the mock strict-mode app and see the iPhone-like preview update.
+- [ ] A user can interact with the preview and see semantic state/artifact metadata update.
+- [ ] The demo distinguishes mocked source lowering from real Swift execution.
+- [ ] Browser renderer typecheck, tests, and build pass.
+- [ ] All phase tests pass.
+- [ ] No regressions in previous phase tests.
+
+**On Completion:**
+- Deviations from plan: none yet
+- Tech debt / follow-ups: none yet
+- Ready for next phase: no
+
+## Phase 8: M7 Native Capability Registry and Manifest
+**Status:** planned.
+
+**Goal:** Define the deterministic native capability model that lets the harness simulate native functionality requested by source code without claiming real iOS behavior.
+
+**Scope:**
+- Add a native capability taxonomy for permissions, camera/photos, location, network, clipboard, keyboard/input, files/share sheet, notifications, device environment, sensors, and haptics.
+- Define capability manifests that list required capabilities, configured mocks, permission states, scripted events, unsupported symbols, and artifact outputs.
+- Extend diagnostics so recognized native API requests either map to a capability contract or fail closed with adaptation guidance.
+- Document the distinction between mock native capability support and real native framework fidelity.
+
+**Acceptance Criteria:**
+- The spec and docs define what a supported native capability must include before implementation.
+- Runtime and automation contracts have typed manifest shapes, even if most capabilities are initially unsupported.
+- Unsupported native APIs produce structured diagnostics with suggested strict-mode mock alternatives.
+- No capability depends on live host permissions, live device state, or live network access by default.
+
+**Parallelization:** research-only
+**Coordination Notes:** Capability taxonomy and diagnostics should be designed centrally before implementation splits by capability area.
+
+## Phase 9: M8 First Mock Native Services
+**Status:** planned.
+
+**Goal:** Implement the first useful deterministic native mocks for app flows that agents commonly need to exercise.
+
+**Scope:**
+- Add permission state and prompt simulation.
+- Add fixture-backed camera capture and photo picker outputs.
+- Add deterministic location state and scripted location events.
+- Add clipboard, keyboard/input traits, file picker/share sheet records, and local notification scheduling records.
+- Surface capability events through runtime logs, semantic state, and artifact bundles.
+- Add browser preview UI for permission prompts, pickers, camera/photo outcomes, keyboard state, and notification records where applicable.
+
+**Acceptance Criteria:**
+- Strict-mode fixture apps can request supported native capabilities and receive deterministic mock results.
+- Automation can configure mock state at launch and inspect capability events after interaction.
+- Runtime artifacts include native capability logs and records.
+- Unsupported native services still fail closed with diagnostics.
+
+**Parallelization:** implementation-safe
+**Coordination Notes:** Capability implementations can be split once the manifest and runtime event contracts are stable. Shared chokepoints are runtime capability types, automation SDK launch options, and renderer semantic UI effects.
+
+## Phase 10: M9 Native Capability Automation and Agent Flows
+**Status:** planned.
+
+**Goal:** Make native capability simulation useful to agents through high-level automation APIs and end-to-end examples.
+
+**Scope:**
+- Add `app.native.*` automation APIs for permissions, camera/photos, location, clipboard, files, notifications, and device environment.
+- Add agent workflow examples that combine UI interaction, native mocks, network fixtures, semantic inspection, and artifacts.
+- Add tests for native capability setup, interaction, inspection, and unsupported diagnostics.
+- Update docs to show how a browser IDE or agentic codegen tool should configure mocks for generated apps.
+
+**Acceptance Criteria:**
+- An agent can configure native mocks, run a flow, inspect capability state, and retrieve artifacts using the TypeScript SDK.
+- Example flows cover at least camera/photo, location permission denial, clipboard, and notification scheduling.
+- Browser demo and automation SDK tell the same story about capability state and semantic output.
+- Full Swift, browser renderer, and automation SDK validation pass.
+
+**Parallelization:** implementation-safe
+**Coordination Notes:** SDK APIs, runtime records, and examples can be split by capability area after the shared manifest/event model is implemented.

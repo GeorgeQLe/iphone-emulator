@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Build an open-source-only iPhone-like emulator harness for agent-driven testing of Swift applications. The product does not run real iOS, does not use Apple's proprietary simulator runtime, and does not claim pixel-perfect UIKit or Safari fidelity. Instead, it provides a deterministic Swift runtime, an iPhone-like UI surface, a mock native capability layer, and a Playwright-style automation API that lets agents and developers test app behavior, navigation, state changes, forms, native-service interactions, networking, and approximate visual output.
+Build an open-source-only iPhone-like emulator harness for agent-driven testing of Swift applications. The product does not run real iOS, does not use Apple's proprietary simulator runtime, and does not claim pixel-perfect UIKit or Safari fidelity. Instead, it provides a deterministic Swift runtime, an iPhone-like UI surface, and a Playwright-style automation API that lets agents and developers test app behavior, navigation, state changes, forms, networking, and approximate visual output.
 
 Positioning: "An open-source iPhone-like app harness for agents." It is a parallel track to a real iOS Simulator service, optimized for portability, inspectability, and licensing clarity rather than exact device fidelity.
 
@@ -17,8 +17,6 @@ Positioning: "An open-source iPhone-like app harness for agents." It is a parall
 - Expose a semantic UI tree and Playwright-style automation API for agents.
 - Run deterministically in a local or server process without Apple proprietary runtime dependencies.
 - Report unsupported Apple APIs clearly with source locations and suggested shim/adaptation paths.
-- Detect native capability needs from strict-mode or compatibility-mode source and map them to explicit mocks, fixtures, permissions, events, logs, and artifacts.
-- Simulate native functionality through deterministic capability contracts rather than hidden platform behavior.
 
 ### Non-goals
 
@@ -27,7 +25,6 @@ Positioning: "An open-source iPhone-like app harness for agents." It is a parall
 - Pixel-perfect iOS rendering.
 - Full binary compatibility with Apple frameworks.
 - Real-device hardware behavior.
-- Faithful native camera, sensor, notification, maps, contacts, Bluetooth, media, or filesystem behavior.
 - React Native compatibility in v1.
 
 ## 3. Product Modes
@@ -66,7 +63,6 @@ Harness runtime process  <--- JSON-RPC/WebSocket ---> SDK / MCP / tests
         |
         +--> UI tree engine
         +--> state/lifecycle engine
-        +--> mock native capability registry
         +--> network/storage/device shims
         +--> diagnostic analyzer
         |
@@ -79,24 +75,9 @@ Browser renderer: iPhone shell + DOM/canvas surface + semantic inspector
 - **Swift Harness SDK**: open-source Swift package used by strict-mode apps.
 - **Compatibility Layer**: source-level adapters and shims for a SwiftUI-inspired subset, with later UIKit-inspired adapters where practical.
 - **Runtime Host**: local/server process that loads compiled Swift modules, manages app lifecycle, state, and I/O.
-- **Native Capability Registry**: deterministic contracts for mockable native services such as permissions, camera, photos, location, contacts, notifications, clipboard, storage, sensors, haptics, maps, and share sheets.
 - **Renderer**: browser UI that draws an iPhone-like shell and renders the harness UI tree.
 - **Automation Protocol**: JSON-RPC over WebSocket, with a Playwright-flavored TypeScript SDK and MCP server.
 - **Diagnostics Engine**: static/source analysis plus runtime errors for unsupported APIs.
-
-### Native Capability Simulation
-
-Native functionality is represented as explicit harness capabilities, not as reimplemented iOS frameworks. A capability defines:
-
-- the strict-mode API surface that app code may call;
-- the compatibility symbols that can be recognized from source;
-- the launch-time mock configuration and default permission state;
-- runtime events and state transitions;
-- semantic UI effects such as permission prompts, pickers, sheets, maps, keyboards, or capture screens;
-- automation SDK controls and inspection APIs;
-- artifacts, logs, and unsupported diagnostics.
-
-The runtime should fail closed. If code asks for a native service that has no deterministic capability contract, the harness should report an unsupported diagnostic instead of silently pretending the service exists.
 
 ## 6. v1 Scope
 
@@ -107,48 +88,11 @@ The runtime should fail closed. If code asks for a native service that has no de
 - UI primitives: text, image, button, text field, list, stack layouts, navigation stack, modal sheet, tab view, alerts.
 - State primitives: observable state, bindings, environment values, app lifecycle events.
 - Device simulation: viewport sizes, dark/light mode, locale, clock, geolocation, network fixtures.
-- Native mocks: permission state, fixture-backed location, camera/photo selection, clipboard, keyboard/focus, file picker, local notification scheduling, and device orientation where represented by strict-mode contracts.
 - Network: mocked HTTP routes, fixture responses, HAR-like request log.
 - Automation: tap, type, swipe/scroll, wait for element, inspect tree, screenshot, collect logs.
 - Diagnostics: unsupported import/symbol report with file/line where possible.
 
-## 7. Native Capability Model
-
-The harness should maintain a native capability manifest for each source package or fixture. The manifest is derived from app declarations, compatibility analysis, and explicit launch configuration.
-
-Example manifest:
-
-```json
-{
-  "requiredCapabilities": ["camera", "location", "notifications"],
-  "configuredMocks": ["camera.nextCapture", "location.current"],
-  "permissions": {
-    "camera": "granted",
-    "location": "denied",
-    "notifications": "prompt"
-  },
-  "unsupportedSymbols": []
-}
-```
-
-Initial capability categories:
-
-| Capability | Simulation strategy |
-| --- | --- |
-| Permissions | Deterministic permission state, prompt UI, and automation controls. |
-| Camera and photos | Fixture-backed capture or picker output with artifact records. |
-| Location | Static or scripted coordinates, permission behavior, and location event logs. |
-| Network | Mocked route fixtures, request/response records, and offline/latency metadata. |
-| Clipboard | String/image fixture state readable and writable by automation. |
-| Keyboard and text input | Focus, input traits, keyboard UI, and editable semantic state. |
-| Files and share sheet | Fixture-backed file picker/export events and semantic sheet UI. |
-| Notifications | Scheduled local notification records, prompt state, and delivery events. |
-| Device environment | Viewport, orientation, color scheme, locale, clock, geolocation, and network state. |
-| Sensors and haptics | Deterministic event records and logs before any visual or physical simulation. |
-
-Native capability support should be expanded only when the capability has tests, deterministic configuration, automation access, and clear diagnostics for unsupported platform APIs.
-
-## 8. Deferred Scope
+## 7. Deferred Scope
 
 ### React Native Compatibility
 
@@ -172,7 +116,7 @@ The main risk is custom native iOS modules. Those would require adapters, mocks,
 - Native module marketplace for compatibility shims.
 - Cloud-hosted multi-tenant service.
 
-## 9. Public API Sketch
+## 8. Public API Sketch
 
 ### Swift Strict-Mode App
 
@@ -210,57 +154,22 @@ await app.screenshot({ path: "todo.png" });
 await app.close();
 ```
 
-### TypeScript Native Mock Configuration
-
-```ts
-const app = await Emulator.launch({
-  projectPath: "./fixtures/ProfileApp",
-  mode: "strict",
-  nativeMocks: {
-    permissions: {
-      camera: "granted",
-      location: "denied",
-    },
-    camera: {
-      nextCapture: "fixtures/profile-photo.jpg",
-    },
-    location: {
-      current: {
-        latitude: 40.7128,
-        longitude: -74.006,
-        accuracyMeters: 25,
-      },
-    },
-    notifications: {
-      authorization: "prompt",
-    },
-  },
-});
-
-await app.getByText("Take Photo").tap();
-const capture = await app.native.camera.lastCapture();
-const permissions = await app.native.permissions.snapshot();
-```
-
-## 10. Compatibility Strategy
+## 9. Compatibility Strategy
 
 - Prefer source-level compatibility over binary compatibility.
 - Maintain a documented compatibility matrix by framework area.
 - Treat unsupported APIs as product output, not crashes.
 - Add shims only when they preserve deterministic behavior and can be tested.
 - Keep the harness SDK canonical; compatibility shims should lower into the same UI tree/runtime model.
-- Treat native API compatibility as capability detection plus deterministic mocking. Recognized symbols should either map to a supported capability contract or produce a structured unsupported diagnostic.
 
-## 11. Risks
+## 10. Risks
 
 - **Expectation mismatch**: users may expect real iOS. Mitigation: product copy must say "iPhone-like harness," not "iOS simulator."
 - **SwiftUI complexity**: SwiftUI semantics are large and proprietary. Mitigation: start with an explicit subset and compatibility diagnostics.
 - **Visual fidelity pressure**: approximate rendering may not satisfy design QA. Mitigation: optimize for behavioral/agent testing first.
 - **Native API gaps**: existing apps often use Apple-only frameworks. Mitigation: structured unsupported reports and migration guides.
-- **Mock fidelity creep**: every native mock can turn into an attempt to clone iOS. Mitigation: each capability must document its deterministic contract, non-goals, and unsupported behaviors.
-- **Hidden nondeterminism**: native-like services can accidentally depend on real time, host files, live network, or browser permissions. Mitigation: all capability inputs should come from launch config, fixtures, or scripted events.
 
-## 12. Recommended Milestones
+## 11. Recommended Milestones
 
 - **M0**: repo scaffold, strict-mode Swift SDK, runtime host, static diagnostics skeleton.
 - **M1**: UI tree engine, browser renderer, Playwright-style TS SDK.
@@ -268,7 +177,3 @@ const permissions = await app.native.permissions.snapshot();
 - **M3**: agent artifacts: screenshots, semantic snapshots, logs, network fixtures.
 - **M4**: compatibility reports, migration helpers, and expanded device simulation.
 - **M5**: evaluate React Native compatibility lane.
-- **M6**: live browser IDE demo with Monaco, editable preview state, and semantic artifact inspection.
-- **M7**: native capability registry and manifest generation.
-- **M8**: first deterministic native mocks for permissions, camera/photos, location, clipboard, keyboard, file picker, and notifications.
-- **M9**: automation SDK native capability controls and end-to-end agent test flows.

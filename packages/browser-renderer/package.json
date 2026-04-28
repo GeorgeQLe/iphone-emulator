@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Browser renderer for the semantic iPhone-like UI tree.",
   "scripts": {
+    "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -15,5 +16,8 @@
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "monaco-editor": "^0.55.1"
   }
 }

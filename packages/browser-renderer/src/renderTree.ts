@@ -197,7 +197,6 @@ function renderTextFieldNode(document: Document, node: UITreeNode): HTMLElement 
   input.type = "text";
   input.value = node.value ?? "";
   input.placeholder = node.metadata.placeholder ?? "";
-  input.readOnly = true;
 
   wrapper.append(label, input);
   applyNodeMetadata(wrapper, node);
