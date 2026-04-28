@@ -888,7 +888,10 @@ struct RuntimeHostContractTests {
         let analysis = try analyzer.analyze(
             .fixturePath("tests/fixtures/compatibility/SupportedSubsetFixture.swift")
         )
-        let tree = try #require(analysis.loweredTree)
+        guard let tree = analysis.loweredTree else {
+            Issue.record("expected compatibility analysis to produce a lowered semantic tree")
+            return
+        }
 
         let loader = RuntimeAppLoader()
         let snapshot = loader.loadCompatibilityTree(tree)

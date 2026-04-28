@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 6 Step 6.2 by implementing migration-ready compatibility report output: affected-file counts, support-level counts, first-seen unsupported API groups, grouped adaptation hints, migration summary next actions, and full platform API names for `UIApplication.shared.open`.
+- Validation: `swift test --filter DiagnosticsCoreContractTests`, `swift test`, and `swift build` passed cleanly with no warnings. An intermediate full-suite run crashed in Swift Testing's `#require` unwrap path for the runtime compatibility-lowered tree test; replacing that unwrap with an explicit guard made the isolated test and full suite pass without changing loader behavior.
 - Completed Phase 6 Step 6.1 by adding red-phase diagnostics contract coverage for migration-ready compatibility reports, including affected-file counts, support-level summaries, deterministic unsupported API grouping, grouped adaptation hints, and migration next-action output.
 - Validation: `swift test --filter DiagnosticsCoreContractTests` failed as expected on missing `CompatibilityReport` fields and helper APIs: `summary.affectedFileCount`, `summary.countsBySupportLevel`, `unsupportedGroups`, and `migrationSummary`. No unrelated failure appeared before compilation stopped.
 - Completed Phase 5 Step 5.10 as an intentional no-op boundary review after re-reading the runtime artifact/network/device value types, automation coordinator, TypeScript SDK public surface, and browser renderer DOM metadata helper together. No code refactor was needed because durable runtime state, SDK convenience APIs, and renderer-owned DOM metadata remain cleanly separated.

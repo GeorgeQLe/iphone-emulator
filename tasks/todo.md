@@ -44,7 +44,7 @@
   - Expected validation: `swift test --filter DiagnosticsCoreContractTests` should fail on missing report fields or helper APIs only.
 
 ### Implementation
-- [ ] Step 6.2: Implement expanded compatibility report summaries and grouped diagnostics.
+- [x] Step 6.2: Implement expanded compatibility report summaries and grouped diagnostics.
   - Files: modify `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift` and focused diagnostics tests.
   - Preserve existing analyzer behavior while adding deterministic report fields for grouped unsupported APIs, migration hints, and summary totals.
   - Avoid adding a command-line reporter in this step unless the tests prove the core value surface needs it.
@@ -55,6 +55,11 @@
   - Map common unsupported Swift/SwiftUI patterns to current strict-mode SDK alternatives: app lifecycle, views, navigation, state, unsupported platform APIs, and deterministic fixtures.
   - Be explicit about non-goals: no UIKit/SwiftUI/WebKit/Xcode Simulator compatibility and no native-device fidelity.
   - Run validation relevant to docs and examples; at minimum run `swift test --filter DiagnosticsCoreContractTests` if docs reference generated or tested diagnostics fields.
+  - Implementation plan:
+    1. Re-read the compatibility matrix/docs and current `CompatibilityReport` value surface so the guidance uses only implemented diagnostics fields.
+    2. Add a focused `docs/strict-mode-migration.md` covering unsupported imports, symbols, platform APIs, lifecycle hooks, modifiers, supported strict-mode alternatives, and deterministic fixture guidance.
+    3. Add a short README pointer only if the current README lacks a discoverable compatibility/migration docs link.
+    4. Validate documentation references against the tested diagnostics fields with `swift test --filter DiagnosticsCoreContractTests`; run broader Swift validation only if examples or public type names change.
 
 - [ ] Step 6.4: Evaluate React Native feasibility against the stabilized runtime.
   - Files: add a focused evaluation document under `docs/`; update `tasks/roadmap.md` only if the evaluation changes the next planned direction.

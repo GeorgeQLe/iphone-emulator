@@ -209,28 +209,95 @@ public enum CompatibilityDiagnostic: Sendable, Hashable {
             return diagnostic.suggestedAdaptation
         }
     }
+
+    public var unsupportedName: String {
+        switch self {
+        case let .unsupportedImport(diagnostic):
+            return diagnostic.importName
+        case let .unsupportedSymbol(diagnostic):
+            return diagnostic.symbolName
+        case let .unsupportedModifier(diagnostic):
+            return diagnostic.modifierName
+        case let .unsupportedLifecycleHook(diagnostic):
+            return diagnostic.hookName
+        case let .unsupportedPlatformAPI(diagnostic):
+            return diagnostic.apiName
+        }
+    }
+
+    public var supportLevel: CompatibilitySupportLevel {
+        switch self {
+        case .unsupportedLifecycleHook, .unsupportedModifier:
+            return .deferred
+        case .unsupportedImport, .unsupportedSymbol, .unsupportedPlatformAPI:
+            return .unsupported
+        }
+    }
 }
 
 public struct CompatibilityReport: Sendable, Hashable {
     public struct Summary: Sendable, Hashable {
         public let totalCount: Int
+        public let affectedFileCount: Int
         public let countsByCategory: [CompatibilityDiagnosticCategory: Int]
         public let countsBySeverity: [CompatibilityDiagnosticSeverity: Int]
+        public let countsBySupportLevel: [CompatibilitySupportLevel: Int]
 
         public init(
             totalCount: Int,
+            affectedFileCount: Int,
             countsByCategory: [CompatibilityDiagnosticCategory: Int],
-            countsBySeverity: [CompatibilityDiagnosticSeverity: Int]
+            countsBySeverity: [CompatibilityDiagnosticSeverity: Int],
+            countsBySupportLevel: [CompatibilitySupportLevel: Int]
         ) {
             self.totalCount = totalCount
+            self.affectedFileCount = affectedFileCount
             self.countsByCategory = countsByCategory
             self.countsBySeverity = countsBySeverity
+            self.countsBySupportLevel = countsBySupportLevel
+        }
+    }
+
+    public struct UnsupportedGroup: Sendable, Hashable {
+        public let category: CompatibilityDiagnosticCategory
+        public let unsupportedNames: [String]
+        public let locations: [SourceLocation]
+        public let adaptationHints: [SuggestedAdaptation]
+
+        public init(
+            category: CompatibilityDiagnosticCategory,
+            unsupportedNames: [String],
+            locations: [SourceLocation],
+            adaptationHints: [SuggestedAdaptation]
+        ) {
+            self.category = category
+            self.unsupportedNames = unsupportedNames
+            self.locations = locations
+            self.adaptationHints = adaptationHints
+        }
+    }
+
+    public struct MigrationSummary: Sendable, Hashable {
+        public let isMigrationReady: Bool
+        public let primaryRecommendation: String
+        public let nextActions: [SuggestedAdaptation]
+
+        public init(
+            isMigrationReady: Bool,
+            primaryRecommendation: String,
+            nextActions: [SuggestedAdaptation]
+        ) {
+            self.isMigrationReady = isMigrationReady
+            self.primaryRecommendation = primaryRecommendation
+            self.nextActions = nextActions
         }
     }
 
     public let matrix: CompatibilityMatrix
     public let diagnostics: [CompatibilityDiagnostic]
     public let summary: Summary
+    public let unsupportedGroups: [UnsupportedGroup]
+    public let migrationSummary: MigrationSummary
 
     public init(matrix: CompatibilityMatrix, diagnostics: [CompatibilityDiagnostic]) {
         self.matrix = matrix
@@ -242,10 +309,52 @@ public struct CompatibilityReport: Sendable, Hashable {
         let countsBySeverity = diagnostics.reduce(into: [CompatibilityDiagnosticSeverity: Int]()) {
             $0[$1.severity, default: 0] += 1
         }
+        let countsBySupportLevel = diagnostics.reduce(into: [CompatibilitySupportLevel: Int]()) {
+            $0[$1.supportLevel, default: 0] += 1
+        }
+        let affectedFiles = Set(diagnostics.map(\.sourceLocation.file))
+        let unsupportedGroups = Self.makeUnsupportedGroups(diagnostics: diagnostics)
         self.summary = Summary(
             totalCount: diagnostics.count,
+            affectedFileCount: affectedFiles.count,
             countsByCategory: countsByCategory,
-            countsBySeverity: countsBySeverity
+            countsBySeverity: countsBySeverity,
+            countsBySupportLevel: countsBySupportLevel
+        )
+        self.unsupportedGroups = unsupportedGroups
+        self.migrationSummary = Self.makeMigrationSummary(unsupportedGroups: unsupportedGroups)
+    }
+}
+
+private extension CompatibilityReport {
+    static func makeUnsupportedGroups(diagnostics: [CompatibilityDiagnostic]) -> [UnsupportedGroup] {
+        let groupedDiagnostics = Dictionary(grouping: diagnostics, by: \.category)
+        var categories: [CompatibilityDiagnosticCategory] = []
+        for diagnostic in diagnostics where categories.contains(diagnostic.category) == false {
+            categories.append(diagnostic.category)
+        }
+
+        return categories.compactMap { category in
+            guard let diagnostics = groupedDiagnostics[category], diagnostics.isEmpty == false else {
+                return nil
+            }
+
+            return UnsupportedGroup(
+                category: category,
+                unsupportedNames: diagnostics.map(\.unsupportedName),
+                locations: diagnostics.map(\.sourceLocation),
+                adaptationHints: diagnostics.compactMap(\.suggestedAdaptation)
+            )
+        }
+    }
+
+    static func makeMigrationSummary(unsupportedGroups: [UnsupportedGroup]) -> MigrationSummary {
+        MigrationSummary(
+            isMigrationReady: unsupportedGroups.isEmpty == false,
+            primaryRecommendation: unsupportedGroups.isEmpty
+                ? "No unsupported compatibility surfaces were detected."
+                : "Replace unsupported Apple-only surfaces with strict-mode SDK primitives before lowering.",
+            nextActions: unsupportedGroups.flatMap(\.adaptationHints)
         )
     }
 }
@@ -496,7 +605,7 @@ private extension CompatibilityAnalyzer {
         symbolDiagnostics(
             in: lines,
             file: file,
-            symbolName: "UIApplication",
+            symbolName: "UIApplication.shared.open",
             message: "Replace UIApplication usage with strict-mode environment and runtime controls."
         ).map { diagnostic in
             switch diagnostic {
