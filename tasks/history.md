@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 5 Step 5.6 by adding browser-renderer-owned deterministic render artifact metadata: package-local render artifact and viewport types plus a pure helper that derives DOM render metadata from the fixed semantic tree without changing renderer DOM behavior.
+- Validation: `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` passed cleanly with no warnings after correcting the expected stable byte count in the new renderer test.
 - Completed Phase 5 Step 5.3 by splitting runtime network fixture/request/response/record value types into `RuntimeHost/Network/RuntimeNetworkFixture.swift` and expanding runtime contracts for deterministic fixture misses, sequential request IDs, retained request headers, response headers, and body-byte metadata.
 - Validation: `swift test --filter RuntimeHostContractTests` passed cleanly with 15 runtime contract tests, `swift test` passed cleanly with 28 tests across 4 suites, and `swift build` passed cleanly with no warnings.
 - Completed Phase 5 Step 5.2 by adding runtime-owned artifact bundle types, deterministic render/screenshot metadata, semantic snapshot artifacts, launch-time device settings, session artifact state, snapshot device metadata, and coordinator recording for screenshot placeholders, semantic snapshots, logs, and fixture-backed network request records.

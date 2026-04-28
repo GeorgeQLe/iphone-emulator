@@ -54,3 +54,24 @@ export interface SemanticUITree {
   appIdentifier: string;
   scene: UITreeScene;
 }
+
+export type RendererRenderArtifactKind = "render";
+
+export interface RendererViewportMetadata {
+  width: number;
+  height: number;
+  scale: number;
+}
+
+export interface RendererRenderArtifactMetadata {
+  name: string;
+  kind: RendererRenderArtifactKind;
+  format: "dom";
+  byteCount: number;
+  viewport: RendererViewportMetadata;
+  appIdentifier: string;
+  sceneId: string;
+  sceneKind: UITreeScene["kind"];
+  rootNodeId?: string;
+  nodeCount: number;
+}

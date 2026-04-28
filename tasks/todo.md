@@ -98,19 +98,21 @@
     - Run `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`; the previously expected Step 5.1 SDK red tests should turn green in this step.
   - Completed on 2026-04-28 with SDK-facing device launch options, deterministic artifact bundle retrieval, Playwright-style route fixture registration, request-record inspection, and session device propagation in the in-memory automation client.
   - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` passed with no warnings. One package-local test expectation was updated from exact screenshot metadata equality to `toMatchObject` because screenshots now include runtime-aligned `kind` and `viewport` fields.
-- [ ] Step 5.6: Add browser renderer support for deterministic render artifact metadata.
+- [x] Step 5.6: Add browser renderer support for deterministic render artifact metadata.
   - Files: modify `packages/browser-renderer/src/` renderer entry points and `packages/browser-renderer/test/` coverage; update renderer fixtures only if artifact state needs a checked-in semantic tree sample.
   - Produce deterministic render/capture metadata that can be consumed by the SDK without requiring native screenshot capture.
   - Keep the browser shell visual behavior stable for existing tests.
-  - Next execution plan:
-    - Re-read `packages/browser-renderer/src/`, `packages/browser-renderer/test/`, and the SDK/runtime artifact metadata shapes now exposed by Step 5.5.
-    - Add deterministic renderer-side capture metadata for the fixed strict-mode fixture, preserving the current DOM output and semantic fixture rendering.
-    - Prefer package-local types and tests unless the renderer needs a small fixture update for artifact metadata.
-    - Run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`; run Swift and automation SDK checks only if shared contracts change.
+  - Completed on 2026-04-28 with package-local deterministic render artifact metadata types and a pure `createRenderArtifactMetadata` helper for renderer DOM captures.
+  - Validation: `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` passed with no warnings. One initial renderer test expectation had an incorrect deterministic byte count and was corrected before the final green run.
 - [ ] Step 5.7: Expand examples and docs for agent artifact workflows.
   - Files: update `README.md`; add or modify docs under `docs/`; extend `examples/strict-mode-baseline/automation-example.ts` or nearby example files.
   - Document screenshot/render placeholders, semantic snapshots, logs, network fixtures, and device settings with exact validation commands.
   - Avoid claiming full simulator fidelity or production screenshot support.
+  - Next execution plan:
+    - Re-read `README.md`, existing docs under `docs/`, `examples/strict-mode-baseline/automation-example.ts`, `packages/automation-sdk/src/index.ts`, and the renderer/runtime artifact metadata contracts.
+    - Update the root README and/or a focused docs page to describe the current artifact workflow: screenshot placeholders, renderer DOM metadata, semantic snapshots, log bundles, deterministic network fixtures, request records, and launch-time device metadata.
+    - Extend the strict-mode baseline automation example to show launch device options, route fixture setup, request recording, artifact retrieval, semantic snapshot capture, logs, and render/screenshot metadata without implying native screenshot or real simulator fidelity.
+    - Include exact validation commands for the touched docs/example surface, with automation SDK checks first and broader Swift/browser checks only if shared contracts or examples require them.
 
 ### Green
 - [ ] Step 5.8: Add regression tests covering end-to-end artifact, network fixture, and device simulation flows.

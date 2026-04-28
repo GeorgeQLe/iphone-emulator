@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { baselineFixtureTree } from "./fixtureTree";
+import { createRenderArtifactMetadata } from "./renderArtifacts";
 import { mountRenderer } from "./renderTree";
 
 describe("mountRenderer", () => {
@@ -78,5 +79,35 @@ describe("mountRenderer", () => {
       "welcome-modal-copy:text",
       "welcome-modal-button:button",
     ]);
+  });
+
+  it("produces deterministic render artifact metadata for the fixed fixture", () => {
+    const container = document.createElement("div");
+
+    mountRenderer(container, baselineFixtureTree);
+
+    expect(createRenderArtifactMetadata(baselineFixtureTree)).toEqual({
+      name: "BaselineFixtureApp-baseline-screen-render",
+      kind: "render",
+      format: "dom",
+      byteCount: 176,
+      viewport: { width: 390, height: 844, scale: 1 },
+      appIdentifier: "BaselineFixtureApp",
+      sceneId: "baseline-screen",
+      sceneKind: "screen",
+      rootNodeId: "root-stack",
+      nodeCount: 17,
+    });
+    expect(createRenderArtifactMetadata(baselineFixtureTree, {
+      name: "baseline-render",
+      viewport: { width: 393, height: 852, scale: 3 },
+    })).toMatchObject({
+      name: "baseline-render",
+      kind: "render",
+      format: "dom",
+      byteCount: 176,
+      viewport: { width: 393, height: 852, scale: 3 },
+      nodeCount: container.querySelectorAll("[data-node-id]").length,
+    });
   });
 });
