@@ -74,7 +74,7 @@
   - Preserve deterministic ordering and inspectable payload metadata for later reporting.
   - Completed on 2026-04-28 with runtime network value types split into `RuntimeHost/Network/RuntimeNetworkFixture.swift`, deterministic fixture miss handling covered, request ordering covered, and request/response header plus body-byte metadata retained in artifact records.
   - Validation: `swift test --filter RuntimeHostContractTests` passed with 15 runtime contract tests.
-- [ ] Step 5.4: Add launch-time device simulation settings to runtime sessions.
+- [x] Step 5.4: Add launch-time device simulation settings to runtime sessions.
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Cover viewport sizes, color scheme, locale, clock, geolocation, and network state as explicit value types.
   - Keep simulation as metadata reflected in runtime/session state; do not attempt real OS simulator behavior.
@@ -84,10 +84,18 @@
     - Add focused runtime contract coverage for default device settings, explicit launch-time settings, snapshot/session propagation after interactions, and screenshot artifact viewport metadata.
     - Keep behavior metadata-only: no OS simulator behavior, no browser renderer device emulation, and no TypeScript SDK launch options until Step 5.5.
     - Run `swift test --filter RuntimeHostContractTests`; expected result is green runtime device simulation coverage while automation SDK tests remain red until Step 5.5.
+  - Completed on 2026-04-28 with focused runtime contract coverage for default device settings, explicit launch-time settings, post-interaction snapshot/session propagation, semantic snapshot recording, and screenshot artifact viewport metadata.
+  - Validation: `swift test --filter RuntimeHostContractTests` passed with 18 runtime contract tests, then `swift test` passed with 31 tests across 4 suites and `swift build` completed with no warnings. No runtime implementation changes were needed because the Step 5.2 device/session plumbing already satisfied the strengthened contract.
 - [ ] Step 5.5: Surface artifacts, network fixtures, and device settings in the TypeScript automation SDK.
   - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/test/emulator.test.ts`, and related package-local types if present.
   - Extend the in-memory `Emulator` client with artifact retrieval, mocked route configuration, request-record inspection, and launch device options aligned with the runtime contracts.
   - Keep the API Playwright-style where the existing SDK already sets that precedent.
+  - Next execution plan:
+    - Re-read `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/test/emulator.test.ts`, and the runtime contracts for `RuntimeArtifactBundle`, `RuntimeNetworkFixture`, `RuntimeNetworkRequestRecord`, and `RuntimeDeviceSettings`.
+    - Extend the SDK-facing launch options with a `device` object that mirrors the runtime value shape closely enough for deterministic tests, while preserving existing default launch call sites.
+    - Add route/fixture registration and request recording APIs in the existing Playwright-style shape specified by the Step 5.1 red tests.
+    - Add artifact retrieval from the in-memory emulator session for screenshots, semantic snapshots, logs, and request records without introducing real browser screenshots or live network traffic.
+    - Run `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`; the previously expected Step 5.1 SDK red tests should turn green in this step.
 - [ ] Step 5.6: Add browser renderer support for deterministic render artifact metadata.
   - Files: modify `packages/browser-renderer/src/` renderer entry points and `packages/browser-renderer/test/` coverage; update renderer fixtures only if artifact state needs a checked-in semantic tree sample.
   - Produce deterministic render/capture metadata that can be consumed by the SDK without requiring native screenshot capture.

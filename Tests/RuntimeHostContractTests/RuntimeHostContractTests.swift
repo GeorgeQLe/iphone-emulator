@@ -755,6 +755,133 @@ struct RuntimeHostContractTests {
         #expect(coordinator.bridge.latestSnapshot?.device == settings)
     }
 
+    @Test("runtime launch defaults provide stable device simulation metadata")
+    func runtimeDeviceSimulationDefaultsAreStable() throws {
+        let configuration = RuntimeAutomationLaunchConfiguration(
+            appIdentifier: "FixtureApp",
+            fixtureName: "strict-mode-baseline"
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(configuration)
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        #expect(configuration.device.viewport == RuntimeDeviceViewport(width: 393, height: 852, scale: 3))
+        #expect(configuration.device.colorScheme == .light)
+        #expect(configuration.device.locale == "en_US")
+        #expect(configuration.device.clock == RuntimeDeviceClock(frozenAtISO8601: nil, timeZone: "UTC"))
+        #expect(configuration.device.geolocation == nil)
+        #expect(configuration.device.network == RuntimeDeviceNetworkState(isOnline: true, latencyMilliseconds: 0, downloadKbps: 0))
+        #expect(session.device == configuration.device)
+        #expect(session.snapshot.device == configuration.device)
+        #expect(coordinator.bridge.latestSnapshot?.device == configuration.device)
+    }
+
+    @Test("runtime device simulation metadata persists through interactions and semantic snapshots")
+    func runtimeDeviceSimulationMetadataPersistsThroughRuntimeState() throws {
+        let settings = RuntimeDeviceSettings(
+            viewport: RuntimeDeviceViewport(width: 430, height: 932, scale: 3),
+            colorScheme: .dark,
+            locale: "fr_FR",
+            clock: RuntimeDeviceClock(frozenAtISO8601: "2026-04-28T09:30:00Z", timeZone: "Europe/Paris"),
+            geolocation: RuntimeDeviceGeolocation(latitude: 48.8566, longitude: 2.3522, accuracyMeters: 8),
+            network: RuntimeDeviceNetworkState(isOnline: false, latencyMilliseconds: 150, downloadKbps: 0)
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        device: settings
+                    )
+                )
+            )
+        )
+
+        let fill = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-fill",
+                command: .fill(
+                    RuntimeAutomationSemanticQuery(identifier: "name-field"),
+                    text: "Camille"
+                )
+            )
+        )
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-tree",
+                command: .semanticSnapshot()
+            )
+        )
+
+        guard case let .interactionCompleted(snapshot, _) = fill.result else {
+            Issue.record("expected interaction result")
+            return
+        }
+
+        #expect(snapshot.device == settings)
+        #expect(coordinator.session?.device == settings)
+        #expect(coordinator.session?.snapshot.device == settings)
+        #expect(coordinator.bridge.latestSnapshot?.device == settings)
+        #expect(coordinator.session?.artifactBundle.semanticSnapshots.last?.revision == snapshot.revision)
+        #expect(coordinator.session?.artifactBundle.semanticSnapshots.last?.tree.scene.rootNode?.children.first?.children.first?.children[1].children.first?.value == "Camille")
+    }
+
+    @Test("runtime screenshot artifacts retain launch-time viewport metadata")
+    func runtimeScreenshotArtifactsRetainDeviceViewport() throws {
+        let settings = RuntimeDeviceSettings(
+            viewport: RuntimeDeviceViewport(width: 375, height: 812, scale: 2),
+            colorScheme: .light,
+            locale: "en_GB",
+            clock: RuntimeDeviceClock(frozenAtISO8601: "2026-04-28T10:00:00Z", timeZone: "Europe/London"),
+            geolocation: nil,
+            network: RuntimeDeviceNetworkState(isOnline: true, latencyMilliseconds: 40, downloadKbps: 2_000)
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        device: settings
+                    )
+                )
+            )
+        )
+
+        let screenshot = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-screenshot",
+                command: .screenshot(name: "small-phone")
+            )
+        )
+
+        guard case let .screenshot(metadata) = screenshot.result else {
+            Issue.record("expected screenshot metadata")
+            return
+        }
+
+        #expect(metadata.name == "small-phone")
+        #expect(metadata.format == "png")
+        #expect(metadata.byteCount == 0)
+        #expect(coordinator.session?.artifactBundle.renderArtifacts.last?.name == "small-phone")
+        #expect(coordinator.session?.artifactBundle.renderArtifacts.last?.viewport == settings.viewport)
+        #expect(coordinator.session?.artifactBundle.renderArtifacts.last?.kind == .screenshot)
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)
