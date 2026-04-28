@@ -86,7 +86,7 @@
     6. Run docs/task validation by inspecting the changed roadmap/todo diff. Run code validation only if public examples, package names, or code references change.
 
 ### Green
-- [ ] Step 6.6: Run full validation across Swift, browser renderer, and automation SDK.
+- [x] Step 6.6: Run full validation across Swift, browser renderer, and automation SDK.
   - Files: no intended source edits; update validation wiring only if a missing script blocks verification.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
   - Inspect output for warnings and either fix, explicitly accept, or report them.
