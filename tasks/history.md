@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 6 Step 6.1 by adding red-phase diagnostics contract coverage for migration-ready compatibility reports, including affected-file counts, support-level summaries, deterministic unsupported API grouping, grouped adaptation hints, and migration next-action output.
+- Validation: `swift test --filter DiagnosticsCoreContractTests` failed as expected on missing `CompatibilityReport` fields and helper APIs: `summary.affectedFileCount`, `summary.countsBySupportLevel`, `unsupportedGroups`, and `migrationSummary`. No unrelated failure appeared before compilation stopped.
 - Completed Phase 5 Step 5.10 as an intentional no-op boundary review after re-reading the runtime artifact/network/device value types, automation coordinator, TypeScript SDK public surface, and browser renderer DOM metadata helper together. No code refactor was needed because durable runtime state, SDK convenience APIs, and renderer-owned DOM metadata remain cleanly separated.
 - Validation: `swift test` passed with 31 tests across 4 suites, `swift build` passed, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
 - Archived the completed Phase 5 plan to `tasks/phases/phase-5.md`, marked Phase 5 complete in `tasks/roadmap.md`, and advanced `tasks/todo.md` to Phase 6. Phase 6 is marked `agent-team`, so local execution is blocked until it is run in isolated worktrees or a dedicated agent team.
