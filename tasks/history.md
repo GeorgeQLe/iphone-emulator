@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 5 Step 5.9 by running the full Swift, browser renderer, and automation SDK validation surface without needing source or package configuration changes.
+- Validation: `swift test` passed with 31 tests across 4 suites, `swift build` passed, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
 - Completed Phase 5 Step 5.8 by expanding the automation SDK representative regression to cover one strict-mode flow across launch-time device metadata, deterministic route fixtures, request recording, tap/fill interactions, semantic snapshot capture, logs, screenshot placeholder metadata, artifact bundle counts, and session device propagation.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed cleanly with no warnings. No Swift or browser renderer files were changed because existing package-local tests already cover the runtime and DOM render artifact contracts for this step.
 - Completed Phase 5 Step 5.7 by updating the root README and strict-mode baseline example docs for the current agent artifact workflow, and by expanding the checked-in automation example to cover launch-time device metadata, deterministic route fixtures, request recording, semantic snapshots, logs, screenshot placeholder metadata, artifact bundle counts, and session device state.

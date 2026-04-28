@@ -129,17 +129,19 @@
     - Run the focused changed-package tests first, then broaden to `swift test --filter RuntimeHostContractTests`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npm --prefix packages/browser-renderer run typecheck`, and `npm --prefix packages/browser-renderer test` as applicable to touched files.
   - Completed on 2026-04-28 with the automation SDK representative regression expanded to combine launch device metadata, deterministic route fixtures, request recording, tap/fill interactions, semantic snapshot capture, logs, screenshot placeholder metadata, artifact bundle counts, and session device propagation.
   - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed with no warnings. No Swift or browser renderer changes were needed because existing runtime and renderer tests already cover the package-local artifact, network, and device contracts for this step.
-- [ ] Step 5.9: Run full validation across Swift, browser renderer, and automation SDK.
+- [x] Step 5.9: Run full validation across Swift, browser renderer, and automation SDK.
   - Files: no intended source edits; update package scripts or config only if validation wiring is missing after implementation.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
-  - Next execution plan:
-    - Confirm the worktree is clean aside from intended task-doc updates before starting validation.
-    - Run the full Phase 5 validation surface exactly as listed for this step.
-    - Inspect output for warnings as well as failures; fix any unexpected validation issues before marking the step complete.
-    - If all commands pass cleanly, mark Step 5.9 complete and update `tasks/history.md` with the command results.
+  - Completed on 2026-04-28 with the full Phase 5 validation surface green and no source or package configuration changes needed.
+  - Validation: `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed with no warnings.
 - [ ] Step 5.10: Refactor artifact, network, and device simulation boundaries if needed while keeping tests green.
   - Re-read the runtime artifact types, network fixture records, automation SDK surface, and browser renderer metadata before changing file boundaries.
   - Keep refactors limited to clarifying ownership between runtime state, renderer metadata, and SDK client APIs.
+  - Next execution plan:
+    - Re-read `packages/runtime-host/Sources/RuntimeHost/Artifacts/RuntimeArtifactTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, `packages/automation-sdk/src/index.ts`, and `packages/browser-renderer/src/` artifact metadata helpers.
+    - Compare the current file ownership boundaries against Phase 5's final public surface: runtime value/state ownership, renderer DOM metadata ownership, and SDK client convenience APIs.
+    - Make the step an intentional no-op if the current split is already clean; otherwise apply only narrow moves, naming cleanup, or duplicate-type reductions that preserve existing API behavior.
+    - Run focused validation for any touched package first, then rerun the full Step 5.9 validation surface before marking the phase complete.
 
 ### Milestone: M3 Agent Artifacts, Fixtures, and Device Simulation
 **Acceptance Criteria:**
