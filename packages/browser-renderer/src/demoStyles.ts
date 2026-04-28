@@ -195,6 +195,20 @@ select {
   margin-bottom: 6px;
 }
 
+.demo-execution-mode {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 0 0 8px;
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: #e8f0f8;
+  color: #23425f;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
 .demo-preview-header p {
   margin: 0;
   color: #5e6c7a;

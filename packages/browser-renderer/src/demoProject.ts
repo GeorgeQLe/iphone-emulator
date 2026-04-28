@@ -15,6 +15,11 @@ export interface DemoDiagnostic {
 export interface DemoCompileResult {
   tree: SemanticUITree;
   diagnostics: DemoDiagnostic[];
+  executionMode: {
+    kind: "illustrative-lowering";
+    label: string;
+    detail: string;
+  };
 }
 
 export const demoProjectFiles: DemoProjectFile[] = [
@@ -82,10 +87,13 @@ await app.close();
     language: "markdown",
     value: `# Travel Planner Demo
 
-This mock project demonstrates the intended browser IDE loop:
+This mock project demonstrates the intended browser IDE loop. It does not run
+Swift or connect to a live runtime yet; the browser lowers a small illustrative
+strict-mode surface into the same semantic tree shape the real runtime transport
+will eventually provide.
 
 1. Edit strict-mode Swift-like app code.
-2. Lower supported declarations into a semantic UI tree.
+2. Lower supported declarations into a semantic UI tree in the browser.
 3. Render the result in an iPhone-like preview.
 4. Let an agent inspect semantic state and artifacts.
 `,
@@ -216,6 +224,12 @@ export function compileDemoProject(source: string): DemoCompileResult {
 
   return {
     diagnostics,
+    executionMode: {
+      kind: "illustrative-lowering",
+      label: "Illustrative source lowering",
+      detail:
+        "This browser demo parses a small strict-mode Swift-like subset locally. It is not executing Swift or using a live runtime transport yet.",
+    },
     tree: {
       appIdentifier,
       scene: {

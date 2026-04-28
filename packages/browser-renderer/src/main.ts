@@ -110,7 +110,7 @@ function createSidebar(): HTMLElement {
 
   const copy = document.createElement("p");
   copy.textContent =
-    "Edit a mock strict-mode Swift project and watch the semantic iPhone preview update.";
+    "Edit a mock strict-mode Swift project and watch illustrative source lowering update the semantic preview.";
 
   brand.append(title, copy);
 
@@ -131,7 +131,7 @@ function createSidebar(): HTMLElement {
   const footer = document.createElement("footer");
   footer.className = "demo-sidebar-footer";
   footer.textContent =
-    "This demo mocks the intended browser IDE loop: source, semantic lowering, preview, diagnostics, and artifacts.";
+    "This browser loop is local and illustrative until the live Swift runtime transport exists.";
 
   aside.append(brand, fileList, footer);
   return aside;
@@ -151,11 +151,15 @@ function createPreviewPane(): {
   const title = document.createElement("h2");
   title.textContent = "iPhone-like Preview";
 
+  const mode = document.createElement("div");
+  mode.className = "demo-execution-mode";
+  mode.textContent = "Illustrative lowering";
+
   const copy = document.createElement("p");
   copy.textContent =
-    "The preview is rendered from a semantic UI tree, the same contract an agent would inspect.";
+    "Rendered from a browser-lowered semantic UI tree, not from live Swift execution.";
 
-  header.append(title, copy);
+  header.append(title, mode, copy);
 
   const stage = document.createElement("div");
   stage.className = "demo-preview-stage";
@@ -226,7 +230,7 @@ function renderOutput(result: DemoCompileResult): void {
       : [
           {
             severity: "info" as const,
-            message: "Semantic preview compiled. No unsupported strict-mode declarations found.",
+            message: result.executionMode.detail,
           },
         ];
 
@@ -262,6 +266,7 @@ function renderInspector(result: DemoCompileResult): void {
         inputValues: Object.fromEntries(previewInputValues),
       },
       artifact,
+      executionMode: result.executionMode,
       semanticRoot: result.tree.scene.rootNode,
     },
     null,
