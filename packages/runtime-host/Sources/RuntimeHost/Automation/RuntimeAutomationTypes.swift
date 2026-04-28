@@ -3,30 +3,42 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
     public var appIdentifier: String
     public var snapshot: RuntimeTreeSnapshot
     public var logs: [RuntimeAutomationLogEntry]
+    public var artifactBundle: RuntimeArtifactBundle
+    public var device: RuntimeDeviceSettings
 
     public init(
         id: String,
         appIdentifier: String,
         snapshot: RuntimeTreeSnapshot,
-        logs: [RuntimeAutomationLogEntry] = []
+        logs: [RuntimeAutomationLogEntry] = [],
+        artifactBundle: RuntimeArtifactBundle? = nil,
+        device: RuntimeDeviceSettings = RuntimeDeviceSettings()
     ) {
         self.id = id
         self.appIdentifier = appIdentifier
         self.snapshot = snapshot
         self.logs = logs
+        self.artifactBundle = artifactBundle ?? RuntimeArtifactBundle(sessionID: id, logs: logs)
+        self.device = device
     }
 }
 
 public struct RuntimeAutomationLaunchConfiguration: Hashable, Codable, Sendable {
     public var appIdentifier: String
     public var fixtureName: String
+    public var device: RuntimeDeviceSettings
+    public var networkFixtures: [RuntimeNetworkFixture]
 
     public init(
         appIdentifier: String,
-        fixtureName: String
+        fixtureName: String,
+        device: RuntimeDeviceSettings = RuntimeDeviceSettings(),
+        networkFixtures: [RuntimeNetworkFixture] = []
     ) {
         self.appIdentifier = appIdentifier
         self.fixtureName = fixtureName
+        self.device = device
+        self.networkFixtures = networkFixtures
     }
 }
 
@@ -58,6 +70,7 @@ public enum RuntimeAutomationCommand: Hashable, Codable, Sendable {
     case semanticSnapshot(sessionID: String? = nil)
     case screenshot(name: String? = nil)
     case logs(sessionID: String? = nil)
+    case recordNetworkRequest(RuntimeNetworkRequest)
 }
 
 public struct RuntimeAutomationRequest: Hashable, Codable, Sendable {
@@ -82,6 +95,7 @@ public struct RuntimeAutomationResponse: Hashable, Codable, Sendable {
         case semanticTree(SemanticUITree)
         case screenshot(RuntimeAutomationScreenshotMetadata)
         case logs([RuntimeAutomationLogEntry])
+        case networkRecord(RuntimeNetworkRequestRecord)
     }
 
     public var requestID: String
@@ -136,6 +150,175 @@ public struct RuntimeAutomationScreenshotMetadata: Hashable, Codable, Sendable {
         self.name = name
         self.format = format
         self.byteCount = byteCount
+    }
+}
+
+public struct RuntimeDeviceSettings: Hashable, Codable, Sendable {
+    public enum ColorScheme: String, Hashable, Codable, Sendable {
+        case light
+        case dark
+    }
+
+    public var viewport: RuntimeDeviceViewport
+    public var colorScheme: ColorScheme
+    public var locale: String
+    public var clock: RuntimeDeviceClock
+    public var geolocation: RuntimeDeviceGeolocation?
+    public var network: RuntimeDeviceNetworkState
+
+    public init(
+        viewport: RuntimeDeviceViewport = RuntimeDeviceViewport(),
+        colorScheme: ColorScheme = .light,
+        locale: String = "en_US",
+        clock: RuntimeDeviceClock = RuntimeDeviceClock(),
+        geolocation: RuntimeDeviceGeolocation? = nil,
+        network: RuntimeDeviceNetworkState = RuntimeDeviceNetworkState()
+    ) {
+        self.viewport = viewport
+        self.colorScheme = colorScheme
+        self.locale = locale
+        self.clock = clock
+        self.geolocation = geolocation
+        self.network = network
+    }
+}
+
+public struct RuntimeDeviceViewport: Hashable, Codable, Sendable {
+    public var width: Int
+    public var height: Int
+    public var scale: Int
+
+    public init(
+        width: Int = 393,
+        height: Int = 852,
+        scale: Int = 3
+    ) {
+        self.width = width
+        self.height = height
+        self.scale = scale
+    }
+}
+
+public struct RuntimeDeviceClock: Hashable, Codable, Sendable {
+    public var frozenAtISO8601: String?
+    public var timeZone: String
+
+    public init(
+        frozenAtISO8601: String? = nil,
+        timeZone: String = "UTC"
+    ) {
+        self.frozenAtISO8601 = frozenAtISO8601
+        self.timeZone = timeZone
+    }
+}
+
+public struct RuntimeDeviceGeolocation: Hashable, Codable, Sendable {
+    public var latitude: Double
+    public var longitude: Double
+    public var accuracyMeters: Int
+
+    public init(
+        latitude: Double,
+        longitude: Double,
+        accuracyMeters: Int
+    ) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.accuracyMeters = accuracyMeters
+    }
+}
+
+public struct RuntimeDeviceNetworkState: Hashable, Codable, Sendable {
+    public var isOnline: Bool
+    public var latencyMilliseconds: Int
+    public var downloadKbps: Int
+
+    public init(
+        isOnline: Bool = true,
+        latencyMilliseconds: Int = 0,
+        downloadKbps: Int = 0
+    ) {
+        self.isOnline = isOnline
+        self.latencyMilliseconds = latencyMilliseconds
+        self.downloadKbps = downloadKbps
+    }
+}
+
+public struct RuntimeNetworkFixture: Hashable, Codable, Sendable {
+    public var id: String
+    public var method: String
+    public var url: String
+    public var response: RuntimeNetworkResponse
+
+    public init(
+        id: String,
+        method: String,
+        url: String,
+        response: RuntimeNetworkResponse
+    ) {
+        self.id = id
+        self.method = method
+        self.url = url
+        self.response = response
+    }
+}
+
+public struct RuntimeNetworkRequest: Hashable, Codable, Sendable {
+    public var method: String
+    public var url: String
+    public var headers: [String: String]
+    public var bodyByteCount: Int
+
+    public init(
+        method: String,
+        url: String,
+        headers: [String: String] = [:],
+        bodyByteCount: Int = 0
+    ) {
+        self.method = method
+        self.url = url
+        self.headers = headers
+        self.bodyByteCount = bodyByteCount
+    }
+}
+
+public struct RuntimeNetworkResponse: Hashable, Codable, Sendable {
+    public var status: Int
+    public var headers: [String: String]
+    public var bodyByteCount: Int
+
+    public init(
+        status: Int,
+        headers: [String: String] = [:],
+        bodyByteCount: Int = 0
+    ) {
+        self.status = status
+        self.headers = headers
+        self.bodyByteCount = bodyByteCount
+    }
+}
+
+public struct RuntimeNetworkRequestRecord: Hashable, Codable, Sendable {
+    public enum Source: Hashable, Codable, Sendable {
+        case fixture(String)
+        case missingFixture
+    }
+
+    public var id: String
+    public var request: RuntimeNetworkRequest
+    public var response: RuntimeNetworkResponse
+    public var source: Source
+
+    public init(
+        id: String,
+        request: RuntimeNetworkRequest,
+        response: RuntimeNetworkResponse,
+        source: Source
+    ) {
+        self.id = id
+        self.request = request
+        self.response = response
+        self.source = source
     }
 }
 

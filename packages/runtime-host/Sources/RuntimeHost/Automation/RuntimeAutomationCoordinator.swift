@@ -3,6 +3,8 @@ public struct RuntimeAutomationCoordinator {
     public private(set) var session: RuntimeAutomationSession?
 
     private var sessionSequence: Int
+    private var networkRequestSequence: Int
+    private var networkFixtures: [RuntimeNetworkFixture]
     private let loader: RuntimeAppLoader
 
     public init(
@@ -12,6 +14,8 @@ public struct RuntimeAutomationCoordinator {
         self.loader = loader
         self.bridge = bridge
         self.sessionSequence = 0
+        self.networkRequestSequence = 0
+        self.networkFixtures = []
         self.session = nil
     }
 
@@ -54,18 +58,13 @@ public struct RuntimeAutomationCoordinator {
             let matches = try findMatches(for: query)
             result = .queryMatches(matches)
         case .semanticSnapshot:
-            result = .semanticTree(try requireSession().snapshot.tree)
+            result = try recordSemanticSnapshot()
         case let .screenshot(name):
-            let currentSession = try requireSession()
-            result = .screenshot(
-                RuntimeAutomationScreenshotMetadata(
-                    name: name ?? currentSession.snapshot.tree.scene.id.rawValue,
-                    format: "png",
-                    byteCount: 0
-                )
-            )
+            result = try recordScreenshot(name: name)
         case .logs:
             result = .logs(try requireSession().logs)
+        case let .recordNetworkRequest(request):
+            result = try recordNetworkRequest(request)
         }
 
         return RuntimeAutomationResponse(
@@ -78,20 +77,42 @@ public struct RuntimeAutomationCoordinator {
         configuration: RuntimeAutomationLaunchConfiguration
     ) throws -> RuntimeAutomationResponse.Result {
         let snapshot = try loadFixtureSnapshot(configuration: configuration)
+        let deviceSnapshot = RuntimeTreeSnapshot(
+            appIdentifier: snapshot.appIdentifier,
+            tree: snapshot.tree,
+            lifecycleState: snapshot.lifecycleState,
+            revision: snapshot.revision,
+            device: configuration.device
+        )
         sessionSequence += 1
+        networkRequestSequence = 0
+        networkFixtures = configuration.networkFixtures
         let logEntry = RuntimeAutomationLogEntry(
             level: .info,
             message: "Launched fixture \(configuration.fixtureName)"
         )
+        let sessionID = "session-\(sessionSequence)"
         let launchedSession = RuntimeAutomationSession(
-            id: "session-\(sessionSequence)",
+            id: sessionID,
             appIdentifier: configuration.appIdentifier,
-            snapshot: snapshot,
-            logs: [logEntry]
+            snapshot: deviceSnapshot,
+            logs: [logEntry],
+            artifactBundle: RuntimeArtifactBundle(
+                sessionID: sessionID,
+                semanticSnapshots: [
+                    RuntimeSemanticSnapshotArtifact(
+                        name: "\(configuration.fixtureName)-initial-tree",
+                        tree: deviceSnapshot.tree,
+                        revision: deviceSnapshot.revision
+                    )
+                ],
+                logs: [logEntry]
+            ),
+            device: configuration.device
         )
 
         session = launchedSession
-        bridge.retain(snapshot)
+        bridge.retain(deviceSnapshot)
 
         return .launched(launchedSession)
     }
@@ -126,15 +147,71 @@ public struct RuntimeAutomationCoordinator {
                 scene: updatedScene
             ),
             lifecycleState: currentSession.snapshot.lifecycleState,
-            revision: currentSession.snapshot.revision + 1
+            revision: currentSession.snapshot.revision + 1,
+            device: currentSession.device
         )
         currentSession.snapshot = updatedSnapshot
         currentSession.logs.append(logEntry)
+        currentSession.artifactBundle.logs = currentSession.logs
 
         session = currentSession
         bridge.retain(updatedSnapshot)
 
         return .interactionCompleted(snapshot: updatedSnapshot, logs: currentSession.logs)
+    }
+
+    private mutating func recordSemanticSnapshot() throws -> RuntimeAutomationResponse.Result {
+        var currentSession = try requireSession()
+        let artifact = RuntimeSemanticSnapshotArtifact(
+            name: "\(currentSession.snapshot.tree.scene.id.rawValue)-revision-\(currentSession.snapshot.revision)",
+            tree: currentSession.snapshot.tree,
+            revision: currentSession.snapshot.revision
+        )
+        currentSession.artifactBundle.semanticSnapshots.append(artifact)
+        session = currentSession
+
+        return .semanticTree(currentSession.snapshot.tree)
+    }
+
+    private mutating func recordScreenshot(name: String?) throws -> RuntimeAutomationResponse.Result {
+        var currentSession = try requireSession()
+        let artifact = RuntimeRenderArtifactMetadata(
+            name: name ?? currentSession.snapshot.tree.scene.id.rawValue,
+            kind: .screenshot,
+            format: "png",
+            byteCount: 0,
+            viewport: currentSession.device.viewport
+        )
+        currentSession.artifactBundle.renderArtifacts.append(artifact)
+        session = currentSession
+
+        return .screenshot(
+            RuntimeAutomationScreenshotMetadata(
+                name: artifact.name,
+                format: artifact.format,
+                byteCount: artifact.byteCount
+            )
+        )
+    }
+
+    private mutating func recordNetworkRequest(
+        _ request: RuntimeNetworkRequest
+    ) throws -> RuntimeAutomationResponse.Result {
+        var currentSession = try requireSession()
+        networkRequestSequence += 1
+        let fixture = networkFixtures.first { fixture in
+            fixture.method == request.method && fixture.url == request.url
+        }
+        let record = RuntimeNetworkRequestRecord(
+            id: "request-\(networkRequestSequence)",
+            request: request,
+            response: fixture?.response ?? RuntimeNetworkResponse(status: 599),
+            source: fixture.map { .fixture($0.id) } ?? .missingFixture
+        )
+        currentSession.artifactBundle.networkRecords.append(record)
+        session = currentSession
+
+        return .networkRecord(record)
     }
 
     private func findMatches(for query: RuntimeAutomationSemanticQuery) throws -> [UITreeNode] {

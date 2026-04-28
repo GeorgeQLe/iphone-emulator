@@ -1,5 +1,10 @@
 # History
 
+## 2026-04-28
+
+- Completed Phase 5 Step 5.2 by adding runtime-owned artifact bundle types, deterministic render/screenshot metadata, semantic snapshot artifacts, launch-time device settings, session artifact state, snapshot device metadata, and coordinator recording for screenshot placeholders, semantic snapshots, logs, and fixture-backed network request records.
+- Validation: `swift test --filter RuntimeHostContractTests`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and `npm --prefix packages/automation-sdk run build` passed cleanly. `npm --prefix packages/automation-sdk run typecheck` remains red as expected on the Step 5.1 SDK-facing `device`, `route`, `request`, and `artifacts` contracts, and `npm --prefix packages/automation-sdk test` remains red as expected on missing `app.route`.
+
 ## 2026-04-27
 
 - Completed Phase 5 Step 5.1 by adding red-phase runtime and automation SDK contract coverage for deterministic artifact bundles, render/screenshot metadata, semantic snapshot artifacts, runtime logs, HAR-like network request records, network fixture lookup, launch-time device settings, and the SDK-facing artifact/network methods.

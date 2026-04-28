@@ -56,7 +56,7 @@
     - `npm --prefix packages/automation-sdk test` fails on the newly specified `app.route` API, while the existing representative SDK flow still passes.
 
 ### Implementation
-- [ ] Step 5.2: Implement runtime artifact bundle and deterministic capture placeholders.
+- [x] Step 5.2: Implement runtime artifact bundle and deterministic capture placeholders.
   - Files: add `packages/runtime-host/Sources/RuntimeHost/Artifacts/RuntimeArtifactTypes.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` and `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Reuse existing semantic tree snapshots and log entries instead of inventing a parallel runtime record model.
   - Artifact capture should remain deterministic placeholders until browser screenshot plumbing exists.
@@ -66,11 +66,18 @@
     - Extend `RuntimeAutomationSession` with `artifactBundle` and `device`, and extend `RuntimeTreeSnapshot` only if device metadata needs to be reflected in retained runtime state.
     - Extend `RuntimeAutomationLaunchConfiguration` with defaulted `device` and `networkFixtures` arguments to preserve existing launch call sites.
     - Update `RuntimeAutomationCoordinator` launch, screenshot, semantic snapshot, and log handling so the bundle records deterministic placeholder artifacts without attempting real screenshot capture.
-    - Run `swift test --filter RuntimeHostContractTests`; expected progress is eliminating artifact/device compile errors while network command behavior may remain red until Step 5.3 if kept intentionally deferred.
+  - Completed on 2026-04-28 with runtime-owned artifact bundle, render metadata, semantic snapshot artifact, device settings, session artifact state, snapshot device metadata, screenshot placeholder recording, semantic snapshot recording, and deterministic network request record plumbing in place.
+  - Validation: `swift test --filter RuntimeHostContractTests`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and `npm --prefix packages/automation-sdk run build` passed. `npm --prefix packages/automation-sdk run typecheck` and `npm --prefix packages/automation-sdk test` remain red as expected on the Step 5.1 SDK-facing `device`, `route`, `request`, and `artifacts` contracts deferred to Step 5.5.
 - [ ] Step 5.3: Add network fixture and HAR-like request recording support in the runtime layer.
   - Files: add `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add checked-in fixtures under `Tests/fixtures/network/` if useful.
   - Implement mocked route lookup and request/response records without live network calls.
   - Preserve deterministic ordering and inspectable payload metadata for later reporting.
+  - Next execution plan:
+    - Re-read the minimal runtime network types and `RuntimeAutomationCoordinator.recordNetworkRequest` behavior added during Step 5.2.
+    - Move or split the network value types into `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift` if that improves ownership without changing public names.
+    - Add focused contract coverage for unmatched fixture behavior, deterministic request ordering across multiple records, and inspectable request/response headers/body metadata.
+    - Keep the implementation runtime-only; do not add the TypeScript `app.route`/`app.request` SDK surface until Step 5.5.
+    - Run `swift test --filter RuntimeHostContractTests`; expected result is green runtime network fixture coverage while automation SDK tests remain red until Step 5.5.
 - [ ] Step 5.4: Add launch-time device simulation settings to runtime sessions.
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Cover viewport sizes, color scheme, locale, clock, geolocation, and network state as explicit value types.
