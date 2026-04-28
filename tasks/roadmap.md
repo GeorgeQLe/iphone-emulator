@@ -190,7 +190,7 @@
 - Ready for next phase: no
 
 ## Phase 6: M4 Reports, Migration Helpers, and React Native Evaluation
-**Status:** in progress; React Native decision recorded on 2026-04-28.
+**Status:** complete on 2026-04-28.
 
 **Goal:** Improve compatibility reporting, provide migration guidance, and evaluate the deferred React Native compatibility lane.
 
@@ -214,3 +214,8 @@
 
 **Parallelization:** agent-team
 **Coordination Notes:** This phase spans reports, migration strategy, and a separate runtime ecosystem. It is better suited to isolated worktrees or a dedicated agent team once the core harness is stable.
+
+**On Completion:**
+- Deviations from plan: Step 6.7 completed as an intentional no-op boundary review; no report, migration, React Native, or roadmap cleanup was needed beyond task archival.
+- Tech debt / follow-ups: React Native remains deferred research until strict-mode live runtime-to-renderer transport and session coordination are stable.
+- Ready for next phase: no further implementation phase is currently queued; refresh research/spec/task docs before adding new build phases.
