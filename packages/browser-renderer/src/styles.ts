@@ -66,6 +66,10 @@ body {
   border: 1px solid rgba(103, 122, 139, 0.18);
 }
 
+.phone-surface[data-keyboard-visible="true"] .surface-body {
+  padding-bottom: 220px;
+}
+
 .surface-header {
   padding: 20px 20px 12px;
   border-bottom: 1px solid rgba(103, 122, 139, 0.14);
@@ -132,6 +136,11 @@ body {
   color: #13212e;
 }
 
+.node-button:focus-visible {
+  outline: 3px solid rgba(25, 134, 255, 0.26);
+  outline-offset: 2px;
+}
+
 .node-button[data-variant="primary"] {
   background: linear-gradient(180deg, #1986ff, #0b68df);
   color: #ffffff;
@@ -141,6 +150,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  border-radius: 16px;
+}
+
+.node-textField[data-focused="true"] {
+  background: rgba(25, 134, 255, 0.08);
+  box-shadow: 0 0 0 6px rgba(25, 134, 255, 0.08);
 }
 
 .node-textField input {

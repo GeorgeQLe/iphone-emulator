@@ -197,6 +197,8 @@ function renderTextFieldNode(document: Document, node: UITreeNode): HTMLElement 
   input.type = "text";
   input.value = node.value ?? "";
   input.placeholder = node.metadata.placeholder ?? "";
+  input.dataset.inputNodeId = node.id;
+  input.setAttribute("aria-label", node.label ?? node.id);
 
   wrapper.append(label, input);
   applyNodeMetadata(wrapper, node);

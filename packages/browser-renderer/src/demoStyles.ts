@@ -236,6 +236,7 @@ select {
   border-top: 1px solid rgba(102, 116, 130, 0.24);
   background: rgba(214, 221, 229, 0.96);
   box-shadow: 0 -18px 38px rgba(23, 32, 42, 0.16);
+  backdrop-filter: blur(18px);
 }
 
 .demo-keyboard-row {
@@ -255,6 +256,11 @@ select {
   line-height: 1;
   box-shadow: 0 1px 0 rgba(23, 32, 42, 0.2);
   cursor: pointer;
+}
+
+.demo-key:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
 }
 
 .demo-key[data-wide="true"] {

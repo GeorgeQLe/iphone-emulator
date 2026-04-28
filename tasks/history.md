@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 7 Step 7.3 by making the browser preview keep text-field edits as preview-local state, rehydrate those values after source recompiles, update the semantic inspector after input, keyboard, and button interactions, and expose stable input targeting metadata without changing the renderer's semantic DOM node count.
+- Validation: `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` passed cleanly. `npm --prefix packages/browser-renderer run build` passed and emitted Vite's expected large-chunk warning for Monaco editor and worker bundles; accepted as unchanged demo-shell build output.
 - Completed Phase 7 Step 7.2 by tightening `packages/browser-renderer/src/demoProject.ts` as the browser IDE demo's owner for mock project files, illustrative strict-mode declaration parsing, deterministic semantic node IDs, and unsupported/empty-surface diagnostics.
 - Validation: `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` passed cleanly with no warnings. `npm --prefix packages/browser-renderer run build` passed and emitted Vite's expected large-chunk warning for Monaco editor and worker bundles; accepted as unchanged demo-shell build output.
 - Completed Phase 7 Step 7.1 by validating the existing browser IDE demo shell around the current renderer package. The package already has Monaco loaded through Vite workers, a local `dev` script, working file selection, and distinct editor, preview, diagnostics, and inspector panes, so no source changes were needed.

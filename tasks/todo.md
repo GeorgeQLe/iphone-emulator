@@ -40,7 +40,7 @@
   - Represent mock strict-mode Swift, agent test, and README files; parse the supported illustrative declarations into `SemanticUITree`; produce diagnostics for unsupported framework imports and empty supported surfaces.
   - Implementation plan: audit the existing `demoProjectFiles` and `compileDemoProject` helpers, then tighten `demoProject.ts` as the single owner for mock project content, supported declaration parsing, deterministic node IDs, and compiler diagnostics. Keep the lowering deliberately illustrative and package-local; do not move reusable renderer behavior into the demo compiler.
   - Validation focus: run `npm --prefix packages/browser-renderer run typecheck` after the change, and defer broader regression coverage to Step 7.6 unless Step 7.2 changes public renderer contracts.
-- [ ] Step 7.3: Make preview interactions stateful inside the iPhone-like renderer
+- [x] Step 7.3: Make preview interactions stateful inside the iPhone-like renderer
   - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/renderTree.ts`, `packages/browser-renderer/src/styles.ts`, `packages/browser-renderer/src/demoStyles.ts`
   - Support editable text fields, focus styling, mock keyboard display, keyboard insert/delete/done behavior, and semantic inspector updates after input changes.
   - Implementation plan: trace the current `wirePreviewInteractions`, `renderTextFieldNode`, and keyboard helpers, then make text field state updates flow through the rendered node metadata without re-running the demo compiler. Keep persistent preview-only input state in `main.ts`; keep reusable DOM affordances such as node IDs, focus hooks, and text field attributes in `renderTree.ts`; keep visual keyboard and focus treatment in package-local style modules. Preserve deterministic inspector output after each text mutation.
@@ -48,6 +48,8 @@
 - [ ] Step 7.4: Keep the demo honest about mocked source lowering versus live Swift execution
   - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoProject.ts`, `packages/browser-renderer/src/demoStyles.ts`, `README.md` or `examples/strict-mode-baseline/README.md` if a doc note is needed
   - Surface copy or diagnostics that explain the demo is a browser IDE loop over illustrative strict-mode lowering until live Swift runtime transport exists.
+  - Implementation plan: audit the existing sidebar/footer, preview header, diagnostics copy, and mock project README text for places that imply live Swift execution. Add a concise browser-visible execution-mode indicator and, if needed, a non-error diagnostic emitted by `compileDemoProject` that labels the current path as illustrative source lowering rather than runtime execution. Keep this as demo copy/metadata only; do not change semantic tree contracts or renderer behavior.
+  - Validation focus: run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` because this step touches browser-facing demo code/copy.
 - [ ] Step 7.5: Polish responsive layout and preview ergonomics
   - Files: modify `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/styles.ts`
   - Ensure the editor, preview, keyboard, diagnostics, and inspector remain usable on desktop and narrower viewports without overlapping content.

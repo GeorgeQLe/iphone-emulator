@@ -35,6 +35,9 @@ const projectFiles = new Map(demoProjectFiles.map((file) => [file.path, file]));
 let activeFile = demoProjectFiles[0];
 let lastCompileResult = compileDemoProject(activeFile.value);
 let activePreviewInput: HTMLInputElement | undefined;
+let focusedPreviewNodeId: string | undefined;
+let lastPreviewAction: string | undefined;
+const previewInputValues = new Map<string, string>();
 
 const shell = document.createElement("div");
 shell.className = "demo-shell";
@@ -200,6 +203,7 @@ function refreshPreview(): void {
   }
 
   lastCompileResult = compileDemoProject(swiftFile.value);
+  applyPreviewInputValues(lastCompileResult.tree.scene.rootNode);
   previewPane.stage.replaceChildren();
   const rendererRoot = document.createElement("div");
   previewPane.stage.append(rendererRoot);
@@ -251,6 +255,12 @@ function renderInspector(result: DemoCompileResult): void {
     {
       appIdentifier: result.tree.appIdentifier,
       scene: result.tree.scene.id,
+      previewState: {
+        focusedNodeId: focusedPreviewNodeId ?? null,
+        keyboardVisible: focusedPreviewNodeId !== undefined,
+        lastAction: lastPreviewAction ?? null,
+        inputValues: Object.fromEntries(previewInputValues),
+      },
       artifact,
       semanticRoot: result.tree.scene.rootNode,
     },
@@ -272,7 +282,10 @@ function wirePreviewInteractions(rendererRoot: HTMLElement): void {
     }
 
     activePreviewInput = input;
+    focusedPreviewNodeId = findNodeId(input);
+    setFocusedField(surface, focusedPreviewNodeId);
     showKeyboard(surface);
+    renderInspector(lastCompileResult);
   });
 
   surface.addEventListener("input", (event) => {
@@ -281,17 +294,30 @@ function wirePreviewInteractions(rendererRoot: HTMLElement): void {
       return;
     }
 
-    const field = input.closest<HTMLElement>("[data-node-id]");
-    if (!field?.dataset.nodeId) {
+    const nodeId = findNodeId(input);
+    if (!nodeId) {
       return;
     }
 
-    updateTreeNodeValue(lastCompileResult.tree.scene.rootNode, field.dataset.nodeId, input.value);
+    previewInputValues.set(nodeId, input.value);
+    updateTreeNodeValue(lastCompileResult.tree.scene.rootNode, nodeId, input.value);
+    lastPreviewAction = `input:${nodeId}`;
+    renderInspector(lastCompileResult);
+  });
+
+  surface.addEventListener("click", (event) => {
+    const button = (event.target as Element | null)?.closest<HTMLButtonElement>(".node-button");
+    if (!button?.dataset.nodeId) {
+      return;
+    }
+
+    lastPreviewAction = `tap:${button.dataset.nodeId}`;
     renderInspector(lastCompileResult);
   });
 }
 
 function showKeyboard(surface: HTMLElement): void {
+  surface.dataset.keyboardVisible = "true";
   surface.querySelector(".demo-keyboard")?.remove();
   surface.append(createKeyboard(surface.ownerDocument));
 }
@@ -372,12 +398,17 @@ function deletePreviewText(): void {
 }
 
 function hideKeyboard(): void {
+  const surface = activePreviewInput?.closest<HTMLElement>(".phone-surface");
   activePreviewInput?.blur();
-  activePreviewInput
-    ?.closest(".phone-surface")
-    ?.querySelector(".demo-keyboard")
-    ?.remove();
+  surface?.querySelector(".demo-keyboard")?.remove();
+  if (surface) {
+    delete surface.dataset.keyboardVisible;
+    setFocusedField(surface, undefined);
+  }
+  focusedPreviewNodeId = undefined;
+  lastPreviewAction = "keyboard:done";
   activePreviewInput = undefined;
+  renderInspector(lastCompileResult);
 }
 
 function updateTreeNodeValue(node: UITreeNode | undefined, nodeId: string, value: string): boolean {
@@ -391,6 +422,37 @@ function updateTreeNodeValue(node: UITreeNode | undefined, nodeId: string, value
   }
 
   return node.children.some((child) => updateTreeNodeValue(child, nodeId, value));
+}
+
+function applyPreviewInputValues(node: UITreeNode | undefined): void {
+  if (!node) {
+    return;
+  }
+
+  if (node.role === "textField") {
+    const previewValue = previewInputValues.get(node.id);
+    if (previewValue !== undefined) {
+      node.value = previewValue;
+    }
+  }
+
+  for (const child of node.children) {
+    applyPreviewInputValues(child);
+  }
+}
+
+function findNodeId(element: HTMLElement): string | undefined {
+  return (
+    element.dataset.inputNodeId ??
+    element.dataset.nodeId ??
+    element.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId
+  );
+}
+
+function setFocusedField(surface: HTMLElement, nodeId: string | undefined): void {
+  for (const field of Array.from(surface.querySelectorAll<HTMLElement>(".node-textField"))) {
+    field.dataset.focused = String(nodeId !== undefined && field.dataset.nodeId === nodeId);
+  }
 }
 
 function appendDemoStyles(document: Document): void {
