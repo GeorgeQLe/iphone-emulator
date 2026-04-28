@@ -83,7 +83,7 @@
 **Coordination Notes:** Compatibility choices depend on strict runtime behavior and should avoid independent shim growth. Research can inventory likely SwiftUI subset APIs before implementation.
 
 ## Phase 5: M3 Agent Artifacts, Fixtures, and Device Simulation
-**Status:** current.
+**Status:** complete on 2026-04-28.
 
 **Goal:** Make the harness useful for agent-driven testing through artifacts, network fixtures, and deterministic device simulation.
 
