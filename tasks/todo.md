@@ -32,12 +32,14 @@
 **Subagent lanes:** none
 
 ### Implementation
-- [ ] Step 7.1: Stabilize the browser IDE demo shell around the current renderer package
+- [x] Step 7.1: Stabilize the browser IDE demo shell around the current renderer package
   - Files: modify `packages/browser-renderer/index.html`, `packages/browser-renderer/package.json`, `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/vite-env.d.ts`, `packages/browser-renderer/tsconfig.json`, `package-lock.json`
   - Ensure Monaco loads through Vite, the demo has a local `dev` script, file selection works, and the shell clearly presents editor, preview, diagnostics, and inspector panes.
 - [ ] Step 7.2: Define the mock project and source-to-semantic lowering surface
   - Files: create or modify `packages/browser-renderer/src/demoProject.ts`
   - Represent mock strict-mode Swift, agent test, and README files; parse the supported illustrative declarations into `SemanticUITree`; produce diagnostics for unsupported framework imports and empty supported surfaces.
+  - Implementation plan: audit the existing `demoProjectFiles` and `compileDemoProject` helpers, then tighten `demoProject.ts` as the single owner for mock project content, supported declaration parsing, deterministic node IDs, and compiler diagnostics. Keep the lowering deliberately illustrative and package-local; do not move reusable renderer behavior into the demo compiler.
+  - Validation focus: run `npm --prefix packages/browser-renderer run typecheck` after the change, and defer broader regression coverage to Step 7.6 unless Step 7.2 changes public renderer contracts.
 - [ ] Step 7.3: Make preview interactions stateful inside the iPhone-like renderer
   - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/renderTree.ts`, `packages/browser-renderer/src/styles.ts`, `packages/browser-renderer/src/demoStyles.ts`
   - Support editable text fields, focus styling, mock keyboard display, keyboard insert/delete/done behavior, and semantic inspector updates after input changes.
