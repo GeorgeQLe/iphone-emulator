@@ -104,7 +104,7 @@
   - Keep the browser shell visual behavior stable for existing tests.
   - Completed on 2026-04-28 with package-local deterministic render artifact metadata types and a pure `createRenderArtifactMetadata` helper for renderer DOM captures.
   - Validation: `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` passed with no warnings. One initial renderer test expectation had an incorrect deterministic byte count and was corrected before the final green run.
-- [ ] Step 5.7: Expand examples and docs for agent artifact workflows.
+- [x] Step 5.7: Expand examples and docs for agent artifact workflows.
   - Files: update `README.md`; add or modify docs under `docs/`; extend `examples/strict-mode-baseline/automation-example.ts` or nearby example files.
   - Document screenshot/render placeholders, semantic snapshots, logs, network fixtures, and device settings with exact validation commands.
   - Avoid claiming full simulator fidelity or production screenshot support.
@@ -113,12 +113,20 @@
     - Update the root README and/or a focused docs page to describe the current artifact workflow: screenshot placeholders, renderer DOM metadata, semantic snapshots, log bundles, deterministic network fixtures, request records, and launch-time device metadata.
     - Extend the strict-mode baseline automation example to show launch device options, route fixture setup, request recording, artifact retrieval, semantic snapshot capture, logs, and render/screenshot metadata without implying native screenshot or real simulator fidelity.
     - Include exact validation commands for the touched docs/example surface, with automation SDK checks first and broader Swift/browser checks only if shared contracts or examples require them.
+  - Completed on 2026-04-28 with the root README and strict-mode baseline example docs updated for the Phase 5 artifact workflow, plus an expanded automation example covering device launch metadata, deterministic route fixtures, request recording, semantic snapshots, logs, screenshot placeholder metadata, artifact bundle counts, and session device state.
+  - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, and `npx tsx examples/strict-mode-baseline/automation-example.ts` passed with no warnings.
 
 ### Green
 - [ ] Step 5.8: Add regression tests covering end-to-end artifact, network fixture, and device simulation flows.
   - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `packages/automation-sdk/test/emulator.test.ts`, and `packages/browser-renderer/test/` only where needed.
   - Cover a representative strict-mode automation flow that produces artifacts, records a mocked network interaction, and reflects launch device settings.
   - Keep assertions structural and deterministic.
+  - Next execution plan:
+    - Re-read `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `packages/automation-sdk/src/index.test.ts`, `packages/browser-renderer/src/renderTree.test.ts`, and the current artifact/network/device docs from Step 5.7.
+    - Add or extend the smallest representative regression flow in the automation SDK tests first: launch with non-default device metadata, register a route fixture, perform tap/fill interactions, issue a request, collect semantic tree/logs/screenshot/artifacts/session, and assert deterministic artifact counts plus request/device propagation.
+    - Add runtime Swift contract coverage only for any end-to-end gap not already covered by the Step 5.2-5.4 runtime tests; avoid duplicating every SDK assertion in Swift.
+    - Add browser-renderer regression coverage only if renderer DOM render artifact metadata is not already locked by package-local tests.
+    - Run the focused changed-package tests first, then broaden to `swift test --filter RuntimeHostContractTests`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npm --prefix packages/browser-renderer run typecheck`, and `npm --prefix packages/browser-renderer test` as applicable to touched files.
 - [ ] Step 5.9: Run full validation across Swift, browser renderer, and automation SDK.
   - Files: no intended source edits; update package scripts or config only if validation wiring is missing after implementation.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.

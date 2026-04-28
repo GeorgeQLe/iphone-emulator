@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 4 milestone adds diagnostics-led compatibility analysis for a narrow SwiftUI-inspired subset on top of the strict-mode semantic tree, deterministic browser preview surface, and fixture-backed automation SDK.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 5 milestone adds agent-facing artifacts, deterministic network fixtures, and launch-time device metadata on top of the strict-mode semantic tree, deterministic browser preview surface, and fixture-backed automation SDK.
 
 ## Goals
 
@@ -34,14 +34,14 @@ The harness is designed to remain implementable with open-source tooling and pro
 
 ## Current Phase Status
 
-Phase 4 currently provides:
+Phase 5 currently provides:
 
 - `StrictModeSDK` entry points for strict-mode `App`, `Scene`, layout primitives, navigation, alerts, and state, plus lowering hooks that produce the shared semantic tree contract.
 - `RuntimeHost` value types for semantic UI tree snapshots, fixture loading, lifecycle metadata, and retained tree inspection.
-- `RuntimeHost` automation protocol types and an in-memory fixture coordinator that can launch the strict baseline fixture, resolve semantic queries, apply deterministic `tap` and `fill` updates, and expose logs plus screenshot placeholder metadata.
+- `RuntimeHost` automation protocol types and an in-memory fixture coordinator that can launch the strict baseline fixture, resolve semantic queries, apply deterministic `tap` and `fill` updates, and expose artifact bundles with screenshot placeholders, semantic snapshots, logs, device metadata, and HAR-like network records.
 - `DiagnosticsCore` compatibility contracts, a lightweight source analyzer, a documented v1 compatibility matrix, and a narrow supported-subset lowering path that emits the shared runtime tree when analysis succeeds without unsupported diagnostics.
-- `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell.
-- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, locator queries by text/role/test ID, semantic tree inspection, log retrieval, and screenshot placeholder metadata through an in-memory fixture client.
+- `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell and can derive stable DOM render metadata for captures.
+- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, and artifact bundle retrieval through an in-memory fixture client.
 - SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface before later phases add transport or live session coordination.
 
 ## Workspace Layout
@@ -90,16 +90,46 @@ import { Emulator } from "@iphone-emulator/automation-sdk";
 const app = await Emulator.launch({
   appIdentifier: "FixtureApp",
   fixtureName: "strict-mode-baseline",
+  device: {
+    viewport: { width: 393, height: 852, scale: 3 },
+    colorScheme: "dark",
+    locale: "en_US",
+    clock: {
+      frozenAtISO8601: "2026-04-28T12:00:00Z",
+      timeZone: "America/New_York",
+    },
+    geolocation: {
+      latitude: 40.7128,
+      longitude: -74.006,
+      accuracyMeters: 25,
+    },
+    network: {
+      isOnline: true,
+      latencyMilliseconds: 20,
+      downloadKbps: 12000,
+    },
+  },
+});
+
+await app.route("https://example.test/profile", {
+  id: "profile-fixture",
+  status: 200,
+  headers: { "content-type": "application/json" },
+  body: { name: "Taylor" },
 });
 
 await app.getByText("Save").tap();
 await app.getByRole("textField", { text: "Name" }).fill("Taylor");
 
+const request = await app.request("https://example.test/profile");
 const field = await app.getByTestId("name-field").inspect();
 const tree = await app.semanticTree();
 const logs = await app.logs();
+const screenshot = await app.screenshot("baseline-after-save");
+const artifacts = await app.artifacts();
 
 console.log(field.value, tree.scene.alertPayload?.title, logs);
+console.log(request.response.status, screenshot.viewport, artifacts.networkRecords.length);
 
 await app.close();
 ```
@@ -110,5 +140,8 @@ await app.close();
 - There is no JSON-RPC or WebSocket transport between Swift and the browser renderer yet.
 - The automation SDK is in-memory only. It mirrors the runtime contract and fixture behavior locally; it does not yet speak to a live Swift host, browser process, or real device.
 - Runtime updates are fixture-scoped and deterministic; live interaction, multi-session coordination, and transport-backed automation hooks are deferred to later phases.
-- Screenshot support is limited to placeholder metadata (`name`, `format`, `byteCount`) until a later phase adds a real artifact pipeline.
+- Screenshot support is limited to placeholder metadata (`name`, `kind`, `format`, `byteCount`, `viewport`) until a later phase adds a real pixel artifact pipeline.
+- Renderer capture support currently produces deterministic DOM render metadata, not native screenshots or video.
+- Network fixtures are deterministic in-memory route records. They do not perform live HTTP calls.
+- Device settings are reflected as launch/session metadata and artifact viewport metadata. They do not emulate OS simulator behavior.
 - Compatibility mode is scanner-based rather than compiler-integrated. It only lowers the first documented SwiftUI-inspired subset and otherwise returns diagnostics instead of attempting broad SwiftUI or UIKit emulation.
