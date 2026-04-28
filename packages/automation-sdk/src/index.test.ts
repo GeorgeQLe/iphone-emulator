@@ -78,6 +78,8 @@ describe("Emulator", () => {
         network: { isOnline: true, latencyMilliseconds: 25, downloadKbps: 1500 },
       },
     });
+    const saveButton = app.getByText("Save");
+    const nameField = app.getByRole("textField", { text: "Name" });
 
     await expect(app.route("https://example.test/profile", {
       id: "profile-success",
@@ -102,11 +104,43 @@ describe("Emulator", () => {
       source: { fixtureId: "profile-success" },
     });
 
-    await expect(app.artifacts()).resolves.toMatchObject({
+    await expect(saveButton.tap()).resolves.toBeUndefined();
+    await expect(nameField.fill("Morgan")).resolves.toBeUndefined();
+    await expect(app.semanticTree()).resolves.toMatchObject({
+      scene: {
+        alertPayload: {
+          title: "Done",
+          message: "Saved",
+        },
+      },
+    });
+    await expect(app.getByTestId("name-field").inspect()).resolves.toMatchObject({
+      id: "name-field",
+      value: "Morgan",
+    });
+    await expect(app.logs()).resolves.toEqual([
+      { level: "info", message: "Tapped save-button" },
+      { level: "info", message: "Filled name-field with Morgan" },
+    ]);
+    await expect(app.screenshot("post-submit")).resolves.toMatchObject({
+      name: "post-submit",
+      kind: "screenshot",
+      format: "png",
+      byteCount: 0,
+      viewport: { width: 393, height: 852, scale: 3 },
+    });
+
+    const artifacts = await app.artifacts();
+    expect(artifacts).toMatchObject({
       sessionID: "session-1",
       renderArtifacts: [
         {
           name: "baseline-home",
+          kind: "screenshot",
+          viewport: { width: 393, height: 852, scale: 3 },
+        },
+        {
+          name: "post-submit",
           kind: "screenshot",
           viewport: { width: 393, height: 852, scale: 3 },
         },
@@ -116,20 +150,44 @@ describe("Emulator", () => {
           name: "baseline-tree",
           revision: 1,
         },
+        {
+          name: "baseline-tree",
+          revision: 3,
+        },
+      ],
+      logs: [
+        { level: "info", message: "Tapped save-button" },
+        { level: "info", message: "Filled name-field with Morgan" },
       ],
       networkRecords: [
         {
+          id: "request-1",
           source: { fixtureId: "profile-success" },
         },
       ],
     });
+    expect(artifacts.renderArtifacts).toHaveLength(2);
+    expect(artifacts.semanticSnapshots).toHaveLength(2);
+    expect(artifacts.logs).toHaveLength(2);
+    expect(artifacts.networkRecords).toHaveLength(1);
     await expect(app.session()).resolves.toMatchObject({
+      snapshot: {
+        revision: 3,
+        device: {
+          viewport: { width: 393, height: 852, scale: 3 },
+          colorScheme: "dark",
+          locale: "en_US",
+        },
+      },
       device: {
+        viewport: { width: 393, height: 852, scale: 3 },
         colorScheme: "dark",
         locale: "en_US",
         clock: {
+          frozenAtISO8601: "2026-04-27T14:00:00Z",
           timeZone: "America/New_York",
         },
+        geolocation: { latitude: 40.7128, longitude: -74.006, accuracyMeters: 12 },
         network: {
           latencyMilliseconds: 25,
         },

@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 5 Step 5.8 by expanding the automation SDK representative regression to cover one strict-mode flow across launch-time device metadata, deterministic route fixtures, request recording, tap/fill interactions, semantic snapshot capture, logs, screenshot placeholder metadata, artifact bundle counts, and session device propagation.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed cleanly with no warnings. No Swift or browser renderer files were changed because existing package-local tests already cover the runtime and DOM render artifact contracts for this step.
 - Completed Phase 5 Step 5.7 by updating the root README and strict-mode baseline example docs for the current agent artifact workflow, and by expanding the checked-in automation example to cover launch-time device metadata, deterministic route fixtures, request recording, semantic snapshots, logs, screenshot placeholder metadata, artifact bundle counts, and session device state.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, and `npx tsx examples/strict-mode-baseline/automation-example.ts` passed cleanly with no warnings.
 - Completed Phase 5 Step 5.6 by adding browser-renderer-owned deterministic render artifact metadata: package-local render artifact and viewport types plus a pure helper that derives DOM render metadata from the fixed semantic tree without changing renderer DOM behavior.
