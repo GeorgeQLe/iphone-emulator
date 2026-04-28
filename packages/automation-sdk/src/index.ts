@@ -1,9 +1,16 @@
 import type {
   RoleLocatorOptions,
+  RuntimeArtifactBundle,
   RuntimeAutomationLaunchOptions,
   RuntimeAutomationLogEntry,
   RuntimeAutomationScreenshotMetadata,
   RuntimeAutomationSession,
+  RuntimeDeviceSettings,
+  RuntimeNetworkFixture,
+  RuntimeNetworkFixtureInput,
+  RuntimeNetworkRequestInput,
+  RuntimeNetworkRequestRecord,
+  RuntimeNetworkResponse,
   RuntimeTreeSnapshot,
   SemanticQuery,
   SemanticUITree,
@@ -18,10 +25,17 @@ import type {
 
 export type {
   RoleLocatorOptions,
+  RuntimeArtifactBundle,
   RuntimeAutomationLaunchOptions,
   RuntimeAutomationLogEntry,
   RuntimeAutomationScreenshotMetadata,
   RuntimeAutomationSession,
+  RuntimeDeviceSettings,
+  RuntimeNetworkFixture,
+  RuntimeNetworkFixtureInput,
+  RuntimeNetworkRequestInput,
+  RuntimeNetworkRequestRecord,
+  RuntimeNetworkResponse,
   RuntimeTreeSnapshot,
   SemanticQuery,
   SemanticUITree,
@@ -46,6 +60,9 @@ export interface EmulatorApp {
   getByText(text: string): Locator;
   getByTestId(identifier: string): Locator;
   logs(): Promise<RuntimeAutomationLogEntry[]>;
+  artifacts(): Promise<RuntimeArtifactBundle>;
+  request(url: string, options?: RuntimeNetworkRequestInput): Promise<RuntimeNetworkRequestRecord>;
+  route(url: string, fixture: RuntimeNetworkFixtureInput): Promise<void>;
   screenshot(name?: string): Promise<RuntimeAutomationScreenshotMetadata>;
   semanticTree(): Promise<SemanticUITree>;
   session(): Promise<RuntimeAutomationSession>;
@@ -59,6 +76,8 @@ export interface Locator {
 
 class InMemoryEmulatorApp implements EmulatorApp {
   private currentSession: RuntimeAutomationSession | null;
+  private readonly networkFixtures = new Map<string, RuntimeNetworkFixture>();
+  private requestSequence = 0;
 
   constructor(session: RuntimeAutomationSession) {
     this.currentSession = session;
@@ -89,18 +108,72 @@ class InMemoryEmulatorApp implements EmulatorApp {
     return cloneLogs(this.requireSession().logs);
   }
 
+  async artifacts(): Promise<RuntimeArtifactBundle> {
+    return cloneArtifactBundle(this.requireSession().artifactBundle);
+  }
+
+  async request(
+    url: string,
+    options: RuntimeNetworkRequestInput = {}
+  ): Promise<RuntimeNetworkRequestRecord> {
+    const session = this.requireSession();
+    const method = options.method ?? "GET";
+    const request = {
+      method,
+      url,
+      headers: { ...(options.headers ?? {}) },
+      bodyByteCount: byteCount(options.body),
+    };
+    const fixture = this.networkFixtures.get(fixtureKey(method, url));
+    const record: RuntimeNetworkRequestRecord = {
+      id: `request-${++this.requestSequence}`,
+      request,
+      response: fixture?.response ?? { status: 404, headers: {}, bodyByteCount: 0 },
+      source: fixture ? { fixtureId: fixture.id } : { missingFixture: true },
+    };
+
+    session.artifactBundle.networkRecords.push(record);
+    return cloneNetworkRequestRecord(record);
+  }
+
+  async route(url: string, fixture: RuntimeNetworkFixtureInput): Promise<void> {
+    const method = fixture.method ?? "GET";
+    const networkFixture: RuntimeNetworkFixture = {
+      id: fixture.id,
+      method,
+      url,
+      response: {
+        status: fixture.status,
+        headers: { ...(fixture.headers ?? {}) },
+        bodyByteCount: byteCount(fixture.body),
+      },
+    };
+
+    this.networkFixtures.set(fixtureKey(method, url), networkFixture);
+  }
+
   async screenshot(name?: string): Promise<RuntimeAutomationScreenshotMetadata> {
     const session = this.requireSession();
-
-    return {
+    const artifact = {
       name: name ?? session.snapshot.tree.scene.id,
+      kind: "screenshot" as const,
       format: "png",
       byteCount: 0,
+      viewport: cloneDeviceViewport(session.device.viewport),
     };
+
+    session.artifactBundle.renderArtifacts.push(artifact);
+    return cloneRenderArtifact(artifact);
   }
 
   async semanticTree(): Promise<SemanticUITree> {
-    return cloneTree(this.requireSession().snapshot.tree);
+    const session = this.requireSession();
+    session.artifactBundle.semanticSnapshots.push({
+      name: "baseline-tree",
+      tree: cloneTree(session.snapshot.tree),
+      revision: session.snapshot.revision,
+    });
+    return cloneTree(session.snapshot.tree);
   }
 
   async session(): Promise<RuntimeAutomationSession> {
@@ -140,7 +213,9 @@ class InMemoryEmulatorApp implements EmulatorApp {
 
   private appendLog(message: string): void {
     const session = this.requireSession();
-    session.logs.push({ level: "info", message });
+    const logEntry: RuntimeAutomationLogEntry = { level: "info", message };
+    session.logs.push(logEntry);
+    session.artifactBundle.logs.push({ ...logEntry });
   }
 
   private findMutableNode(query: SemanticQuery): UITreeNode {
@@ -206,16 +281,51 @@ class InMemoryLocator implements Locator {
 
 function createSession(options: RuntimeAutomationLaunchOptions): RuntimeAutomationSession {
   const tree = createStrictModeBaselineTree(options.appIdentifier);
+  const device = cloneDeviceSettings(options.device ?? defaultDeviceSettings());
+  const snapshot = {
+    appIdentifier: options.appIdentifier,
+    tree,
+    lifecycleState: "active" as const,
+    revision: 1,
+    device: cloneDeviceSettings(device),
+  };
   return {
     id: "session-1",
     appIdentifier: options.appIdentifier,
-    snapshot: {
-      appIdentifier: options.appIdentifier,
-      tree,
-      lifecycleState: "active",
-      revision: 1,
-    },
+    snapshot,
     logs: [],
+    artifactBundle: {
+      sessionID: "session-1",
+      renderArtifacts: [
+        {
+          name: "baseline-home",
+          kind: "screenshot",
+          format: "png",
+          byteCount: 0,
+          viewport: cloneDeviceViewport(device.viewport),
+        },
+      ],
+      semanticSnapshots: [
+        {
+          name: "baseline-tree",
+          tree: cloneTree(tree),
+          revision: snapshot.revision,
+        },
+      ],
+      logs: [],
+      networkRecords: [],
+    },
+    device,
+  };
+}
+
+function defaultDeviceSettings(): RuntimeDeviceSettings {
+  return {
+    viewport: { width: 393, height: 852, scale: 3 },
+    colorScheme: "light",
+    locale: "en_US",
+    clock: { timeZone: "UTC" },
+    network: { isOnline: true, latencyMilliseconds: 0, downloadKbps: 0 },
   };
 }
 
@@ -379,6 +489,8 @@ function cloneSession(session: RuntimeAutomationSession): RuntimeAutomationSessi
     ...session,
     snapshot: cloneSnapshot(session.snapshot),
     logs: cloneLogs(session.logs),
+    artifactBundle: cloneArtifactBundle(session.artifactBundle),
+    device: cloneDeviceSettings(session.device),
   };
 }
 
@@ -386,7 +498,84 @@ function cloneSnapshot(snapshot: RuntimeTreeSnapshot): RuntimeTreeSnapshot {
   return {
     ...snapshot,
     tree: cloneTree(snapshot.tree),
+    device: cloneDeviceSettings(snapshot.device),
   };
+}
+
+function cloneArtifactBundle(bundle: RuntimeArtifactBundle): RuntimeArtifactBundle {
+  return {
+    sessionID: bundle.sessionID,
+    renderArtifacts: bundle.renderArtifacts.map(cloneRenderArtifact),
+    semanticSnapshots: bundle.semanticSnapshots.map((snapshot) => ({
+      name: snapshot.name,
+      tree: cloneTree(snapshot.tree),
+      revision: snapshot.revision,
+    })),
+    logs: cloneLogs(bundle.logs),
+    networkRecords: bundle.networkRecords.map(cloneNetworkRequestRecord),
+  };
+}
+
+function cloneRenderArtifact(
+  artifact: RuntimeAutomationScreenshotMetadata
+): RuntimeAutomationScreenshotMetadata {
+  return {
+    ...artifact,
+    viewport: cloneDeviceViewport(artifact.viewport),
+  };
+}
+
+function cloneDeviceSettings(device: RuntimeDeviceSettings): RuntimeDeviceSettings {
+  return {
+    viewport: cloneDeviceViewport(device.viewport),
+    colorScheme: device.colorScheme,
+    locale: device.locale,
+    clock: { ...device.clock },
+    geolocation: device.geolocation ? { ...device.geolocation } : undefined,
+    network: { ...device.network },
+  };
+}
+
+function cloneDeviceViewport(viewport: RuntimeDeviceSettings["viewport"]): RuntimeDeviceSettings["viewport"] {
+  return { ...viewport };
+}
+
+function cloneNetworkRequestRecord(record: RuntimeNetworkRequestRecord): RuntimeNetworkRequestRecord {
+  return {
+    id: record.id,
+    request: {
+      method: record.request.method,
+      url: record.request.url,
+      headers: { ...record.request.headers },
+      bodyByteCount: record.request.bodyByteCount,
+    },
+    response: {
+      status: record.response.status,
+      headers: { ...record.response.headers },
+      bodyByteCount: record.response.bodyByteCount,
+    },
+    source: { ...record.source },
+  };
+}
+
+function fixtureKey(method: string, url: string): string {
+  return `${method.toUpperCase()} ${url}`;
+}
+
+function byteCount(body: unknown): number {
+  if (body === undefined || body === null) {
+    return 0;
+  }
+
+  if (typeof body === "string") {
+    return Buffer.byteLength(body);
+  }
+
+  if (body instanceof Uint8Array) {
+    return body.byteLength;
+  }
+
+  return Buffer.byteLength(JSON.stringify(body));
 }
 
 function cloneTree(tree: SemanticUITree): SemanticUITree {

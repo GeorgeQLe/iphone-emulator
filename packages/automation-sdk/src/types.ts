@@ -65,11 +65,13 @@ export interface RuntimeTreeSnapshot {
   tree: SemanticUITree;
   lifecycleState: RuntimeLifecycleState;
   revision: number;
+  device: RuntimeDeviceSettings;
 }
 
 export interface RuntimeAutomationLaunchOptions {
   appIdentifier: string;
   fixtureName: string;
+  device?: RuntimeDeviceSettings;
 }
 
 export interface RuntimeAutomationLogEntry {
@@ -81,6 +83,8 @@ export interface RuntimeAutomationScreenshotMetadata {
   name: string;
   format: string;
   byteCount: number;
+  kind: RuntimeRenderArtifactKind;
+  viewport: RuntimeDeviceViewport;
 }
 
 export interface RuntimeAutomationSession {
@@ -88,6 +92,8 @@ export interface RuntimeAutomationSession {
   appIdentifier: string;
   snapshot: RuntimeTreeSnapshot;
   logs: RuntimeAutomationLogEntry[];
+  artifactBundle: RuntimeArtifactBundle;
+  device: RuntimeDeviceSettings;
 }
 
 export interface SemanticQuery {
@@ -100,3 +106,96 @@ export interface RoleLocatorOptions {
   text?: string;
   id?: string;
 }
+
+export type RuntimeRenderArtifactKind = "screenshot" | "render";
+
+export interface RuntimeArtifactBundle {
+  sessionID: string;
+  renderArtifacts: RuntimeAutomationScreenshotMetadata[];
+  semanticSnapshots: RuntimeSemanticSnapshotArtifact[];
+  logs: RuntimeAutomationLogEntry[];
+  networkRecords: RuntimeNetworkRequestRecord[];
+}
+
+export interface RuntimeSemanticSnapshotArtifact {
+  name: string;
+  tree: SemanticUITree;
+  revision: number;
+}
+
+export interface RuntimeDeviceViewport {
+  width: number;
+  height: number;
+  scale: number;
+}
+
+export interface RuntimeDeviceClock {
+  frozenAtISO8601?: string;
+  timeZone: string;
+}
+
+export interface RuntimeDeviceGeolocation {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+}
+
+export interface RuntimeDeviceNetworkState {
+  isOnline: boolean;
+  latencyMilliseconds: number;
+  downloadKbps: number;
+}
+
+export interface RuntimeDeviceSettings {
+  viewport: RuntimeDeviceViewport;
+  colorScheme: "light" | "dark";
+  locale: string;
+  clock: RuntimeDeviceClock;
+  geolocation?: RuntimeDeviceGeolocation;
+  network: RuntimeDeviceNetworkState;
+}
+
+export interface RuntimeNetworkFixtureInput {
+  id: string;
+  method?: string;
+  status: number;
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+export interface RuntimeNetworkFixture {
+  id: string;
+  method: string;
+  url: string;
+  response: RuntimeNetworkResponse;
+}
+
+export interface RuntimeNetworkRequestInput {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+export interface RuntimeNetworkRequest {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  bodyByteCount: number;
+}
+
+export interface RuntimeNetworkResponse {
+  status: number;
+  headers: Record<string, string>;
+  bodyByteCount: number;
+}
+
+export interface RuntimeNetworkRequestRecord {
+  id: string;
+  request: RuntimeNetworkRequest;
+  response: RuntimeNetworkResponse;
+  source: RuntimeNetworkRequestRecordSource;
+}
+
+export type RuntimeNetworkRequestRecordSource =
+  | { fixtureId: string }
+  | { missingFixture: true };

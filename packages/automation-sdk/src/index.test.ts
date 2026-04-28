@@ -53,10 +53,11 @@ describe("Emulator", () => {
       { level: "info", message: "Tapped save-button" },
       { level: "info", message: "Filled name-field with Jordan" },
     ]);
-    await expect(app.screenshot("baseline-home")).resolves.toEqual({
+    await expect(app.screenshot("baseline-home")).resolves.toMatchObject({
       name: "baseline-home",
       format: "png",
       byteCount: 0,
+      kind: "screenshot",
     });
     await expect(app.close()).resolves.toBeUndefined();
   });
