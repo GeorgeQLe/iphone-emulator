@@ -47,20 +47,26 @@
   - Deliverable: automation SDK patch and package validation output.
 
 ### Tests First
-- [ ] Step 5.1: Write failing contract tests for artifact records, network fixtures, and device simulation settings.
+- [x] Step 5.1: Write failing contract tests for artifact records, network fixtures, and device simulation settings.
   - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add TypeScript red-phase tests under `packages/automation-sdk/test/` only if the public SDK surface can be specified without implementation churn.
   - Add assertions for screenshot/render artifact metadata, semantic snapshot records, runtime log bundles, HAR-like request/response records, deterministic network fixture lookup, and launch-time device settings.
   - Keep the red phase focused on deterministic value shapes and fixture behavior rather than real browser screenshots or live network traffic.
-  - Next execution plan:
-    - Add a Swift runtime contract test that names the artifact value types and proves a fixture-backed automation session can expose screenshot metadata, semantic snapshots, logs, and network records through one deterministic artifact bundle.
-    - Add a Swift runtime contract test for device settings covering viewport, color scheme, locale, clock, geolocation, and network state.
-    - Add an automation SDK red test only for the narrow client-facing methods that are already implied by the existing in-memory `Emulator` API.
+  - Completed on 2026-04-27 with expected red-phase failures:
+    - `swift test --filter RuntimeHostContractTests` fails on missing `RuntimeArtifactBundle`, render artifact, network fixture/request/response/record, device settings, artifact-bundle session, snapshot device, and network command symbols.
+    - `npm --prefix packages/automation-sdk test` fails on the newly specified `app.route` API, while the existing representative SDK flow still passes.
 
 ### Implementation
 - [ ] Step 5.2: Implement runtime artifact bundle and deterministic capture placeholders.
   - Files: add `packages/runtime-host/Sources/RuntimeHost/Artifacts/RuntimeArtifactTypes.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` and `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Reuse existing semantic tree snapshots and log entries instead of inventing a parallel runtime record model.
   - Artifact capture should remain deterministic placeholders until browser screenshot plumbing exists.
+  - Next execution plan:
+    - Add `RuntimeArtifactTypes.swift` with `RuntimeArtifactBundle`, `RuntimeRenderArtifactMetadata`, render kind, and `RuntimeSemanticSnapshotArtifact` matching the Step 5.1 red contract.
+    - Add device value types in the runtime automation layer or a nearby runtime-owned file so artifact viewport metadata and launch settings share one `RuntimeDeviceViewport` model.
+    - Extend `RuntimeAutomationSession` with `artifactBundle` and `device`, and extend `RuntimeTreeSnapshot` only if device metadata needs to be reflected in retained runtime state.
+    - Extend `RuntimeAutomationLaunchConfiguration` with defaulted `device` and `networkFixtures` arguments to preserve existing launch call sites.
+    - Update `RuntimeAutomationCoordinator` launch, screenshot, semantic snapshot, and log handling so the bundle records deterministic placeholder artifacts without attempting real screenshot capture.
+    - Run `swift test --filter RuntimeHostContractTests`; expected progress is eliminating artifact/device compile errors while network command behavior may remain red until Step 5.3 if kept intentionally deferred.
 - [ ] Step 5.3: Add network fixture and HAR-like request recording support in the runtime layer.
   - Files: add `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add checked-in fixtures under `Tests/fixtures/network/` if useful.
   - Implement mocked route lookup and request/response records without live network calls.

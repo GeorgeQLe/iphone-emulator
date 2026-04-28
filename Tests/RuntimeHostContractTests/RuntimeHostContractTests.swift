@@ -477,6 +477,158 @@ struct RuntimeHostContractTests {
         #expect(coordinator.bridge.latestSnapshot?.revision == 3)
     }
 
+    @Test("runtime artifact bundle records screenshots, semantic snapshots, logs, and network entries")
+    func runtimeArtifactBundleContract() throws {
+        let screenshot = RuntimeRenderArtifactMetadata(
+            name: "baseline-home",
+            kind: .screenshot,
+            format: "png",
+            byteCount: 0,
+            viewport: RuntimeDeviceViewport(width: 393, height: 852, scale: 3)
+        )
+        let render = RuntimeRenderArtifactMetadata(
+            name: "baseline-render",
+            kind: .render,
+            format: "json",
+            byteCount: 128,
+            viewport: RuntimeDeviceViewport(width: 393, height: 852, scale: 3)
+        )
+        let semanticSnapshot = RuntimeSemanticSnapshotArtifact(
+            name: "baseline-tree",
+            tree: SemanticUITree(
+                appIdentifier: "FixtureApp",
+                scene: UITreeScene(
+                    id: "baseline-screen",
+                    kind: .screen,
+                    rootNode: UITreeNode(id: "save-button", role: .button, label: "Save")
+                )
+            ),
+            revision: 1
+        )
+        let networkRecord = RuntimeNetworkRequestRecord(
+            id: "request-1",
+            request: RuntimeNetworkRequest(
+                method: "GET",
+                url: "https://example.test/profile",
+                headers: ["accept": "application/json"],
+                bodyByteCount: 0
+            ),
+            response: RuntimeNetworkResponse(
+                status: 200,
+                headers: ["content-type": "application/json"],
+                bodyByteCount: 18
+            ),
+            source: .fixture("profile-success")
+        )
+        let bundle = RuntimeArtifactBundle(
+            sessionID: "session-1",
+            renderArtifacts: [screenshot, render],
+            semanticSnapshots: [semanticSnapshot],
+            logs: [RuntimeAutomationLogEntry(level: .info, message: "Launched fixture strict-mode-baseline")],
+            networkRecords: [networkRecord]
+        )
+
+        #expect(bundle.sessionID == "session-1")
+        #expect(bundle.renderArtifacts.map(\.name) == ["baseline-home", "baseline-render"])
+        #expect(bundle.renderArtifacts.first?.viewport.width == 393)
+        #expect(bundle.semanticSnapshots.first?.tree.scene.rootNode?.id == "save-button")
+        #expect(bundle.logs.first?.message == "Launched fixture strict-mode-baseline")
+        #expect(bundle.networkRecords.first?.request.url == "https://example.test/profile")
+        #expect(bundle.networkRecords.first?.response.status == 200)
+        #expect(bundle.networkRecords.first?.source == .fixture("profile-success"))
+    }
+
+    @Test("runtime coordinator records deterministic network fixture responses")
+    func runtimeNetworkFixtureContract() throws {
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        networkFixtures: [
+                            RuntimeNetworkFixture(
+                                id: "profile-success",
+                                method: "GET",
+                                url: "https://example.test/profile",
+                                response: RuntimeNetworkResponse(
+                                    status: 200,
+                                    headers: ["content-type": "application/json"],
+                                    bodyByteCount: 18
+                                )
+                            )
+                        ]
+                    )
+                )
+            )
+        )
+
+        let response = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-network",
+                command: .recordNetworkRequest(
+                    RuntimeNetworkRequest(
+                        method: "GET",
+                        url: "https://example.test/profile",
+                        headers: ["accept": "application/json"],
+                        bodyByteCount: 0
+                    )
+                )
+            )
+        )
+
+        guard case let .networkRecord(record) = response.result else {
+            Issue.record("expected network record")
+            return
+        }
+
+        #expect(record.id == "request-1")
+        #expect(record.request.method == "GET")
+        #expect(record.response.status == 200)
+        #expect(record.source == .fixture("profile-success"))
+        #expect(coordinator.session?.artifactBundle.networkRecords == [record])
+    }
+
+    @Test("runtime launch configuration carries deterministic device simulation settings")
+    func runtimeDeviceSimulationSettingsContract() throws {
+        let settings = RuntimeDeviceSettings(
+            viewport: RuntimeDeviceViewport(width: 393, height: 852, scale: 3),
+            colorScheme: .dark,
+            locale: "en_US",
+            clock: RuntimeDeviceClock(frozenAtISO8601: "2026-04-27T14:00:00Z", timeZone: "America/New_York"),
+            geolocation: RuntimeDeviceGeolocation(latitude: 40.7128, longitude: -74.0060, accuracyMeters: 12),
+            network: RuntimeDeviceNetworkState(isOnline: true, latencyMilliseconds: 25, downloadKbps: 1_500)
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        device: settings
+                    )
+                )
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        #expect(session.device.viewport.width == 393)
+        #expect(session.device.colorScheme == .dark)
+        #expect(session.device.locale == "en_US")
+        #expect(session.device.clock.timeZone == "America/New_York")
+        #expect(session.device.geolocation?.accuracyMeters == 12)
+        #expect(session.device.network.latencyMilliseconds == 25)
+        #expect(coordinator.bridge.latestSnapshot?.device == settings)
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

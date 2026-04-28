@@ -60,4 +60,79 @@ describe("Emulator", () => {
     });
     await expect(app.close()).resolves.toBeUndefined();
   });
+
+  it("exposes deterministic artifacts, network fixtures, and device launch options", async () => {
+    const app = await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      device: {
+        viewport: { width: 393, height: 852, scale: 3 },
+        colorScheme: "dark",
+        locale: "en_US",
+        clock: {
+          frozenAtISO8601: "2026-04-27T14:00:00Z",
+          timeZone: "America/New_York",
+        },
+        geolocation: { latitude: 40.7128, longitude: -74.006, accuracyMeters: 12 },
+        network: { isOnline: true, latencyMilliseconds: 25, downloadKbps: 1500 },
+      },
+    });
+
+    await expect(app.route("https://example.test/profile", {
+      id: "profile-success",
+      method: "GET",
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: { name: "Taylor" },
+    })).resolves.toBeUndefined();
+    await expect(app.request("https://example.test/profile", {
+      method: "GET",
+      headers: { accept: "application/json" },
+    })).resolves.toMatchObject({
+      id: "request-1",
+      request: {
+        method: "GET",
+        url: "https://example.test/profile",
+      },
+      response: {
+        status: 200,
+        bodyByteCount: 17,
+      },
+      source: { fixtureId: "profile-success" },
+    });
+
+    await expect(app.artifacts()).resolves.toMatchObject({
+      sessionID: "session-1",
+      renderArtifacts: [
+        {
+          name: "baseline-home",
+          kind: "screenshot",
+          viewport: { width: 393, height: 852, scale: 3 },
+        },
+      ],
+      semanticSnapshots: [
+        {
+          name: "baseline-tree",
+          revision: 1,
+        },
+      ],
+      networkRecords: [
+        {
+          source: { fixtureId: "profile-success" },
+        },
+      ],
+    });
+    await expect(app.session()).resolves.toMatchObject({
+      device: {
+        colorScheme: "dark",
+        locale: "en_US",
+        clock: {
+          timeZone: "America/New_York",
+        },
+        network: {
+          latencyMilliseconds: 25,
+        },
+      },
+    });
+  });
 });

@@ -2,6 +2,8 @@
 
 ## 2026-04-27
 
+- Completed Phase 5 Step 5.1 by adding red-phase runtime and automation SDK contract coverage for deterministic artifact bundles, render/screenshot metadata, semantic snapshot artifacts, runtime logs, HAR-like network request records, network fixture lookup, launch-time device settings, and the SDK-facing artifact/network methods.
+- Validation: `swift test --filter RuntimeHostContractTests` failed as expected on missing runtime artifact, network fixture, device settings, session artifact bundle, snapshot device, and network command symbols. `npm --prefix packages/automation-sdk test` failed as expected on the newly specified `app.route` API; the existing representative SDK flow still passed.
 - Completed Phase 4 Step 4.9 by confirming the diagnostics/runtime compatibility boundary remains clean and making one narrow cleanup: compatibility lowering previews now derive from the actual runtime-lowered `SemanticUITree` instead of duplicating a hard-coded preview shape.
 - Validation: initial focused Swift validation failed on an incorrect helper type name (`UITreeNodeRole` instead of `UITreeRole`), then `swift test --filter DiagnosticsCoreContractTests`, `swift test --filter RuntimeHostContractTests`, `swift test`, and `swift build` all passed cleanly with no warnings.
 - Archived the completed Phase 4 plan to `tasks/phases/phase-4.md`, marked Phase 4 complete in `tasks/roadmap.md`, and generated the detailed Phase 5 execution plan for agent artifacts, network fixtures, and device simulation.
