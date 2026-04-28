@@ -9,6 +9,7 @@ export interface DemoProjectFile {
 export interface DemoDiagnostic {
   severity: "info" | "warning" | "error";
   message: string;
+  source?: string;
 }
 
 export interface DemoCompileResult {
@@ -95,69 +96,82 @@ export function compileDemoProject(source: string): DemoCompileResult {
   const diagnostics: DemoDiagnostic[] = [];
   const appIdentifier = matchFirst(source, /struct\s+([A-Za-z0-9_]+)\s*\{/u) ?? "DemoApp";
   const title = matchFirst(source, /NavigationStack\s*\(\s*title:\s*"([^"]+)"/u) ?? appIdentifier;
-  const textNodes = matchAll(source, /Text\s*\(\s*"([^"]+)"\s*\)(?:\s*\n\s*\.emphasis\(\.headline\))?/gu);
-  const buttons = matchAll(source, /Button\s*\(\s*"([^"]+)"\s*\)(?:\s*\n\s*\.variant\(\.primary\))?(?:\s*\n\s*\.testID\("([^"]+)"\))?/gu);
-  const textField = /TextField\s*\(\s*"([^"]+)"\s*,\s*text:\s*"([^"]*)"\s*\)(?:\s*\n\s*\.testID\("([^"]+)"\))?/u.exec(source);
-  const listMatch = /List\s*\(\s*"([^"]+)"\s*\)\s*\{([\s\S]*?)\n\s*\}/u.exec(source);
+  const listDeclarations = parseLists(source);
+  const textNodes = parseTextDeclarations(source, listDeclarations);
+  const buttons = parseButtonDeclarations(source);
+  const textFields = parseTextFieldDeclarations(source);
 
   if (!source.includes("StrictModeSDK")) {
     diagnostics.push({
       severity: "warning",
       message: "Strict mode demos should import StrictModeSDK so the harness owns the runtime surface.",
+      source: "Sources/TravelPlannerApp.swift",
     });
   }
 
-  if (/\bUIKit\b|\bSwiftUI\b|\bWebKit\b/u.test(source)) {
+  const unsupportedImports = matchAll(source, /^\s*import\s+(UIKit|SwiftUI|WebKit|Combine|Foundation)\b/gmu).map(
+    ([framework]) => framework
+  );
+
+  for (const framework of unsupportedImports) {
     diagnostics.push({
       severity: "error",
-      message: "Unsupported Apple framework import detected. This demo harness lowers only strict-mode declarations.",
+      message: `Unsupported Apple framework import "${framework}" detected. This demo lowers only illustrative strict-mode declarations.`,
+      source: "Sources/TravelPlannerApp.swift",
     });
   }
 
-  if (textNodes.length === 0 && buttons.length === 0 && !textField) {
+  const supportedSurfaceCount =
+    textNodes.length +
+    buttons.length +
+    textFields.length +
+    listDeclarations.reduce((count, list) => count + list.items.length, listDeclarations.length);
+
+  if (supportedSurfaceCount === 0) {
     diagnostics.push({
       severity: "info",
-      message: "Add Text, Button, TextField, or List declarations to change the semantic preview.",
+      message: "No supported strict-mode UI declarations were found. Add Text, Button, TextField, or List declarations to change the semantic preview.",
+      source: "Sources/TravelPlannerApp.swift",
     });
   }
 
   const children: UITreeNode[] = [];
 
-  for (const [index, textNode] of textNodes.entries()) {
-    const [label] = textNode;
+  for (const textNode of textNodes) {
     children.push({
-      id: index === 0 ? "headline" : `text-${index + 1}`,
+      id: textNode.testId ?? `text-${textNode.order}-${slugify(textNode.label)}`,
       role: "text",
-      label,
+      label: textNode.label,
       children: [],
-      metadata: index === 0 ? { emphasis: "headline" } : {},
+      metadata: textNode.emphasis ? { emphasis: textNode.emphasis } : {},
     });
   }
 
-  if (textField || buttons[0]) {
+  if (textFields[0] || buttons[0]) {
     const rowChildren: UITreeNode[] = [];
-    if (textField) {
+    if (textFields[0]) {
+      const textField = textFields[0];
       rowChildren.push({
-        id: textField[3] ?? slugify(textField[1]),
+        id: textField.testId ?? `text-field-${slugify(textField.label)}`,
         role: "textField",
-        label: textField[1],
-        value: textField[2],
+        label: textField.label,
+        value: textField.value,
         children: [],
         metadata: {
-          placeholder: textField[1],
+          placeholder: textField.label,
         },
       });
     }
 
     if (buttons[0]) {
-      const [label, testId] = buttons[0];
+      const button = buttons[0];
       rowChildren.push({
-        id: testId ?? slugify(label),
+        id: button.testId ?? `button-${slugify(button.label)}`,
         role: "button",
-        label,
+        label: button.label,
         children: [],
         metadata: {
-          variant: "primary",
+          variant: button.variant ?? "primary",
         },
       });
     }
@@ -172,17 +186,15 @@ export function compileDemoProject(source: string): DemoCompileResult {
     });
   }
 
-  if (listMatch) {
-    const listLabel = listMatch[1];
-    const listItems = matchAll(listMatch[2], /Text\s*\(\s*"([^"]+)"\s*\)/gu);
+  for (const list of listDeclarations) {
     children.push({
-      id: slugify(listLabel),
+      id: `list-${slugify(list.label)}`,
       role: "list",
-      label: listLabel,
-      children: listItems.map(([label], index) => ({
-        id: `${slugify(label)}-${index + 1}`,
+      label: list.label,
+      children: list.items.map((item, index) => ({
+        id: `list-${slugify(list.label)}-item-${index + 1}-${slugify(item)}`,
         role: "text",
-        label,
+        label: item,
         children: [],
         metadata: {},
       })),
@@ -191,13 +203,14 @@ export function compileDemoProject(source: string): DemoCompileResult {
   }
 
   for (const [index, button] of buttons.slice(1).entries()) {
-    const [label, testId] = button;
     children.push({
-      id: testId ?? slugify(label),
+      id: button.testId ?? `button-${slugify(button.label)}`,
       role: "button",
-      label,
+      label: button.label,
       children: [],
-      metadata: index === 0 ? { variant: "secondary" } : {},
+      metadata: {
+        variant: button.variant ?? (index === 0 ? "secondary" : "plain"),
+      },
     });
   }
 
@@ -239,6 +252,115 @@ export function compileDemoProject(source: string): DemoCompileResult {
       },
     },
   };
+}
+
+interface ParsedTextDeclaration {
+  label: string;
+  emphasis?: string;
+  testId?: string;
+  order: number;
+}
+
+interface ParsedButtonDeclaration {
+  label: string;
+  variant?: string;
+  testId?: string;
+}
+
+interface ParsedTextFieldDeclaration {
+  label: string;
+  value: string;
+  testId?: string;
+}
+
+interface ParsedListDeclaration {
+  label: string;
+  body: string;
+  items: string[];
+  start: number;
+  end: number;
+}
+
+function parseTextDeclarations(
+  source: string,
+  listDeclarations: ParsedListDeclaration[]
+): ParsedTextDeclaration[] {
+  return Array.from(source.matchAll(/Text\s*\(\s*"([^"]+)"\s*\)([\s\S]*?)(?=\n\s*(?:Text|Button|TextField|List|HStack|VStack|\}))/gu))
+    .filter((match) => !isInsideList(match.index ?? 0, listDeclarations))
+    .map((match, index) => ({
+      label: match[1],
+      emphasis: matchFirst(match[2], /\.emphasis\(\.([A-Za-z0-9_]+)\)/u),
+      testId: matchFirst(match[2], /\.testID\("([^"]+)"\)/u),
+      order: index + 1,
+    }));
+}
+
+function parseButtonDeclarations(source: string): ParsedButtonDeclaration[] {
+  return Array.from(source.matchAll(/Button\s*\(\s*"([^"]+)"\s*\)([\s\S]*?)(?=\n\s*(?:Text|Button|TextField|List|HStack|VStack|\}))/gu)).map(
+    (match) => ({
+      label: match[1],
+      variant: matchFirst(match[2], /\.variant\(\.([A-Za-z0-9_]+)\)/u),
+      testId: matchFirst(match[2], /\.testID\("([^"]+)"\)/u),
+    })
+  );
+}
+
+function parseTextFieldDeclarations(source: string): ParsedTextFieldDeclaration[] {
+  return Array.from(
+    source.matchAll(/TextField\s*\(\s*"([^"]+)"\s*,\s*text:\s*"([^"]*)"\s*\)([\s\S]*?)(?=\n\s*(?:Text|Button|TextField|List|HStack|VStack|\}))/gu)
+  ).map((match) => ({
+    label: match[1],
+    value: match[2],
+    testId: matchFirst(match[3], /\.testID\("([^"]+)"\)/u),
+  }));
+}
+
+function parseLists(source: string): ParsedListDeclaration[] {
+  const lists: ParsedListDeclaration[] = [];
+  const pattern = /List\s*\(\s*"([^"]+)"\s*\)\s*\{/gu;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(source)) !== null) {
+    const bodyStart = pattern.lastIndex;
+    const bodyEnd = findMatchingBrace(source, bodyStart - 1);
+    if (bodyEnd === -1) {
+      continue;
+    }
+
+    const body = source.slice(bodyStart, bodyEnd);
+    lists.push({
+      label: match[1],
+      body,
+      items: matchAll(body, /Text\s*\(\s*"([^"]+)"\s*\)/gu).map(([label]) => label),
+      start: match.index,
+      end: bodyEnd,
+    });
+  }
+
+  return lists;
+}
+
+function isInsideList(index: number, listDeclarations: ParsedListDeclaration[]): boolean {
+  return listDeclarations.some((list) => index > list.start && index < list.end);
+}
+
+function findMatchingBrace(source: string, openBraceIndex: number): number {
+  let depth = 0;
+
+  for (let index = openBraceIndex; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "{") {
+      depth += 1;
+    }
+    if (character === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+
+  return -1;
 }
 
 function matchFirst(source: string, pattern: RegExp): string | undefined {

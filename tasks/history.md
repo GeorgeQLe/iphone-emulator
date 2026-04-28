@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 7 Step 7.2 by tightening `packages/browser-renderer/src/demoProject.ts` as the browser IDE demo's owner for mock project files, illustrative strict-mode declaration parsing, deterministic semantic node IDs, and unsupported/empty-surface diagnostics.
+- Validation: `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` passed cleanly with no warnings. `npm --prefix packages/browser-renderer run build` passed and emitted Vite's expected large-chunk warning for Monaco editor and worker bundles; accepted as unchanged demo-shell build output.
 - Completed Phase 7 Step 7.1 by validating the existing browser IDE demo shell around the current renderer package. The package already has Monaco loaded through Vite workers, a local `dev` script, working file selection, and distinct editor, preview, diagnostics, and inspector panes, so no source changes were needed.
 - Validation: `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` passed. The build emitted Vite's expected large-chunk warning for Monaco editor and worker bundles; accepted for this demo shell step because it is non-failing and tied to the editor dependency.
 - Completed Phase 6 Step 6.6 by running the full Swift, browser renderer, and automation SDK validation surface without needing source, package, or validation wiring changes.

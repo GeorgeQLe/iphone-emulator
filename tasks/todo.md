@@ -35,7 +35,7 @@
 - [x] Step 7.1: Stabilize the browser IDE demo shell around the current renderer package
   - Files: modify `packages/browser-renderer/index.html`, `packages/browser-renderer/package.json`, `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/vite-env.d.ts`, `packages/browser-renderer/tsconfig.json`, `package-lock.json`
   - Ensure Monaco loads through Vite, the demo has a local `dev` script, file selection works, and the shell clearly presents editor, preview, diagnostics, and inspector panes.
-- [ ] Step 7.2: Define the mock project and source-to-semantic lowering surface
+- [x] Step 7.2: Define the mock project and source-to-semantic lowering surface
   - Files: create or modify `packages/browser-renderer/src/demoProject.ts`
   - Represent mock strict-mode Swift, agent test, and README files; parse the supported illustrative declarations into `SemanticUITree`; produce diagnostics for unsupported framework imports and empty supported surfaces.
   - Implementation plan: audit the existing `demoProjectFiles` and `compileDemoProject` helpers, then tighten `demoProject.ts` as the single owner for mock project content, supported declaration parsing, deterministic node IDs, and compiler diagnostics. Keep the lowering deliberately illustrative and package-local; do not move reusable renderer behavior into the demo compiler.
@@ -43,6 +43,8 @@
 - [ ] Step 7.3: Make preview interactions stateful inside the iPhone-like renderer
   - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/renderTree.ts`, `packages/browser-renderer/src/styles.ts`, `packages/browser-renderer/src/demoStyles.ts`
   - Support editable text fields, focus styling, mock keyboard display, keyboard insert/delete/done behavior, and semantic inspector updates after input changes.
+  - Implementation plan: trace the current `wirePreviewInteractions`, `renderTextFieldNode`, and keyboard helpers, then make text field state updates flow through the rendered node metadata without re-running the demo compiler. Keep persistent preview-only input state in `main.ts`; keep reusable DOM affordances such as node IDs, focus hooks, and text field attributes in `renderTree.ts`; keep visual keyboard and focus treatment in package-local style modules. Preserve deterministic inspector output after each text mutation.
+  - Validation focus: run `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test`; run `npm --prefix packages/browser-renderer run build` if style or Vite-facing entry code changes are non-trivial.
 - [ ] Step 7.4: Keep the demo honest about mocked source lowering versus live Swift execution
   - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoProject.ts`, `packages/browser-renderer/src/demoStyles.ts`, `README.md` or `examples/strict-mode-baseline/README.md` if a doc note is needed
   - Surface copy or diagnostics that explain the demo is a browser IDE loop over illustrative strict-mode lowering until live Swift runtime transport exists.
