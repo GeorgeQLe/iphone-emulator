@@ -2,6 +2,8 @@
 
 ## 2026-04-28
 
+- Completed Phase 5 Step 5.3 by splitting runtime network fixture/request/response/record value types into `RuntimeHost/Network/RuntimeNetworkFixture.swift` and expanding runtime contracts for deterministic fixture misses, sequential request IDs, retained request headers, response headers, and body-byte metadata.
+- Validation: `swift test --filter RuntimeHostContractTests` passed cleanly with 15 runtime contract tests, `swift test` passed cleanly with 28 tests across 4 suites, and `swift build` passed cleanly with no warnings.
 - Completed Phase 5 Step 5.2 by adding runtime-owned artifact bundle types, deterministic render/screenshot metadata, semantic snapshot artifacts, launch-time device settings, session artifact state, snapshot device metadata, and coordinator recording for screenshot placeholders, semantic snapshots, logs, and fixture-backed network request records.
 - Validation: `swift test --filter RuntimeHostContractTests`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and `npm --prefix packages/automation-sdk run build` passed cleanly. `npm --prefix packages/automation-sdk run typecheck` remains red as expected on the Step 5.1 SDK-facing `device`, `route`, `request`, and `artifacts` contracts, and `npm --prefix packages/automation-sdk test` remains red as expected on missing `app.route`.
 

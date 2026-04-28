@@ -591,6 +591,132 @@ struct RuntimeHostContractTests {
         #expect(coordinator.session?.artifactBundle.networkRecords == [record])
     }
 
+    @Test("runtime coordinator records network misses and request metadata deterministically")
+    func runtimeNetworkFixtureMissesAndOrderingAreDeterministic() throws {
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        networkFixtures: [
+                            RuntimeNetworkFixture(
+                                id: "profile-success",
+                                method: "GET",
+                                url: "https://example.test/profile",
+                                response: RuntimeNetworkResponse(
+                                    status: 200,
+                                    headers: [
+                                        "cache-control": "no-store",
+                                        "content-type": "application/json",
+                                    ],
+                                    bodyByteCount: 18
+                                )
+                            ),
+                            RuntimeNetworkFixture(
+                                id: "profile-update",
+                                method: "POST",
+                                url: "https://example.test/profile",
+                                response: RuntimeNetworkResponse(
+                                    status: 202,
+                                    headers: ["content-type": "application/json"],
+                                    bodyByteCount: 2
+                                )
+                            ),
+                        ]
+                    )
+                )
+            )
+        )
+
+        let first = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-network-1",
+                command: .recordNetworkRequest(
+                    RuntimeNetworkRequest(
+                        method: "GET",
+                        url: "https://example.test/profile",
+                        headers: ["accept": "application/json"],
+                        bodyByteCount: 0
+                    )
+                )
+            )
+        )
+        let second = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-network-2",
+                command: .recordNetworkRequest(
+                    RuntimeNetworkRequest(
+                        method: "POST",
+                        url: "https://example.test/profile",
+                        headers: [
+                            "content-type": "application/json",
+                            "x-test-run": "runtime-network",
+                        ],
+                        bodyByteCount: 42
+                    )
+                )
+            )
+        )
+        let missing = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-network-3",
+                command: .recordNetworkRequest(
+                    RuntimeNetworkRequest(
+                        method: "DELETE",
+                        url: "https://example.test/profile",
+                        headers: ["authorization": "Bearer fixture-token"],
+                        bodyByteCount: 0
+                    )
+                )
+            )
+        )
+
+        guard case let .networkRecord(firstRecord) = first.result else {
+            Issue.record("expected first network record")
+            return
+        }
+        guard case let .networkRecord(secondRecord) = second.result else {
+            Issue.record("expected second network record")
+            return
+        }
+        guard case let .networkRecord(missingRecord) = missing.result else {
+            Issue.record("expected missing network record")
+            return
+        }
+
+        #expect(firstRecord.id == "request-1")
+        #expect(firstRecord.source == .fixture("profile-success"))
+        #expect(firstRecord.request.headers["accept"] == "application/json")
+        #expect(firstRecord.response.headers["cache-control"] == "no-store")
+        #expect(firstRecord.response.bodyByteCount == 18)
+
+        #expect(secondRecord.id == "request-2")
+        #expect(secondRecord.source == .fixture("profile-update"))
+        #expect(secondRecord.request.headers["x-test-run"] == "runtime-network")
+        #expect(secondRecord.request.bodyByteCount == 42)
+        #expect(secondRecord.response.status == 202)
+
+        #expect(missingRecord.id == "request-3")
+        #expect(missingRecord.source == .missingFixture)
+        #expect(missingRecord.request.headers["authorization"] == "Bearer fixture-token")
+        #expect(missingRecord.response.status == 599)
+        #expect(missingRecord.response.headers.isEmpty)
+        #expect(missingRecord.response.bodyByteCount == 0)
+        #expect(coordinator.session?.artifactBundle.networkRecords.map(\.id) == [
+            "request-1",
+            "request-2",
+            "request-3",
+        ])
+        #expect(coordinator.session?.artifactBundle.networkRecords.map(\.request.method) == [
+            "GET",
+            "POST",
+            "DELETE",
+        ])
+    }
+
     @Test("runtime launch configuration carries deterministic device simulation settings")
     func runtimeDeviceSimulationSettingsContract() throws {
         let settings = RuntimeDeviceSettings(

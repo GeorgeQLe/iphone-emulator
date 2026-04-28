@@ -68,20 +68,22 @@
     - Update `RuntimeAutomationCoordinator` launch, screenshot, semantic snapshot, and log handling so the bundle records deterministic placeholder artifacts without attempting real screenshot capture.
   - Completed on 2026-04-28 with runtime-owned artifact bundle, render metadata, semantic snapshot artifact, device settings, session artifact state, snapshot device metadata, screenshot placeholder recording, semantic snapshot recording, and deterministic network request record plumbing in place.
   - Validation: `swift test --filter RuntimeHostContractTests`, `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, and `npm --prefix packages/automation-sdk run build` passed. `npm --prefix packages/automation-sdk run typecheck` and `npm --prefix packages/automation-sdk test` remain red as expected on the Step 5.1 SDK-facing `device`, `route`, `request`, and `artifacts` contracts deferred to Step 5.5.
-- [ ] Step 5.3: Add network fixture and HAR-like request recording support in the runtime layer.
+- [x] Step 5.3: Add network fixture and HAR-like request recording support in the runtime layer.
   - Files: add `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`; extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`; add checked-in fixtures under `Tests/fixtures/network/` if useful.
   - Implement mocked route lookup and request/response records without live network calls.
   - Preserve deterministic ordering and inspectable payload metadata for later reporting.
-  - Next execution plan:
-    - Re-read the minimal runtime network types and `RuntimeAutomationCoordinator.recordNetworkRequest` behavior added during Step 5.2.
-    - Move or split the network value types into `packages/runtime-host/Sources/RuntimeHost/Network/RuntimeNetworkFixture.swift` if that improves ownership without changing public names.
-    - Add focused contract coverage for unmatched fixture behavior, deterministic request ordering across multiple records, and inspectable request/response headers/body metadata.
-    - Keep the implementation runtime-only; do not add the TypeScript `app.route`/`app.request` SDK surface until Step 5.5.
-    - Run `swift test --filter RuntimeHostContractTests`; expected result is green runtime network fixture coverage while automation SDK tests remain red until Step 5.5.
+  - Completed on 2026-04-28 with runtime network value types split into `RuntimeHost/Network/RuntimeNetworkFixture.swift`, deterministic fixture miss handling covered, request ordering covered, and request/response header plus body-byte metadata retained in artifact records.
+  - Validation: `swift test --filter RuntimeHostContractTests` passed with 15 runtime contract tests.
 - [ ] Step 5.4: Add launch-time device simulation settings to runtime sessions.
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Cover viewport sizes, color scheme, locale, clock, geolocation, and network state as explicit value types.
   - Keep simulation as metadata reflected in runtime/session state; do not attempt real OS simulator behavior.
+  - Next execution plan:
+    - Re-read `RuntimeDeviceSettings`, `RuntimeDeviceViewport`, `RuntimeDeviceClock`, `RuntimeDeviceGeolocation`, `RuntimeDeviceNetworkState`, `RuntimeAutomationLaunchConfiguration`, and `RuntimeAutomationCoordinator.launch`.
+    - Decide whether the existing Step 5.2 device types already satisfy the public value-shape contract or need a runtime-owned `Device/` file split similar to Step 5.3's network split.
+    - Add focused runtime contract coverage for default device settings, explicit launch-time settings, snapshot/session propagation after interactions, and screenshot artifact viewport metadata.
+    - Keep behavior metadata-only: no OS simulator behavior, no browser renderer device emulation, and no TypeScript SDK launch options until Step 5.5.
+    - Run `swift test --filter RuntimeHostContractTests`; expected result is green runtime device simulation coverage while automation SDK tests remain red until Step 5.5.
 - [ ] Step 5.5: Surface artifacts, network fixtures, and device settings in the TypeScript automation SDK.
   - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/test/emulator.test.ts`, and related package-local types if present.
   - Extend the in-memory `Emulator` client with artifact retrieval, mocked route configuration, request-record inspection, and launch device options aligned with the runtime contracts.
