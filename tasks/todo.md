@@ -77,6 +77,13 @@
   - Files: modify `tasks/roadmap.md` and `tasks/todo.md`; optionally update `README.md` if the project positioning changes.
   - Record whether React Native becomes a later phase, remains deferred, or is explicitly dropped.
   - Ensure the roadmap's next phase or research direction matches the evaluation document.
+  - Implementation plan:
+    1. Re-read `docs/react-native-feasibility.md`, the Phase 6 acceptance criteria in `tasks/todo.md`, and the future-phase section of `tasks/roadmap.md`.
+    2. Update `tasks/roadmap.md` so the project direction explicitly reflects the Step 6.4 decision: React Native remains deferred as a later research/adapter lane until strict-mode live transport and session coordination are stable.
+    3. If the roadmap's next planned phase already points at strict-mode transport/session work, preserve that direction and add only the minimum note needed to prevent React Native from being treated as immediate scope.
+    4. Update `tasks/todo.md` to mark this step complete and keep the Phase 6 acceptance criteria aligned with the roadmap decision.
+    5. Update `README.md` only if the roadmap decision changes user-facing project positioning; otherwise leave product docs untouched.
+    6. Run docs/task validation by inspecting the changed roadmap/todo diff. Run code validation only if public examples, package names, or code references change.
 
 ### Green
 - [ ] Step 6.6: Run full validation across Swift, browser renderer, and automation SDK.
