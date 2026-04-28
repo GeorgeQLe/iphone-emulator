@@ -609,20 +609,35 @@ private extension CompatibilityAnalyzer {
             appIdentifier: tree.appIdentifier,
             scene: CompatibilityScenePreview(
                 kind: .modal,
-                rootNode: CompatibilityNode(
-                    role: .modal,
-                    children: [
-                        CompatibilityNode(
-                            role: .vStack,
-                            children: [
-                                CompatibilityNode(role: .text),
-                                CompatibilityNode(role: .button),
-                            ]
-                        ),
-                    ]
-                )
+                rootNode: makePreviewNode(from: tree.scene.rootNode)
             )
         )
+    }
+
+    func makePreviewNode(from runtimeNode: UITreeNode?) -> CompatibilityNode {
+        guard let runtimeNode else {
+            return CompatibilityNode(role: .modal)
+        }
+
+        return CompatibilityNode(
+            role: compatibilityRole(for: runtimeNode.role),
+            children: runtimeNode.children.map(makePreviewNode)
+        )
+    }
+
+    func compatibilityRole(for runtimeRole: UITreeRole) -> CompatibilityNodeRole {
+        switch runtimeRole {
+        case .text:
+            return .text
+        case .button:
+            return .button
+        case .vStack:
+            return .vStack
+        case .modal:
+            return .modal
+        default:
+            return .modal
+        }
     }
 
     func column(in line: String, matching token: String) -> Int {
