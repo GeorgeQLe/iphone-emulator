@@ -319,7 +319,7 @@
 - Ready for next phase: yes
 
 ## Phase 9: M8 First Mock Native Services
-**Status:** planned.
+**Status:** complete on 2026-04-29.
 
 **Goal:** Implement the first useful deterministic native mocks for app flows that agents commonly need to exercise.
 
@@ -435,17 +435,17 @@
 
 ### Milestone: M8 First Mock Native Services
 **Acceptance Criteria:**
-- [ ] Strict-mode fixture apps can request supported native capabilities and receive deterministic mock results.
-- [ ] Automation can configure mock state at launch and inspect capability events after interaction.
-- [ ] Runtime artifacts include native capability logs and records.
-- [ ] Unsupported native services still fail closed with diagnostics.
-- [ ] All phase tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Strict-mode fixture apps can request supported native capabilities and receive deterministic mock results.
+- [x] Automation can configure mock state at launch and inspect capability events after interaction.
+- [x] Runtime artifacts include native capability logs and records.
+- [x] Unsupported native services still fail closed with diagnostics.
+- [x] All phase tests pass.
+- [x] No regressions in previous phase tests.
 
 **On Completion:**
-- Deviations from plan: none yet
-- Tech debt / follow-ups: none yet
-- Ready for next phase: no
+- Deviations from plan: Step 9.10 tightened Swift runtime native inspection events to match the SDK contract instead of remaining a no-op boundary review.
+- Tech debt / follow-ups: implement the high-level `app.native.*` automation API and native capability agent flows in Phase 10.
+- Ready for next phase: yes
 
 ## Phase 10: M9 Native Capability Automation and Agent Flows
 **Status:** planned.
