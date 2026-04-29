@@ -322,18 +322,21 @@ struct DiagnosticsCoreContractTests {
             .sourceText(
                 """
                 import SwiftUI
-                import AVFoundation
-                import CoreLocation
-                import PhotosUI
-                import UserNotifications
 
                 struct NativeFeatureScreen {
                     func requestNativeFeatures() {
+                        UIApplication.shared.open(URL(string: "https://example.invalid")!)
                         AVCaptureSession().startRunning()
                         CLLocationManager().requestWhenInUseAuthorization()
                         PHPickerViewController(configuration: PHPickerConfiguration())
+                        URLSession.shared.dataTask(with: URL(string: "https://example.invalid")!)
                         UIPasteboard.general.string = "Copied"
                         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+                        UIDocumentPickerViewController(forOpeningContentTypes: [])
+                        UIActivityViewController(activityItems: [], applicationActivities: nil)
+                        CMMotionManager().deviceMotion
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        UIDevice.current.systemVersion
                     }
                 }
                 """,
@@ -343,38 +346,83 @@ struct DiagnosticsCoreContractTests {
 
         let nativeDiagnostics = analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance)
 
+        #expect(analysis.report.summary.totalCount == 12)
+        #expect(analysis.report.diagnostics.allSatisfy { $0.category == .platformAPIs })
         #expect(nativeDiagnostics.map(\.capability) == [
+            .deviceEnvironment,
             .camera,
             .location,
             .photos,
+            .network,
             .clipboard,
             .notifications,
+            .files,
+            .shareSheet,
+            .sensors,
+            .haptics,
+            .deviceEnvironment,
         ])
         #expect(nativeDiagnostics.map(\.requestedAPI) == [
+            "UIApplication.shared.open",
             "AVCaptureSession.startRunning",
             "CLLocationManager.requestWhenInUseAuthorization",
             "PHPickerViewController",
+            "URLSession.dataTask",
             "UIPasteboard.general",
             "UNUserNotificationCenter.current",
+            "UIDocumentPickerViewController",
+            "UIActivityViewController",
+            "CMMotionManager.deviceMotion",
+            "UIImpactFeedbackGenerator.impactOccurred",
+            "UIDevice.current",
         ])
         #expect(nativeDiagnostics.allSatisfy { $0.requiresManifestMock })
         #expect(nativeDiagnostics.map(\.suggestedManifestField) == [
+            "configuredMocks.deviceEnvironment",
             "configuredMocks.camera",
             "scriptedEvents.location",
             "configuredMocks.photos",
+            "configuredMocks.network",
             "configuredMocks.clipboard",
             "scriptedEvents.notifications",
+            "configuredMocks.files",
+            "configuredMocks.shareSheet",
+            "scriptedEvents.sensors",
+            "scriptedEvents.haptics",
+            "configuredMocks.deviceEnvironment",
         ])
         #expect(nativeDiagnostics.map(\.failClosedReason) == [
+            "Live application environment interactions are unavailable in strict mode.",
             "Live camera capture is unavailable in strict mode.",
             "Live device location and host permission prompts are unavailable in strict mode.",
             "Live photo library access is unavailable in strict mode.",
+            "Live network access is unavailable by default in strict mode.",
             "Host clipboard access is unavailable by default in strict mode.",
             "Live notification authorization and delivery are unavailable in strict mode.",
+            "Live file picker access is unavailable in strict mode.",
+            "Live share sheet presentation is unavailable in strict mode.",
+            "Live device sensor data is unavailable in strict mode.",
+            "Live haptic feedback is unavailable in strict mode.",
+            "Live device environment state is unavailable in strict mode.",
+        ])
+        #expect(analysis.report.diagnostics.map(\.unsupportedName) == [
+            "UIApplication.shared.open",
+            "AVCaptureSession.startRunning",
+            "CLLocationManager.requestWhenInUseAuthorization",
+            "PHPickerViewController",
+            "URLSession.dataTask",
+            "UIPasteboard.general",
+            "UNUserNotificationCenter.current",
+            "UIDocumentPickerViewController",
+            "UIActivityViewController",
+            "CMMotionManager.deviceMotion",
+            "UIImpactFeedbackGenerator.impactOccurred",
+            "UIDevice.current",
         ])
         #expect(analysis.report.unsupportedGroups.last?.adaptationHints.map(\.message).contains(
             "Declare deterministic native capability mocks in RuntimeNativeCapabilityManifest instead of calling live native APIs."
         ) == true)
+        #expect(analysis.loweredTree == nil)
     }
 
     @Test("compatibility analyzer fails closed for unrecognized native APIs")
@@ -400,7 +448,9 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.report.diagnostics.map(\.category) == [.platformAPIs])
         #expect(analysis.report.diagnostics.map(\.unsupportedName) == ["LAContext.evaluatePolicy"])
         #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.capability == .unsupported)
+        #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.requestedAPI == "LAContext.evaluatePolicy")
         #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.requiresManifestMock == false)
+        #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.suggestedManifestField == "unsupportedSymbols")
         #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.failClosedReason == "This native API has no strict-mode capability contract.")
         #expect(analysis.report.diagnostics.first?.suggestedAdaptation?.message == "Fail closed or replace LAContext.evaluatePolicy with an explicit strict-mode test fixture boundary.")
         #expect(analysis.loweredTree == nil)

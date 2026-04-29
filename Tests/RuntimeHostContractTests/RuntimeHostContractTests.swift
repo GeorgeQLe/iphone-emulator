@@ -958,6 +958,111 @@ struct RuntimeHostContractTests {
         #expect(defaults.permissionState(for: .notifications) == .unsupported)
     }
 
+    @Test("runtime native capability taxonomy keeps canonical raw values")
+    func runtimeNativeCapabilityTaxonomyKeepsCanonicalRawValues() {
+        let capabilityIDs: [RuntimeNativeCapabilityID] = [
+            .permissions,
+            .camera,
+            .photos,
+            .location,
+            .network,
+            .clipboard,
+            .keyboardInput,
+            .files,
+            .shareSheet,
+            .notifications,
+            .deviceEnvironment,
+            .sensors,
+            .haptics,
+            .unsupported,
+        ]
+        let permissionStates: [RuntimeNativePermissionState] = [
+            .unsupported,
+            .notRequested,
+            .prompt,
+            .granted,
+            .denied,
+            .restricted,
+        ]
+        let artifactKinds: [RuntimeNativeCapabilityArtifactOutput.Kind] = [
+            .fixtureReference,
+            .eventLog,
+            .diagnostic,
+            .semanticSnapshot,
+        ]
+
+        #expect(capabilityIDs.map(\.rawValue) == [
+            "permissions",
+            "camera",
+            "photos",
+            "location",
+            "network",
+            "clipboard",
+            "keyboardInput",
+            "files",
+            "shareSheet",
+            "notifications",
+            "deviceEnvironment",
+            "sensors",
+            "haptics",
+            "unsupported",
+        ])
+        #expect(permissionStates.map(\.rawValue) == [
+            "unsupported",
+            "notRequested",
+            "prompt",
+            "granted",
+            "denied",
+            "restricted",
+        ])
+        #expect(artifactKinds.map(\.rawValue) == [
+            "fixtureReference",
+            "eventLog",
+            "diagnostic",
+            "semanticSnapshot",
+        ])
+    }
+
+    @Test("runtime native capability permission lookup preserves explicit states and unsupported defaults")
+    func runtimeNativeCapabilityPermissionLookupPreservesStates() {
+        let manifest = RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .permissions,
+                    permissionState: .notRequested,
+                    strictModeAlternative: "Declare permission fixtures before runtime launch."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .camera,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Script the camera prompt outcome in the manifest."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .photos,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use configured photo fixtures."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .location,
+                    permissionState: .denied,
+                    strictModeAlternative: "Use scripted location denial events."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .network,
+                    permissionState: .restricted,
+                    strictModeAlternative: "Use deterministic network fixtures."
+                ),
+            ]
+        )
+
+        #expect(manifest.permissionState(for: .permissions) == .notRequested)
+        #expect(manifest.permissionState(for: .camera) == .prompt)
+        #expect(manifest.permissionState(for: .photos) == .granted)
+        #expect(manifest.permissionState(for: .location) == .denied)
+        #expect(manifest.permissionState(for: .network) == .restricted)
+        #expect(manifest.permissionState(for: .keyboardInput) == .unsupported)
+    }
+
     @Test("runtime automation launch and session carry native capability manifests without host side effects")
     func runtimeAutomationCarriesNativeCapabilityManifest() throws {
         let manifest = RuntimeNativeCapabilityManifest(

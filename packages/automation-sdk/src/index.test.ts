@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { Emulator } from "./index";
-import type { RuntimeNativeCapabilityManifest } from "./types";
+import type {
+  RuntimeNativeCapabilityArtifactOutputKind,
+  RuntimeNativeCapabilityID,
+  RuntimeNativeCapabilityManifest,
+  RuntimeNativePermissionState,
+} from "./types";
 
 describe("Emulator", () => {
   it("runs a representative fixture-backed automation flow", async () => {
@@ -342,5 +347,135 @@ describe("Emulator", () => {
         artifactOutputs: [],
       },
     });
+  });
+
+  it("preserves native capability taxonomy literals through launch and inspection", async () => {
+    const capabilityIDs: RuntimeNativeCapabilityID[] = [
+      "permissions",
+      "camera",
+      "photos",
+      "location",
+      "network",
+      "clipboard",
+      "keyboardInput",
+      "files",
+      "shareSheet",
+      "notifications",
+      "deviceEnvironment",
+      "sensors",
+      "haptics",
+      "unsupported",
+    ];
+    const permissionStates: RuntimeNativePermissionState[] = [
+      "unsupported",
+      "notRequested",
+      "prompt",
+      "granted",
+      "denied",
+      "restricted",
+    ];
+    const artifactKinds: RuntimeNativeCapabilityArtifactOutputKind[] = [
+      "fixtureReference",
+      "eventLog",
+      "diagnostic",
+      "semanticSnapshot",
+    ];
+    const nativeCapabilities: RuntimeNativeCapabilityManifest = {
+      requiredCapabilities: capabilityIDs.map((id, index) => ({
+        id,
+        permissionState: permissionStates[index % permissionStates.length],
+        strictModeAlternative: `Use deterministic ${id} fixtures.`,
+      })),
+      configuredMocks: capabilityIDs.map((capability) => ({
+        capability,
+        identifier: `${capability}-mock`,
+        payload: {
+          capability,
+        },
+      })),
+      scriptedEvents: capabilityIDs.map((capability, index) => ({
+        capability,
+        name: `${capability}-event`,
+        atRevision: index + 1,
+        payload: {
+          revision: String(index + 1),
+        },
+      })),
+      unsupportedSymbols: [
+        {
+          symbolName: "KeyboardObserver.start",
+          capability: "keyboardInput",
+          suggestedAdaptation: "Replace keyboard observers with strict-mode input fixtures.",
+        },
+        {
+          symbolName: "BiometricPolicy.evaluate",
+          capability: "unsupported",
+          suggestedAdaptation: "Fail closed until a strict-mode capability contract exists.",
+        },
+      ],
+      artifactOutputs: artifactKinds.map((kind, index) => ({
+        capability: capabilityIDs[index],
+        name: `${kind}-output`,
+        kind,
+      })),
+    };
+
+    const app = await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities,
+    });
+    const session = await app.session();
+
+    expect(session.nativeCapabilities.requiredCapabilities.map((requirement) => requirement.id)).toEqual(
+      capabilityIDs
+    );
+    expect(
+      session.nativeCapabilities.requiredCapabilities.map((requirement) => requirement.permissionState)
+    ).toEqual([
+      "unsupported",
+      "notRequested",
+      "prompt",
+      "granted",
+      "denied",
+      "restricted",
+      "unsupported",
+      "notRequested",
+      "prompt",
+      "granted",
+      "denied",
+      "restricted",
+      "unsupported",
+      "notRequested",
+    ]);
+    expect(session.nativeCapabilities.configuredMocks.map((mock) => mock.capability)).toEqual(
+      capabilityIDs
+    );
+    expect(session.nativeCapabilities.scriptedEvents.map((event) => event.capability)).toEqual(
+      capabilityIDs
+    );
+    expect(session.nativeCapabilities.scriptedEvents.at(-1)).toMatchObject({
+      capability: "unsupported",
+      name: "unsupported-event",
+      atRevision: 14,
+      payload: {
+        revision: "14",
+      },
+    });
+    expect(session.nativeCapabilities.unsupportedSymbols).toEqual([
+      {
+        symbolName: "KeyboardObserver.start",
+        capability: "keyboardInput",
+        suggestedAdaptation: "Replace keyboard observers with strict-mode input fixtures.",
+      },
+      {
+        symbolName: "BiometricPolicy.evaluate",
+        capability: "unsupported",
+        suggestedAdaptation: "Fail closed until a strict-mode capability contract exists.",
+      },
+    ]);
+    expect(session.nativeCapabilities.artifactOutputs.map((output) => output.kind)).toEqual(
+      artifactKinds
+    );
   });
 });
