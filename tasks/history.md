@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 8 Step 8.7 by running the full Swift, browser renderer, and automation SDK validation matrix without needing source, package, or validation wiring changes.
+- Validation: `swift test` passed with 39 tests across 4 suites, `swift build` passed, `npm --prefix packages/browser-renderer run typecheck` passed, `npm --prefix packages/browser-renderer test` passed with 7 tests, `npm --prefix packages/browser-renderer run build` passed, `npm --prefix packages/automation-sdk run typecheck` passed, `npm --prefix packages/automation-sdk test` passed with 5 tests, and `npm --prefix packages/automation-sdk run build` passed. The browser renderer build emitted Vite's large-chunk warning for Monaco/editor assets; accepted as an existing non-regression for this validation-only step.
+
 - Completed Phase 8 Step 8.6 by adding green-phase regression coverage for native capability manifests and diagnostics. Runtime tests now lock canonical capability IDs, permission states, artifact output kinds, explicit permission lookup behavior, and unsupported defaults. Diagnostics tests now cover the full current native API guidance mapping table plus fail-closed unsupported biometric guidance. Automation SDK tests now protect typed taxonomy literals, manifest launch/session inspection parity, clone isolation, unsupported symbol records, and artifact output kinds.
 - Validation: `swift test --filter RuntimeHostContractTests` passed with 22 tests, `swift test --filter DiagnosticsCoreContractTests` passed with 13 tests, `npm --prefix packages/automation-sdk test` passed with 5 tests, and `npm --prefix packages/automation-sdk run typecheck` passed cleanly with no warnings.
 
