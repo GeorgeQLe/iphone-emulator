@@ -89,15 +89,46 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
             mocks: manifest.configuredMocks.filter { $0.capability == .location },
             events: eventRecords.filter { $0.capability == .location }
         )
+        let clipboardState = RuntimeNativeClipboardState(
+            mock: manifest.configuredMocks.first { $0.capability == .clipboard },
+            events: eventRecords.filter { $0.capability == .clipboard }
+        )
+        let keyboardState = RuntimeNativeKeyboardState(
+            mocks: manifest.configuredMocks.filter { $0.capability == .keyboardInput },
+            events: eventRecords.filter { $0.capability == .keyboardInput }
+        )
+        let fileSelections = manifest.configuredMocks
+            .filter { $0.capability == .files }
+            .map(RuntimeNativeFileSelectionRecord.init(mock:))
+        let shareSheetRecords = manifest.configuredMocks
+            .filter { $0.capability == .shareSheet }
+            .map(RuntimeNativeShareSheetRecord.init(mock:))
+        let notificationAuthorizationState = Self.resolvedState(
+            for: .notifications,
+            in: permissionRecords
+        )
+        let notificationRecords = eventRecords
+            .filter { $0.capability == .notifications }
+            .map {
+                RuntimeNativeNotificationRecord(
+                    event: $0,
+                    authorizationState: notificationAuthorizationState
+                )
+            }
         let diagnosticRecords = Self.diagnosticRecords(
             manifest: manifest,
             permissions: permissionRecords
         )
-        let artifactRecords = manifest.artifactOutputs.map(RuntimeNativeCapabilityArtifactRecord.init(output:))
-            + cameraCaptures.map(\.artifactRecord)
-            + photoSelections.map(\.artifactRecord)
-            + (locationState?.artifactRecords ?? [])
-            + diagnosticRecords.map(\.artifactRecord)
+        var artifactRecords = manifest.artifactOutputs.map(RuntimeNativeCapabilityArtifactRecord.init(output:))
+        artifactRecords.append(contentsOf: cameraCaptures.map(\.artifactRecord))
+        artifactRecords.append(contentsOf: photoSelections.map(\.artifactRecord))
+        artifactRecords.append(contentsOf: locationState?.artifactRecords ?? [])
+        artifactRecords.append(contentsOf: clipboardState?.artifactRecords ?? [])
+        artifactRecords.append(contentsOf: keyboardState?.artifactRecords ?? [])
+        artifactRecords.append(contentsOf: fileSelections.map(\.artifactRecord))
+        artifactRecords.append(contentsOf: shareSheetRecords.map(\.artifactRecord))
+        artifactRecords.append(contentsOf: notificationRecords.map(\.artifactRecord))
+        artifactRecords.append(contentsOf: diagnosticRecords.map(\.artifactRecord))
 
         self.init(
             permissions: permissionRecords,
@@ -107,21 +138,11 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
             photoSelections: photoSelections,
             scriptedEvents: eventRecords,
             location: locationState,
-            clipboard: manifest.configuredMocks
-                .first { $0.capability == .clipboard }
-                .map(RuntimeNativeClipboardState.init(mock:)),
-            keyboard: manifest.configuredMocks
-                .first { $0.capability == .keyboardInput }
-                .map(RuntimeNativeKeyboardState.init(mock:)),
-            fileSelections: manifest.configuredMocks
-                .filter { $0.capability == .files }
-                .map(RuntimeNativeFileSelectionRecord.init(mock:)),
-            shareSheetRecords: manifest.configuredMocks
-                .filter { $0.capability == .shareSheet }
-                .map(RuntimeNativeShareSheetRecord.init(mock:)),
-            notificationRecords: eventRecords
-                .filter { $0.capability == .notifications }
-                .map(RuntimeNativeNotificationRecord.init(event:)),
+            clipboard: clipboardState,
+            keyboard: keyboardState,
+            fileSelections: fileSelections,
+            shareSheetRecords: shareSheetRecords,
+            notificationRecords: notificationRecords,
             diagnosticRecords: diagnosticRecords,
             artifactRecords: artifactRecords
         )
@@ -158,6 +179,11 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
         logs.append(contentsOf: photoLogs)
         logs.append(contentsOf: eventLogs)
         logs.append(contentsOf: location?.logMessages ?? [])
+        logs.append(contentsOf: clipboard?.logMessages ?? [])
+        logs.append(contentsOf: keyboard?.logMessages ?? [])
+        logs.append(contentsOf: fileSelections.map(\.logMessage))
+        logs.append(contentsOf: shareSheetRecords.map(\.logMessage))
+        logs.append(contentsOf: notificationRecords.map(\.logMessage))
         logs.append(contentsOf: diagnosticLogs)
         return logs
     }
@@ -194,6 +220,44 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
 
         if let focusedElementID = keyboard?.focusedElementID {
             metadata["native.keyboard.focusedElementID"] = focusedElementID
+        }
+
+        if let keyboardType = keyboard?.keyboardType {
+            metadata["native.keyboard.type"] = keyboardType
+        }
+
+        if let returnKey = keyboard?.returnKey {
+            metadata["native.keyboard.returnKey"] = returnKey
+        }
+
+        if let isVisible = keyboard?.isVisible {
+            metadata["native.keyboard.isVisible"] = String(isVisible)
+        }
+
+        for trait in keyboard?.inputTraits ?? [] {
+            if let keyboardType = trait.keyboardType {
+                metadata["native.keyboard.trait.\(trait.identifier).keyboardType"] = keyboardType
+            }
+            if let textContentType = trait.textContentType {
+                metadata["native.keyboard.trait.\(trait.identifier).textContentType"] = textContentType
+            }
+        }
+
+        if let clipboardText = clipboard?.currentText {
+            metadata["native.clipboard.currentText"] = clipboardText
+        }
+
+        for fileSelection in fileSelections {
+            metadata["native.files.selection.\(fileSelection.identifier)"] = fileSelection.selectedFiles.joined(separator: ",")
+        }
+
+        for shareSheetRecord in shareSheetRecords {
+            if let activityType = shareSheetRecord.activityType {
+                metadata["native.shareSheet.\(shareSheetRecord.identifier).activityType"] = activityType
+            }
+            if let completionState = shareSheetRecord.completionState {
+                metadata["native.shareSheet.\(shareSheetRecord.identifier).completionState"] = completionState
+            }
         }
 
         for notificationRecord in notificationRecords where !notificationRecord.identifier.isEmpty {
@@ -681,15 +745,27 @@ public struct RuntimeNativeLocationUpdateRecord: Hashable, Codable, Sendable {
 public struct RuntimeNativeClipboardState: Hashable, Codable, Sendable {
     public var identifier: String
     public var text: String?
+    public var initialText: String?
+    public var currentText: String?
+    public var readRecords: [RuntimeNativeClipboardReadRecord]
+    public var writeRecords: [RuntimeNativeClipboardWriteRecord]
     public var payload: [String: String]
 
     public init(
         identifier: String,
         text: String? = nil,
+        initialText: String? = nil,
+        currentText: String? = nil,
+        readRecords: [RuntimeNativeClipboardReadRecord] = [],
+        writeRecords: [RuntimeNativeClipboardWriteRecord] = [],
         payload: [String: String] = [:]
     ) {
         self.identifier = identifier
         self.text = text
+        self.initialText = initialText ?? text
+        self.currentText = currentText ?? text
+        self.readRecords = readRecords
+        self.writeRecords = writeRecords
         self.payload = payload
     }
 
@@ -700,6 +776,132 @@ public struct RuntimeNativeClipboardState: Hashable, Codable, Sendable {
             payload: mock.payload
         )
     }
+
+    public init?(
+        mock: RuntimeNativeCapabilityMock?,
+        events: [RuntimeNativeCapabilityEventRecord]
+    ) {
+        let initialText = mock?.payload["initialText"] ?? mock?.payload["text"]
+        let readRecords = events
+            .filter { $0.name.contains("read") }
+            .map {
+                RuntimeNativeClipboardReadRecord(
+                    event: $0,
+                    fallbackText: initialText
+                )
+            }
+            .sorted { $0.atRevision < $1.atRevision }
+        let writeRecords = events
+            .filter { $0.name.contains("write") }
+            .map(RuntimeNativeClipboardWriteRecord.init(event:))
+            .sorted { $0.atRevision < $1.atRevision }
+        let currentText = writeRecords.last?.text ?? initialText
+        let identifier = mock?.identifier
+            ?? events.first?.payload["identifier"]
+            ?? "clipboard"
+
+        guard mock != nil || !readRecords.isEmpty || !writeRecords.isEmpty else {
+            return nil
+        }
+
+        self.init(
+            identifier: identifier,
+            text: currentText,
+            initialText: initialText,
+            currentText: currentText,
+            readRecords: readRecords,
+            writeRecords: writeRecords,
+            payload: mock?.payload ?? [:]
+        )
+    }
+
+    public var logMessages: [String] {
+        readRecords.map(\.logMessage) + writeRecords.map(\.logMessage)
+    }
+
+    public var artifactRecords: [RuntimeNativeCapabilityArtifactRecord] {
+        [
+            RuntimeNativeCapabilityArtifactRecord(
+                capability: .clipboard,
+                name: "clipboard-records",
+                kind: .eventLog,
+                payload: [
+                    "identifier": identifier,
+                    "initialText": initialText ?? "",
+                    "currentText": currentText ?? "",
+                    "readCount": "\(readRecords.count)",
+                    "writeCount": "\(writeRecords.count)",
+                ].filter { !$0.value.isEmpty }
+            ),
+        ]
+    }
+}
+
+public struct RuntimeNativeClipboardReadRecord: Hashable, Codable, Sendable {
+    public var name: String
+    public var atRevision: Int
+    public var text: String?
+    public var payload: [String: String]
+
+    public init(
+        name: String,
+        atRevision: Int,
+        text: String? = nil,
+        payload: [String: String] = [:]
+    ) {
+        self.name = name
+        self.atRevision = atRevision
+        self.text = text
+        self.payload = payload
+    }
+
+    public init(
+        event: RuntimeNativeCapabilityEventRecord,
+        fallbackText: String?
+    ) {
+        self.init(
+            name: event.name,
+            atRevision: event.atRevision,
+            text: event.payload["text"] ?? fallbackText,
+            payload: event.payload
+        )
+    }
+
+    public var logMessage: String {
+        "native.clipboard.read.\(name).\(atRevision)"
+    }
+}
+
+public struct RuntimeNativeClipboardWriteRecord: Hashable, Codable, Sendable {
+    public var name: String
+    public var atRevision: Int
+    public var text: String?
+    public var payload: [String: String]
+
+    public init(
+        name: String,
+        atRevision: Int,
+        text: String? = nil,
+        payload: [String: String] = [:]
+    ) {
+        self.name = name
+        self.atRevision = atRevision
+        self.text = text
+        self.payload = payload
+    }
+
+    public init(event: RuntimeNativeCapabilityEventRecord) {
+        self.init(
+            name: event.name,
+            atRevision: event.atRevision,
+            text: event.payload["text"],
+            payload: event.payload
+        )
+    }
+
+    public var logMessage: String {
+        "native.clipboard.write.\(name).\(atRevision)"
+    }
 }
 
 public struct RuntimeNativeKeyboardState: Hashable, Codable, Sendable {
@@ -707,6 +909,9 @@ public struct RuntimeNativeKeyboardState: Hashable, Codable, Sendable {
     public var focusedElementID: String?
     public var keyboardType: String?
     public var returnKey: String?
+    public var isVisible: Bool?
+    public var inputTraits: [RuntimeNativeKeyboardInputTraitRecord]
+    public var eventRecords: [RuntimeNativeCapabilityEventRecord]
     public var payload: [String: String]
 
     public init(
@@ -714,12 +919,100 @@ public struct RuntimeNativeKeyboardState: Hashable, Codable, Sendable {
         focusedElementID: String? = nil,
         keyboardType: String? = nil,
         returnKey: String? = nil,
+        isVisible: Bool? = nil,
+        inputTraits: [RuntimeNativeKeyboardInputTraitRecord] = [],
+        eventRecords: [RuntimeNativeCapabilityEventRecord] = [],
         payload: [String: String] = [:]
     ) {
         self.identifier = identifier
         self.focusedElementID = focusedElementID
         self.keyboardType = keyboardType
         self.returnKey = returnKey
+        self.isVisible = isVisible
+        self.inputTraits = inputTraits
+        self.eventRecords = eventRecords
+        self.payload = payload
+    }
+
+    public init(mock: RuntimeNativeCapabilityMock) {
+        let trait = RuntimeNativeKeyboardInputTraitRecord(mock: mock)
+        self.init(
+            identifier: mock.identifier,
+            focusedElementID: trait.focusedElementID,
+            keyboardType: trait.keyboardType,
+            returnKey: trait.returnKey,
+            isVisible: trait.isVisible,
+            inputTraits: [trait],
+            payload: mock.payload
+        )
+    }
+
+    public init?(
+        mocks: [RuntimeNativeCapabilityMock],
+        events: [RuntimeNativeCapabilityEventRecord]
+    ) {
+        let inputTraits = mocks.map(RuntimeNativeKeyboardInputTraitRecord.init(mock:))
+        let firstTrait = inputTraits.first
+        let identifier = firstTrait?.identifier
+            ?? events.first?.payload["identifier"]
+            ?? "keyboard-input"
+
+        guard !inputTraits.isEmpty || !events.isEmpty else {
+            return nil
+        }
+
+        self.init(
+            identifier: identifier,
+            focusedElementID: firstTrait?.focusedElementID,
+            keyboardType: firstTrait?.keyboardType,
+            returnKey: firstTrait?.returnKey,
+            isVisible: firstTrait?.isVisible,
+            inputTraits: inputTraits,
+            eventRecords: events,
+            payload: mocks.first?.payload ?? [:]
+        )
+    }
+
+    public var logMessages: [String] {
+        inputTraits.map { "native.keyboard.input.\($0.identifier)" }
+            + eventRecords.map { "native.keyboard.event.\($0.name).\($0.atRevision)" }
+    }
+
+    public var artifactRecords: [RuntimeNativeCapabilityArtifactRecord] {
+        inputTraits.map(\.artifactRecord)
+    }
+}
+
+public struct RuntimeNativeKeyboardInputTraitRecord: Hashable, Codable, Sendable {
+    public var identifier: String
+    public var focusedElementID: String?
+    public var keyboardType: String?
+    public var returnKey: String?
+    public var textContentType: String?
+    public var autocorrection: String?
+    public var secureTextEntry: Bool?
+    public var isVisible: Bool?
+    public var payload: [String: String]
+
+    public init(
+        identifier: String,
+        focusedElementID: String? = nil,
+        keyboardType: String? = nil,
+        returnKey: String? = nil,
+        textContentType: String? = nil,
+        autocorrection: String? = nil,
+        secureTextEntry: Bool? = nil,
+        isVisible: Bool? = nil,
+        payload: [String: String] = [:]
+    ) {
+        self.identifier = identifier
+        self.focusedElementID = focusedElementID
+        self.keyboardType = keyboardType
+        self.returnKey = returnKey
+        self.textContentType = textContentType
+        self.autocorrection = autocorrection
+        self.secureTextEntry = secureTextEntry
+        self.isVisible = isVisible
         self.payload = payload
     }
 
@@ -729,7 +1022,29 @@ public struct RuntimeNativeKeyboardState: Hashable, Codable, Sendable {
             focusedElementID: mock.payload["focusedElementID"],
             keyboardType: mock.payload["keyboardType"],
             returnKey: mock.payload["returnKey"],
+            textContentType: mock.payload["textContentType"],
+            autocorrection: mock.payload["autocorrection"],
+            secureTextEntry: RuntimeNativePayloadParser.bool(mock.payload["secureTextEntry"]),
+            isVisible: RuntimeNativePayloadParser.bool(mock.payload["isVisible"]),
             payload: mock.payload
+        )
+    }
+
+    public var artifactRecord: RuntimeNativeCapabilityArtifactRecord {
+        RuntimeNativeCapabilityArtifactRecord(
+            capability: .keyboardInput,
+            name: "keyboard-input-\(identifier)",
+            kind: .semanticSnapshot,
+            payload: [
+                "identifier": identifier,
+                "focusedElementID": focusedElementID ?? "",
+                "keyboardType": keyboardType ?? "",
+                "returnKey": returnKey ?? "",
+                "textContentType": textContentType ?? "",
+                "autocorrection": autocorrection ?? "",
+                "secureTextEntry": secureTextEntry.map(String.init) ?? "",
+                "isVisible": isVisible.map(String.init) ?? "",
+            ].filter { !$0.value.isEmpty }
         )
     }
 }
@@ -737,31 +1052,50 @@ public struct RuntimeNativeKeyboardState: Hashable, Codable, Sendable {
 public struct RuntimeNativeFileSelectionRecord: Hashable, Codable, Sendable {
     public var identifier: String
     public var selectedFiles: [String]
+    public var contentTypes: [String]
+    public var allowsMultipleSelection: Bool
     public var payload: [String: String]
 
     public init(
         identifier: String,
         selectedFiles: [String] = [],
+        contentTypes: [String] = [],
+        allowsMultipleSelection: Bool = false,
         payload: [String: String] = [:]
     ) {
         self.identifier = identifier
         self.selectedFiles = selectedFiles
+        self.contentTypes = contentTypes
+        self.allowsMultipleSelection = allowsMultipleSelection
         self.payload = payload
     }
 
     public init(mock: RuntimeNativeCapabilityMock) {
         self.init(
             identifier: mock.identifier,
-            selectedFiles: Self.commaSeparatedValues(mock.payload["selectedFiles"]),
+            selectedFiles: RuntimeNativePayloadParser.commaSeparatedValues(mock.payload["selectedFiles"]),
+            contentTypes: RuntimeNativePayloadParser.commaSeparatedValues(mock.payload["contentTypes"]),
+            allowsMultipleSelection: RuntimeNativePayloadParser.bool(mock.payload["allowsMultipleSelection"]) ?? false,
             payload: mock.payload
         )
     }
 
-    private static func commaSeparatedValues(_ value: String?) -> [String] {
-        value?
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty } ?? []
+    public var logMessage: String {
+        "native.files.selection.\(identifier)"
+    }
+
+    public var artifactRecord: RuntimeNativeCapabilityArtifactRecord {
+        RuntimeNativeCapabilityArtifactRecord(
+            capability: .files,
+            name: "files-selection-\(identifier)",
+            kind: .fixtureReference,
+            payload: [
+                "identifier": identifier,
+                "selectedFiles": selectedFiles.joined(separator: ","),
+                "contentTypes": contentTypes.joined(separator: ","),
+                "allowsMultipleSelection": String(allowsMultipleSelection),
+            ].filter { !$0.value.isEmpty }
+        )
     }
 }
 
@@ -769,17 +1103,23 @@ public struct RuntimeNativeShareSheetRecord: Hashable, Codable, Sendable {
     public var identifier: String
     public var activityType: String?
     public var items: [String]
+    public var completionState: String?
+    public var excludedActivityTypes: [String]
     public var payload: [String: String]
 
     public init(
         identifier: String,
         activityType: String? = nil,
         items: [String] = [],
+        completionState: String? = nil,
+        excludedActivityTypes: [String] = [],
         payload: [String: String] = [:]
     ) {
         self.identifier = identifier
         self.activityType = activityType
         self.items = items
+        self.completionState = completionState
+        self.excludedActivityTypes = excludedActivityTypes
         self.payload = payload
     }
 
@@ -787,47 +1127,97 @@ public struct RuntimeNativeShareSheetRecord: Hashable, Codable, Sendable {
         self.init(
             identifier: mock.identifier,
             activityType: mock.payload["activityType"],
-            items: Self.commaSeparatedValues(mock.payload["items"]),
+            items: RuntimeNativePayloadParser.commaSeparatedValues(mock.payload["items"]),
+            completionState: mock.payload["completionState"],
+            excludedActivityTypes: RuntimeNativePayloadParser.commaSeparatedValues(mock.payload["excludedActivityTypes"]),
             payload: mock.payload
         )
     }
 
-    private static func commaSeparatedValues(_ value: String?) -> [String] {
-        value?
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty } ?? []
+    public var logMessage: String {
+        "native.shareSheet.record.\(identifier)"
+    }
+
+    public var artifactRecord: RuntimeNativeCapabilityArtifactRecord {
+        RuntimeNativeCapabilityArtifactRecord(
+            capability: .shareSheet,
+            name: "share-sheet-\(identifier)",
+            kind: .eventLog,
+            payload: [
+                "identifier": identifier,
+                "activityType": activityType ?? "",
+                "items": items.joined(separator: ","),
+                "completionState": completionState ?? "",
+                "excludedActivityTypes": excludedActivityTypes.joined(separator: ","),
+            ].filter { !$0.value.isEmpty }
+        )
     }
 }
 
 public struct RuntimeNativeNotificationRecord: Hashable, Codable, Sendable {
     public var identifier: String
     public var state: String
+    public var authorizationState: RuntimeNativePermissionState
     public var title: String?
+    public var body: String?
+    public var trigger: String?
     public var atRevision: Int
     public var payload: [String: String]
 
     public init(
         identifier: String,
         state: String,
+        authorizationState: RuntimeNativePermissionState = .unsupported,
         title: String? = nil,
+        body: String? = nil,
+        trigger: String? = nil,
         atRevision: Int,
         payload: [String: String] = [:]
     ) {
         self.identifier = identifier
         self.state = state
+        self.authorizationState = authorizationState
         self.title = title
+        self.body = body
+        self.trigger = trigger
         self.atRevision = atRevision
         self.payload = payload
     }
 
-    public init(event: RuntimeNativeCapabilityEventRecord) {
+    public init(
+        event: RuntimeNativeCapabilityEventRecord,
+        authorizationState: RuntimeNativePermissionState = .unsupported
+    ) {
         self.init(
             identifier: event.payload["identifier"] ?? event.name,
             state: Self.state(from: event.name),
+            authorizationState: authorizationState,
             title: event.payload["title"],
+            body: event.payload["body"],
+            trigger: event.payload["trigger"],
             atRevision: event.atRevision,
             payload: event.payload
+        )
+    }
+
+    public var logMessage: String {
+        "native.notifications.\(state).\(identifier)"
+    }
+
+    public var artifactRecord: RuntimeNativeCapabilityArtifactRecord {
+        RuntimeNativeCapabilityArtifactRecord(
+            capability: .notifications,
+            name: "notification-\(state)-\(identifier)",
+            kind: .eventLog,
+            payload: [
+                "identifier": identifier,
+                "state": state,
+                "authorizationState": authorizationState.rawValue,
+                "title": title ?? "",
+                "body": body ?? "",
+                "trigger": trigger ?? "",
+                "atRevision": "\(atRevision)",
+            ].filter { !$0.value.isEmpty }
         )
     }
 
@@ -926,6 +1316,17 @@ private enum RuntimeNativePayloadParser {
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty } ?? []
+    }
+
+    static func bool(_ value: String?) -> Bool? {
+        switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "true", "yes", "1":
+            true
+        case "false", "no", "0":
+            false
+        default:
+            nil
+        }
     }
 }
 

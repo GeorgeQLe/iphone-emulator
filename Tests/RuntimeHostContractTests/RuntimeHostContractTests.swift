@@ -1430,6 +1430,170 @@ struct RuntimeHostContractTests {
         #expect(missingFixtureState.logMessages.contains("native.diagnostic.camera.missingFixture"))
     }
 
+    @Test("runtime native mocks model clipboard input files share sheet and notification records deterministically")
+    func runtimeNativeMocksModelClipboardInputFilesShareSheetAndNotifications() throws {
+        let manifest = RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .clipboard,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use deterministic pasteboard fixtures."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .keyboardInput,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use semantic input traits instead of host keyboard state."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .files,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use deterministic document picker fixtures."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .shareSheet,
+                    permissionState: .granted,
+                    strictModeAlternative: "Record share sheet activity results without presenting native UI."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .notifications,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Record deterministic local notification authorization and delivery events."
+                ),
+            ],
+            configuredMocks: [
+                RuntimeNativeCapabilityMock(
+                    capability: .clipboard,
+                    identifier: "system-pasteboard",
+                    payload: [
+                        "text": "Initial clipboard",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .keyboardInput,
+                    identifier: "email-entry",
+                    payload: [
+                        "focusedElementID": "name-field",
+                        "keyboardType": "emailAddress",
+                        "returnKey": "send",
+                        "textContentType": "emailAddress",
+                        "autocorrection": "no",
+                        "secureTextEntry": "false",
+                        "isVisible": "true",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .files,
+                    identifier: "document-picker",
+                    payload: [
+                        "selectedFiles": "Fixtures/profile.pdf, Fixtures/receipt.pdf",
+                        "contentTypes": "com.adobe.pdf, public.image",
+                        "allowsMultipleSelection": "true",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .shareSheet,
+                    identifier: "share-receipt",
+                    payload: [
+                        "activityType": "com.apple.UIKit.activity.Mail",
+                        "items": "Fixtures/profile.pdf, Summary",
+                        "completionState": "completed",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .notifications,
+                    identifier: "notification-permission",
+                    payload: [
+                        "result": "granted",
+                    ]
+                ),
+            ],
+            scriptedEvents: [
+                RuntimeNativeCapabilityEvent(
+                    capability: .clipboard,
+                    name: "clipboard-read",
+                    atRevision: 2,
+                    payload: [
+                        "text": "Initial clipboard",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .clipboard,
+                    name: "clipboard-write",
+                    atRevision: 3,
+                    payload: [
+                        "text": "Updated clipboard",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .notifications,
+                    name: "notification-scheduled",
+                    atRevision: 4,
+                    payload: [
+                        "identifier": "trip-reminder",
+                        "title": "Trip Reminder",
+                        "body": "Leave for the airport",
+                        "trigger": "2026-05-01T09:00:00Z",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .notifications,
+                    name: "notification-delivered",
+                    atRevision: 5,
+                    payload: [
+                        "identifier": "trip-reminder",
+                        "title": "Trip Reminder",
+                    ]
+                ),
+            ]
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-step-9-4",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        nativeCapabilities: manifest
+                    )
+                )
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        #expect(session.nativeCapabilityState.clipboard?.initialText == "Initial clipboard")
+        #expect(session.nativeCapabilityState.clipboard?.currentText == "Updated clipboard")
+        #expect(session.nativeCapabilityState.clipboard?.readRecords.first?.text == "Initial clipboard")
+        #expect(session.nativeCapabilityState.clipboard?.writeRecords.first?.text == "Updated clipboard")
+        #expect(session.nativeCapabilityState.keyboard?.inputTraits.first?.textContentType == "emailAddress")
+        #expect(session.nativeCapabilityState.keyboard?.inputTraits.first?.isVisible == true)
+        #expect(session.nativeCapabilityState.fileSelections.first?.contentTypes == ["com.adobe.pdf", "public.image"])
+        #expect(session.nativeCapabilityState.fileSelections.first?.allowsMultipleSelection == true)
+        #expect(session.nativeCapabilityState.shareSheetRecords.first?.items == ["Fixtures/profile.pdf", "Summary"])
+        #expect(session.nativeCapabilityState.shareSheetRecords.first?.completionState == "completed")
+        #expect(session.nativeCapabilityState.notificationRecords.map(\.state) == ["scheduled", "delivered"])
+        #expect(session.nativeCapabilityState.notificationRecords.first?.authorizationState == .granted)
+        #expect(session.logs.map(\.message).contains("native.clipboard.write.clipboard-write.3"))
+        #expect(session.logs.map(\.message).contains("native.keyboard.input.email-entry"))
+        #expect(session.logs.map(\.message).contains("native.files.selection.document-picker"))
+        #expect(session.logs.map(\.message).contains("native.shareSheet.record.share-receipt"))
+        #expect(session.logs.map(\.message).contains("native.notifications.delivered.trip-reminder"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("clipboard-records"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("keyboard-input-email-entry"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("files-selection-document-picker"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("share-sheet-share-receipt"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("notification-delivered-trip-reminder"))
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.clipboard.currentText"] == "Updated clipboard")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.keyboard.type"] == "emailAddress")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.files.selection.document-picker"] == "Fixtures/profile.pdf,Fixtures/receipt.pdf")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.shareSheet.share-receipt.activityType"] == "com.apple.UIKit.activity.Mail")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.notification.trip-reminder"] == "delivered")
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

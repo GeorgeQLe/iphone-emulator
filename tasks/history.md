@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 9 Step 9.4 by extending the runtime native capability state layer for deterministic clipboard read/write records, keyboard input trait records, file picker selections, share sheet outcomes, and local notification authorization/schedule/delivery records. Launch-time runtime logs, semantic metadata, and artifact bundle records now expose those mock-service records without invoking host native frameworks or adding Phase 10 SDK controls.
+- Validation: `swift test --filter RuntimeHostContractTests` passed with 25 runtime host contract tests, and `swift build` passed cleanly. A parallel SwiftPM invocation waited for the `.build` lock and then completed successfully; no actionable warnings remained.
+
 - Completed Phase 9 Step 9.3 by adding deterministic runtime mocks for permission prompt resolution, fixture-backed camera capture records, photo picker selection records, location state/scripted update records, and diagnostics/artifact records for unsupported symbols or missing camera/photo fixtures. Launch-time native capability logs, semantic metadata, and artifact bundles now reflect those records without calling host native services or adding the Phase 10 high-level SDK API.
 - Validation: `swift test --filter RuntimeHostContractTests` passed with 24 runtime host contract tests, and `swift build` passed cleanly. One parallel SwiftPM build waited for the `.build` lock behind the test command and then completed successfully; no actionable warnings remained.
 
