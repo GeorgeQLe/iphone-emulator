@@ -57,7 +57,7 @@
   - Validation focus: run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` because this step changes browser-facing layout CSS.
 
 ### Green
-- [ ] Step 7.6: Write regression tests covering the demo compiler and interactive renderer behavior
+- [x] Step 7.6: Write regression tests covering the demo compiler and interactive renderer behavior
   - Files: create or modify `packages/browser-renderer/src/demoProject.test.ts`, `packages/browser-renderer/src/renderTree.test.ts`, and only test helpers if needed
   - Cover semantic tree generation from the mock strict-mode source, unsupported import diagnostics, editable text field rendering, and keyboard/input state update behavior where practical in jsdom.
   - Implementation plan: add focused Vitest coverage for `compileDemoProject` using the bundled mock strict-mode source and a small unsupported-import sample, asserting deterministic semantic root structure, execution-mode metadata, and diagnostics. Extend `renderTree.test.ts` with DOM-level assertions for text field metadata, editable input values, focusable controls, and renderer-owned node IDs. For keyboard/input state, prefer testing the public rendered DOM affordances that `main.ts` wires to instead of exporting demo-only internals; only extract a tiny package-local helper if jsdom cannot cover an interaction without coupling to the full Monaco shell.

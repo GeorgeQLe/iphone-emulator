@@ -81,6 +81,31 @@ describe("mountRenderer", () => {
     ]);
   });
 
+  it("exposes editable text field metadata and focusable controls through the rendered DOM", () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+
+    mountRenderer(container, baselineFixtureTree);
+
+    const field = container.querySelector<HTMLElement>("[data-node-id='name-field']");
+    const input = field?.querySelector<HTMLInputElement>("input");
+    const saveButton = container.querySelector<HTMLButtonElement>("[data-node-id='save-button']");
+
+    expect(field?.dataset.role).toBe("textField");
+    expect(field?.dataset.metaPlaceholder).toBe("Enter name");
+    expect(input?.dataset.inputNodeId).toBe("name-field");
+    expect(input?.getAttribute("aria-label")).toBe("Name");
+    expect(input?.placeholder).toBe("Enter name");
+    expect(input?.value).toBe("Taylor");
+    expect(saveButton?.type).toBe("button");
+    expect(saveButton?.dataset.role).toBe("button");
+    expect(saveButton?.dataset.metaVariant).toBe("primary");
+
+    input?.focus();
+    expect(document.activeElement).toBe(input);
+    container.remove();
+  });
+
   it("produces deterministic render artifact metadata for the fixed fixture", () => {
     const container = document.createElement("div");
 
