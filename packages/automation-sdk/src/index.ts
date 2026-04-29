@@ -6,6 +6,14 @@ import type {
   RuntimeAutomationScreenshotMetadata,
   RuntimeAutomationSession,
   RuntimeDeviceSettings,
+  RuntimeNativeCapabilityArtifactOutput,
+  RuntimeNativeCapabilityEvent,
+  RuntimeNativeCapabilityID,
+  RuntimeNativeCapabilityManifest,
+  RuntimeNativeCapabilityMock,
+  RuntimeNativeCapabilityRequirement,
+  RuntimeNativePermissionState,
+  RuntimeNativeUnsupportedSymbol,
   RuntimeNetworkFixture,
   RuntimeNetworkFixtureInput,
   RuntimeNetworkRequestInput,
@@ -31,6 +39,14 @@ export type {
   RuntimeAutomationScreenshotMetadata,
   RuntimeAutomationSession,
   RuntimeDeviceSettings,
+  RuntimeNativeCapabilityArtifactOutput,
+  RuntimeNativeCapabilityEvent,
+  RuntimeNativeCapabilityID,
+  RuntimeNativeCapabilityManifest,
+  RuntimeNativeCapabilityMock,
+  RuntimeNativeCapabilityRequirement,
+  RuntimeNativePermissionState,
+  RuntimeNativeUnsupportedSymbol,
   RuntimeNetworkFixture,
   RuntimeNetworkFixtureInput,
   RuntimeNetworkRequestInput,
@@ -282,6 +298,9 @@ class InMemoryLocator implements Locator {
 function createSession(options: RuntimeAutomationLaunchOptions): RuntimeAutomationSession {
   const tree = createStrictModeBaselineTree(options.appIdentifier);
   const device = cloneDeviceSettings(options.device ?? defaultDeviceSettings());
+  const nativeCapabilities = cloneNativeCapabilities(
+    options.nativeCapabilities ?? defaultNativeCapabilities()
+  );
   const snapshot = {
     appIdentifier: options.appIdentifier,
     tree,
@@ -316,6 +335,17 @@ function createSession(options: RuntimeAutomationLaunchOptions): RuntimeAutomati
       networkRecords: [],
     },
     device,
+    nativeCapabilities,
+  };
+}
+
+function defaultNativeCapabilities(): RuntimeNativeCapabilityManifest {
+  return {
+    requiredCapabilities: [],
+    configuredMocks: [],
+    scriptedEvents: [],
+    unsupportedSymbols: [],
+    artifactOutputs: [],
   };
 }
 
@@ -491,6 +521,7 @@ function cloneSession(session: RuntimeAutomationSession): RuntimeAutomationSessi
     logs: cloneLogs(session.logs),
     artifactBundle: cloneArtifactBundle(session.artifactBundle),
     device: cloneDeviceSettings(session.device),
+    nativeCapabilities: cloneNativeCapabilities(session.nativeCapabilities),
   };
 }
 
@@ -538,6 +569,24 @@ function cloneDeviceSettings(device: RuntimeDeviceSettings): RuntimeDeviceSettin
 
 function cloneDeviceViewport(viewport: RuntimeDeviceSettings["viewport"]): RuntimeDeviceSettings["viewport"] {
   return { ...viewport };
+}
+
+function cloneNativeCapabilities(
+  manifest: RuntimeNativeCapabilityManifest
+): RuntimeNativeCapabilityManifest {
+  return {
+    requiredCapabilities: manifest.requiredCapabilities.map((requirement) => ({ ...requirement })),
+    configuredMocks: manifest.configuredMocks.map((mock) => ({
+      ...mock,
+      payload: { ...mock.payload },
+    })),
+    scriptedEvents: manifest.scriptedEvents.map((event) => ({
+      ...event,
+      payload: { ...event.payload },
+    })),
+    unsupportedSymbols: manifest.unsupportedSymbols.map((symbol) => ({ ...symbol })),
+    artifactOutputs: manifest.artifactOutputs.map((output) => ({ ...output })),
+  };
 }
 
 function cloneNetworkRequestRecord(record: RuntimeNetworkRequestRecord): RuntimeNetworkRequestRecord {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Emulator } from "./index";
+import type { RuntimeNativeCapabilityManifest } from "./types";
 
 describe("Emulator", () => {
   it("runs a representative fixture-backed automation flow", async () => {
@@ -191,6 +192,154 @@ describe("Emulator", () => {
         network: {
           latencyMilliseconds: 25,
         },
+      },
+    });
+  });
+
+  it("carries native capability manifests through launch and session inspection", async () => {
+    const nativeCapabilities: RuntimeNativeCapabilityManifest = {
+      requiredCapabilities: [
+        {
+          id: "camera",
+          permissionState: "denied",
+          strictModeAlternative:
+            "Configure a deterministic camera mock instead of requesting host camera access.",
+        },
+        {
+          id: "location",
+          permissionState: "granted",
+          strictModeAlternative: "Use launch-time device geolocation or scripted location events.",
+        },
+      ],
+      configuredMocks: [
+        {
+          capability: "camera",
+          identifier: "front-camera-still",
+          payload: {
+            mediaType: "image",
+            fixtureName: "profile-photo",
+          },
+        },
+        {
+          capability: "clipboard",
+          identifier: "pasteboard-text",
+          payload: {
+            text: "Fixture clipboard",
+          },
+        },
+      ],
+      scriptedEvents: [
+        {
+          capability: "location",
+          name: "location-update",
+          atRevision: 2,
+          payload: {
+            latitude: "40.7128",
+            longitude: "-74.0060",
+          },
+        },
+      ],
+      unsupportedSymbols: [
+        {
+          symbolName: "AVCaptureSession.startRunning",
+          capability: "camera",
+          suggestedAdaptation:
+            "Replace live capture with a camera fixture in the native capability manifest.",
+        },
+      ],
+      artifactOutputs: [
+        {
+          capability: "camera",
+          name: "captured-profile-photo",
+          kind: "fixtureReference",
+        },
+      ],
+    };
+
+    const app = await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities,
+    });
+
+    nativeCapabilities.requiredCapabilities[0].permissionState = "granted";
+    nativeCapabilities.configuredMocks[0].payload.fixtureName = "mutated-photo";
+
+    const session = await app.session();
+
+    expect(session.nativeCapabilities).toMatchObject({
+      requiredCapabilities: [
+        {
+          id: "camera",
+          permissionState: "denied",
+        },
+        {
+          id: "location",
+          permissionState: "granted",
+        },
+      ],
+      configuredMocks: [
+        {
+          capability: "camera",
+          identifier: "front-camera-still",
+          payload: {
+            fixtureName: "profile-photo",
+          },
+        },
+        {
+          capability: "clipboard",
+          identifier: "pasteboard-text",
+          payload: {
+            text: "Fixture clipboard",
+          },
+        },
+      ],
+      scriptedEvents: [
+        {
+          capability: "location",
+          name: "location-update",
+          atRevision: 2,
+          payload: {
+            latitude: "40.7128",
+          },
+        },
+      ],
+      unsupportedSymbols: [
+        {
+          symbolName: "AVCaptureSession.startRunning",
+          capability: "camera",
+        },
+      ],
+      artifactOutputs: [
+        {
+          capability: "camera",
+          name: "captured-profile-photo",
+          kind: "fixtureReference",
+        },
+      ],
+    });
+
+    session.nativeCapabilities.configuredMocks[0].payload.fixtureName = "inspector-mutation";
+    const inspectedAgain = await app.session();
+
+    expect(inspectedAgain.nativeCapabilities.configuredMocks[0].payload.fixtureName).toBe(
+      "profile-photo"
+    );
+  });
+
+  it("defaults native capability manifests to deterministic empty unsupported shapes", async () => {
+    const app = await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+    });
+
+    await expect(app.session()).resolves.toMatchObject({
+      nativeCapabilities: {
+        requiredCapabilities: [],
+        configuredMocks: [],
+        scriptedEvents: [],
+        unsupportedSymbols: [],
+        artifactOutputs: [],
       },
     });
   });

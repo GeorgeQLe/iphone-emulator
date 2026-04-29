@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 8 Step 8.4 by mirroring the runtime native capability manifest into the TypeScript automation SDK. The SDK now exports native capability IDs, permission states, manifest field types, accepts `nativeCapabilities` at launch, exposes cloned manifest state through `session()`, and preserves deterministic empty defaults with no native service behavior.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed cleanly with no warnings. One intermediate SDK test assertion was narrowed after it incorrectly expected a partial array match against the configured mock list.
+
 - Completed Phase 8 Step 8.3 by adding diagnostics-side native capability guidance for platform API diagnostics and extending the compatibility analyzer with deterministic mappings for camera, location, photos, network, clipboard, notifications, files, share sheet, sensors, haptics, device environment, and a fail-closed unsupported biometric API boundary.
 - Validation: `swift test --filter DiagnosticsCoreContractTests` passed with 13 diagnostics tests and no warnings. `swift build` passed cleanly with no warnings.
 

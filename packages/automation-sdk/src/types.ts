@@ -72,6 +72,7 @@ export interface RuntimeAutomationLaunchOptions {
   appIdentifier: string;
   fixtureName: string;
   device?: RuntimeDeviceSettings;
+  nativeCapabilities?: RuntimeNativeCapabilityManifest;
 }
 
 export interface RuntimeAutomationLogEntry {
@@ -94,6 +95,7 @@ export interface RuntimeAutomationSession {
   logs: RuntimeAutomationLogEntry[];
   artifactBundle: RuntimeArtifactBundle;
   device: RuntimeDeviceSettings;
+  nativeCapabilities: RuntimeNativeCapabilityManifest;
 }
 
 export interface SemanticQuery {
@@ -199,3 +201,72 @@ export interface RuntimeNetworkRequestRecord {
 export type RuntimeNetworkRequestRecordSource =
   | { fixtureId: string }
   | { missingFixture: true };
+
+export interface RuntimeNativeCapabilityManifest {
+  requiredCapabilities: RuntimeNativeCapabilityRequirement[];
+  configuredMocks: RuntimeNativeCapabilityMock[];
+  scriptedEvents: RuntimeNativeCapabilityEvent[];
+  unsupportedSymbols: RuntimeNativeUnsupportedSymbol[];
+  artifactOutputs: RuntimeNativeCapabilityArtifactOutput[];
+}
+
+export type RuntimeNativeCapabilityID =
+  | "permissions"
+  | "camera"
+  | "photos"
+  | "location"
+  | "network"
+  | "clipboard"
+  | "keyboardInput"
+  | "files"
+  | "shareSheet"
+  | "notifications"
+  | "deviceEnvironment"
+  | "sensors"
+  | "haptics"
+  | "unsupported";
+
+export type RuntimeNativePermissionState =
+  | "unsupported"
+  | "notRequested"
+  | "prompt"
+  | "granted"
+  | "denied"
+  | "restricted";
+
+export interface RuntimeNativeCapabilityRequirement {
+  id: RuntimeNativeCapabilityID;
+  permissionState: RuntimeNativePermissionState;
+  strictModeAlternative: string;
+}
+
+export interface RuntimeNativeCapabilityMock {
+  capability: RuntimeNativeCapabilityID;
+  identifier: string;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeCapabilityEvent {
+  capability: RuntimeNativeCapabilityID;
+  name: string;
+  atRevision: number;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeUnsupportedSymbol {
+  symbolName: string;
+  capability: RuntimeNativeCapabilityID;
+  suggestedAdaptation: string;
+}
+
+export type RuntimeNativeCapabilityArtifactOutputKind =
+  | "fixtureReference"
+  | "eventLog"
+  | "diagnostic"
+  | "semanticSnapshot";
+
+export interface RuntimeNativeCapabilityArtifactOutput {
+  capability: RuntimeNativeCapabilityID;
+  name: string;
+  kind: RuntimeNativeCapabilityArtifactOutputKind;
+}
