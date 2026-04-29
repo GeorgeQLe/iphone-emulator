@@ -121,7 +121,7 @@ public struct RuntimeAutomationCoordinator {
             device: configuration.device,
             nativeCapabilities: configuration.nativeCapabilities,
             nativeCapabilityState: nativeCapabilityState,
-            nativeCapabilityEvents: nativeCapabilityState.scriptedEvents
+            nativeCapabilityEvents: nativeCapabilityState.inspectionEvents
         )
 
         session = launchedSession

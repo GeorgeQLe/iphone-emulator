@@ -1278,6 +1278,9 @@ struct RuntimeHostContractTests {
         #expect(session.nativeCapabilityState.shareSheetRecords.first?.activityType == "copy")
         #expect(session.nativeCapabilityState.notificationRecords.first?.identifier == "trip-reminder")
         #expect(session.nativeCapabilityEvents.first { $0.capability == .location }?.payload["latitude"] == "40.7128")
+        #expect(session.nativeCapabilityEvents.map(\.name).contains("native.permission.camera.prompt"))
+        #expect(session.nativeCapabilityEvents.map(\.name).contains("native.fixture.camera.front-camera-still"))
+        #expect(session.nativeCapabilityEvents.map(\.name).contains("native.event.location.location-update"))
         #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("notification-records"))
         #expect(session.logs.map(\.message).contains("native.permission.camera.prompt"))
         #expect(session.logs.map(\.message).contains("native.fixture.camera.front-camera-still"))
@@ -1640,11 +1643,15 @@ struct RuntimeHostContractTests {
         #expect(session.nativeCapabilityState.notificationRecords.last?.authorizationState == .granted)
         #expect(session.nativeCapabilityState.diagnosticRecords.first?.payload["symbolName"] == "LAContext.evaluatePolicy")
         #expect(session.nativeCapabilityEvents.map(\.name) == [
-            "location-update",
-            "clipboard-read",
-            "clipboard-write",
-            "notification-scheduled",
-            "notification-delivered",
+            "native.permission.camera.prompt",
+            "native.permission.notifications.prompt",
+            "native.fixture.camera.front-camera-still",
+            "native.fixture.photos.recent-library-pick",
+            "native.event.location.location-update",
+            "native.event.clipboard.clipboard-read",
+            "native.event.clipboard.clipboard-write",
+            "native.event.notifications.notification-scheduled",
+            "native.event.notifications.notification-delivered",
         ])
 
         #expect(logMessages.contains("native.permission.camera.prompt.granted"))

@@ -60,7 +60,7 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
                 strictModeAlternative: requirement.strictModeAlternative
             )
         }
-        let fixtureRecords = manifest.configuredMocks.map(RuntimeNativeFixtureOutputRecord.init(mock:))
+        let fixtureRecords = manifest.configuredMocks.compactMap(RuntimeNativeFixtureOutputRecord.init(fixtureMock:))
         let eventRecords = manifest.scriptedEvents.map(RuntimeNativeCapabilityEventRecord.init(event:))
         let permissionPrompts = permissionRecords.compactMap { permission in
             RuntimeNativePermissionPromptRecord(
@@ -188,6 +188,45 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
         return logs
     }
 
+    public var inspectionEvents: [RuntimeNativeCapabilityEventRecord] {
+        let promptEvents = permissionPrompts.map {
+            RuntimeNativeCapabilityEventRecord(
+                capability: $0.capability,
+                name: "native.permission.\($0.capability.rawValue).prompt",
+                atRevision: 1,
+                payload: Self.compactStringRecord([
+                    "state": $0.initialState.rawValue,
+                    "result": $0.resultState?.rawValue,
+                    "resolvedState": $0.finalState.rawValue,
+                ])
+            )
+        }
+
+        let fixtureEvents = fixtureOutputs.map {
+            var payload = $0.payload
+            if let fixtureName = $0.fixtureName {
+                payload["fixtureName"] = fixtureName
+            }
+            return RuntimeNativeCapabilityEventRecord(
+                capability: $0.capability,
+                name: "native.fixture.\($0.capability.rawValue).\($0.identifier)",
+                atRevision: 1,
+                payload: payload
+            )
+        }
+
+        let scriptedInspectionEvents = scriptedEvents.map {
+            RuntimeNativeCapabilityEventRecord(
+                capability: $0.capability,
+                name: "native.event.\($0.capability.rawValue).\($0.name)",
+                atRevision: $0.atRevision,
+                payload: $0.payload
+            )
+        }
+
+        return promptEvents + fixtureEvents + scriptedInspectionEvents
+    }
+
     public var semanticMetadata: [String: String] {
         var metadata: [String: String] = [:]
 
@@ -282,6 +321,10 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
             return nil
         }
         return RuntimeNativePermissionState(rawValue: result)
+    }
+
+    private static func compactStringRecord(_ values: [String: String?]) -> [String: String] {
+        values.compactMapValues { $0 }
     }
 
     private static func diagnosticRecords(
@@ -445,9 +488,16 @@ public struct RuntimeNativeFixtureOutputRecord: Hashable, Codable, Sendable {
         self.init(
             capability: mock.capability,
             identifier: mock.identifier,
-            fixtureName: mock.payload["fixtureName"],
+            fixtureName: mock.fixtureNameForNativeMock.isEmpty ? nil : mock.fixtureNameForNativeMock,
             payload: mock.payload
         )
+    }
+
+    public init?(fixtureMock mock: RuntimeNativeCapabilityMock) {
+        guard !mock.fixtureNameForNativeMock.isEmpty else {
+            return nil
+        }
+        self.init(mock: mock)
     }
 }
 
