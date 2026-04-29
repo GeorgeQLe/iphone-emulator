@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 8 Step 8.5 by documenting the native capability registry and mock-fidelity boundary. Added `docs/native-capabilities.md` with the capability taxonomy, manifest fields, permission states, supported-capability requirements, diagnostics guidance mappings, and deterministic fixture constraints. Updated the root README and strict-mode baseline example docs to link the registry and show native capability manifests as launch/session fixture data rather than live native behavior.
+- Validation: docs-only diff and whitespace review; no Swift or TypeScript validation was required because no source files changed.
+
 - Completed Phase 8 Step 8.4 by mirroring the runtime native capability manifest into the TypeScript automation SDK. The SDK now exports native capability IDs, permission states, manifest field types, accepts `nativeCapabilities` at launch, exposes cloned manifest state through `session()`, and preserves deterministic empty defaults with no native service behavior.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed cleanly with no warnings. One intermediate SDK test assertion was narrowed after it incorrectly expected a partial array match against the configured mock list.
 

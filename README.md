@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 5 milestone adds agent-facing artifacts, deterministic network fixtures, and launch-time device metadata on top of the strict-mode semantic tree, deterministic browser preview surface, and fixture-backed automation SDK.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 8 milestone defines the native capability registry and manifest contract on top of the strict-mode semantic tree, deterministic browser preview surface, agent-facing artifacts, fixture-backed automation SDK, compatibility diagnostics, and browser IDE demo.
 
 ## Goals
 
@@ -34,14 +34,16 @@ The harness is designed to remain implementable with open-source tooling and pro
 
 ## Current Phase Status
 
-Phase 5 currently provides:
+The workspace currently provides:
 
 - `StrictModeSDK` entry points for strict-mode `App`, `Scene`, layout primitives, navigation, alerts, and state, plus lowering hooks that produce the shared semantic tree contract.
 - `RuntimeHost` value types for semantic UI tree snapshots, fixture loading, lifecycle metadata, and retained tree inspection.
 - `RuntimeHost` automation protocol types and an in-memory fixture coordinator that can launch the strict baseline fixture, resolve semantic queries, apply deterministic `tap` and `fill` updates, and expose artifact bundles with screenshot placeholders, semantic snapshots, logs, device metadata, and HAR-like network records.
 - `DiagnosticsCore` compatibility contracts, a lightweight source analyzer, a documented v1 compatibility matrix, and a narrow supported-subset lowering path that emits the shared runtime tree when analysis succeeds without unsupported diagnostics.
+- Native capability manifest contracts through `RuntimeNativeCapabilityManifest`, `RuntimeNativeCapabilityID`, `RuntimeNativePermissionState`, `RuntimeNativeCapabilityRequirement`, `RuntimeNativeCapabilityMock`, `RuntimeNativeCapabilityEvent`, `RuntimeNativeUnsupportedSymbol`, and `RuntimeNativeCapabilityArtifactOutput`.
+- Diagnostics-side `nativeCapabilityGuidance` for recognized native API requests, with deterministic manifest-field suggestions and fail-closed handling for APIs with no capability contract.
 - `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell and can derive stable DOM render metadata for captures.
-- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, and artifact bundle retrieval through an in-memory fixture client.
+- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, native capability manifest launch options, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, and artifact bundle retrieval through an in-memory fixture client.
 - SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface before later phases add transport or live session coordination.
 
 ## Workspace Layout
@@ -56,7 +58,7 @@ Phase 5 currently provides:
 
 ## Example
 
-See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility), [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md), and [`docs/strict-mode-migration.md`](docs/strict-mode-migration.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation sample demonstrates the current TypeScript SDK flow.
+See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility), [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md), and [`docs/strict-mode-migration.md`](docs/strict-mode-migration.md). For native capability manifests and mock-fidelity boundaries, see [`docs/native-capabilities.md`](docs/native-capabilities.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation sample demonstrates the current TypeScript SDK flow.
 
 ## Validation
 
@@ -109,6 +111,32 @@ const app = await Emulator.launch({
       downloadKbps: 12000,
     },
   },
+  nativeCapabilities: {
+    requiredCapabilities: [
+      {
+        id: "camera",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Use a deterministic camera fixture instead of live capture.",
+      },
+    ],
+    configuredMocks: [
+      {
+        capability: "camera",
+        identifier: "profile-photo",
+        payload: { fixtureName: "profile-photo" },
+      },
+    ],
+    scriptedEvents: [],
+    unsupportedSymbols: [],
+    artifactOutputs: [
+      {
+        capability: "camera",
+        name: "profile-photo",
+        kind: "fixtureReference",
+      },
+    ],
+  },
 });
 
 await app.route("https://example.test/profile", {
@@ -145,3 +173,4 @@ await app.close();
 - Network fixtures are deterministic in-memory route records. They do not perform live HTTP calls.
 - Device settings are reflected as launch/session metadata and artifact viewport metadata. They do not emulate OS simulator behavior.
 - Compatibility mode is scanner-based rather than compiler-integrated. It only lowers the first documented SwiftUI-inspired subset and otherwise returns diagnostics instead of attempting broad SwiftUI or UIKit emulation.
+- Native capability manifests are deterministic fixture data. They do not access live host permissions, live device state, native framework behavior, or live network resources by default.
