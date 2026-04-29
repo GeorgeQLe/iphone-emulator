@@ -96,6 +96,8 @@ export interface RuntimeAutomationSession {
   artifactBundle: RuntimeArtifactBundle;
   device: RuntimeDeviceSettings;
   nativeCapabilities: RuntimeNativeCapabilityManifest;
+  nativeCapabilityState: RuntimeNativeCapabilityState;
+  nativeCapabilityEvents: RuntimeNativeCapabilityRecord[];
 }
 
 export interface SemanticQuery {
@@ -117,6 +119,7 @@ export interface RuntimeArtifactBundle {
   semanticSnapshots: RuntimeSemanticSnapshotArtifact[];
   logs: RuntimeAutomationLogEntry[];
   networkRecords: RuntimeNetworkRequestRecord[];
+  nativeCapabilityRecords: RuntimeNativeCapabilityRecord[];
 }
 
 export interface RuntimeSemanticSnapshotArtifact {
@@ -269,4 +272,130 @@ export interface RuntimeNativeCapabilityArtifactOutput {
   capability: RuntimeNativeCapabilityID;
   name: string;
   kind: RuntimeNativeCapabilityArtifactOutputKind;
+}
+
+export interface RuntimeNativeCapabilityState {
+  permissions: Record<string, RuntimeNativePermissionInspection>;
+  fixtureOutputs: RuntimeNativeFixtureOutputRecord[];
+  locationEvents: RuntimeNativeLocationEventRecord[];
+  clipboard?: RuntimeNativeClipboardState;
+  keyboard?: RuntimeNativeKeyboardState;
+  filePickerRecords: RuntimeNativeFilePickerRecord[];
+  shareSheetRecords: RuntimeNativeShareSheetRecord[];
+  notificationRecords: RuntimeNativeNotificationRecord[];
+  diagnosticRecords: RuntimeNativeDiagnosticRecord[];
+}
+
+export interface RuntimeNativePermissionInspection {
+  state: RuntimeNativePermissionState;
+  resolvedState: RuntimeNativePermissionState;
+  strictModeAlternative: string;
+  prompt: RuntimeNativePermissionPromptInspection;
+}
+
+export interface RuntimeNativePermissionPromptInspection {
+  presented: boolean;
+  result?: RuntimeNativePermissionState;
+}
+
+export interface RuntimeNativeFixtureOutputRecord {
+  capability: RuntimeNativeCapabilityID;
+  identifier: string;
+  fixtureName?: string;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeLocationEventRecord {
+  name: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+  revision: number;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeClipboardState {
+  identifier: string;
+  text?: string;
+  initialText?: string;
+  currentText?: string;
+  readRecords: RuntimeNativeClipboardEventRecord[];
+  writeRecords: RuntimeNativeClipboardEventRecord[];
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeClipboardEventRecord {
+  name: string;
+  revision: number;
+  text?: string;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeKeyboardState {
+  identifier: string;
+  focusedElementID?: string;
+  keyboardType?: string;
+  returnKey?: string;
+  textContentType?: string;
+  autocorrection?: string;
+  secureTextEntry?: boolean;
+  isVisible?: boolean;
+  inputTraits: RuntimeNativeKeyboardInputTraitRecord[];
+  eventRecords: RuntimeNativeCapabilityRecord[];
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeKeyboardInputTraitRecord {
+  identifier: string;
+  focusedElementID?: string;
+  keyboardType?: string;
+  returnKey?: string;
+  textContentType?: string;
+  autocorrection?: string;
+  secureTextEntry?: boolean;
+  isVisible?: boolean;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeFilePickerRecord {
+  identifier: string;
+  selectedFiles: string[];
+  contentTypes: string[];
+  allowsMultipleSelection: boolean;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeShareSheetRecord {
+  identifier: string;
+  activityType?: string;
+  items: string[];
+  completionState?: string;
+  excludedActivityTypes: string[];
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeNotificationRecord {
+  identifier: string;
+  title?: string;
+  body?: string;
+  trigger?: string;
+  state: string;
+  authorizationState: RuntimeNativePermissionState;
+  revision: number;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeDiagnosticRecord {
+  capability: RuntimeNativeCapabilityID;
+  code: string;
+  message: string;
+  suggestedAdaptation: string;
+  payload: Record<string, string>;
+}
+
+export interface RuntimeNativeCapabilityRecord {
+  capability: RuntimeNativeCapabilityID;
+  name: string;
+  revision: number;
+  payload: Record<string, string>;
 }

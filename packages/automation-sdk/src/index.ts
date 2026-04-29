@@ -6,19 +6,27 @@ import type {
   RuntimeAutomationScreenshotMetadata,
   RuntimeAutomationSession,
   RuntimeDeviceSettings,
-  RuntimeNativeCapabilityArtifactOutput,
   RuntimeNativeCapabilityEvent,
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
   RuntimeNativeCapabilityMock,
-  RuntimeNativeCapabilityRequirement,
+  RuntimeNativeCapabilityRecord,
+  RuntimeNativeCapabilityState,
+  RuntimeNativeClipboardState,
+  RuntimeNativeDiagnosticRecord,
+  RuntimeNativeFilePickerRecord,
+  RuntimeNativeFixtureOutputRecord,
+  RuntimeNativeKeyboardInputTraitRecord,
+  RuntimeNativeKeyboardState,
+  RuntimeNativeLocationEventRecord,
+  RuntimeNativeNotificationRecord,
   RuntimeNativePermissionState,
+  RuntimeNativeShareSheetRecord,
   RuntimeNativeUnsupportedSymbol,
   RuntimeNetworkFixture,
   RuntimeNetworkFixtureInput,
   RuntimeNetworkRequestInput,
   RuntimeNetworkRequestRecord,
-  RuntimeNetworkResponse,
   RuntimeTreeSnapshot,
   SemanticQuery,
   SemanticUITree,
@@ -44,8 +52,22 @@ export type {
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
   RuntimeNativeCapabilityMock,
+  RuntimeNativeCapabilityRecord,
+  RuntimeNativeCapabilityState,
+  RuntimeNativeClipboardEventRecord,
+  RuntimeNativeClipboardState,
+  RuntimeNativeDiagnosticRecord,
+  RuntimeNativeFilePickerRecord,
+  RuntimeNativeFixtureOutputRecord,
+  RuntimeNativeKeyboardInputTraitRecord,
+  RuntimeNativeKeyboardState,
+  RuntimeNativeLocationEventRecord,
+  RuntimeNativeNotificationRecord,
+  RuntimeNativePermissionInspection,
+  RuntimeNativePermissionPromptInspection,
   RuntimeNativeCapabilityRequirement,
   RuntimeNativePermissionState,
+  RuntimeNativeShareSheetRecord,
   RuntimeNativeUnsupportedSymbol,
   RuntimeNetworkFixture,
   RuntimeNetworkFixtureInput,
@@ -76,6 +98,7 @@ export interface EmulatorApp {
   getByText(text: string): Locator;
   getByTestId(identifier: string): Locator;
   logs(): Promise<RuntimeAutomationLogEntry[]>;
+  nativeCapabilityEvents(): Promise<RuntimeNativeCapabilityRecord[]>;
   artifacts(): Promise<RuntimeArtifactBundle>;
   request(url: string, options?: RuntimeNetworkRequestInput): Promise<RuntimeNetworkRequestRecord>;
   route(url: string, fixture: RuntimeNetworkFixtureInput): Promise<void>;
@@ -122,6 +145,10 @@ class InMemoryEmulatorApp implements EmulatorApp {
 
   async logs(): Promise<RuntimeAutomationLogEntry[]> {
     return cloneLogs(this.requireSession().logs);
+  }
+
+  async nativeCapabilityEvents(): Promise<RuntimeNativeCapabilityRecord[]> {
+    return cloneNativeCapabilityRecords(this.requireSession().nativeCapabilityEvents);
   }
 
   async artifacts(): Promise<RuntimeArtifactBundle> {
@@ -301,6 +328,7 @@ function createSession(options: RuntimeAutomationLaunchOptions): RuntimeAutomati
   const nativeCapabilities = cloneNativeCapabilities(
     options.nativeCapabilities ?? defaultNativeCapabilities()
   );
+  const native = deriveNativeCapabilityState(nativeCapabilities);
   const snapshot = {
     appIdentifier: options.appIdentifier,
     tree,
@@ -333,9 +361,12 @@ function createSession(options: RuntimeAutomationLaunchOptions): RuntimeAutomati
       ],
       logs: [],
       networkRecords: [],
+      nativeCapabilityRecords: cloneNativeCapabilityRecords(native.artifactRecords),
     },
     device,
     nativeCapabilities,
+    nativeCapabilityState: cloneNativeCapabilityState(native.state),
+    nativeCapabilityEvents: cloneNativeCapabilityRecords(native.eventRecords),
   };
 }
 
@@ -357,6 +388,382 @@ function defaultDeviceSettings(): RuntimeDeviceSettings {
     clock: { timeZone: "UTC" },
     network: { isOnline: true, latencyMilliseconds: 0, downloadKbps: 0 },
   };
+}
+
+interface RuntimeNativeCapabilityDerivation {
+  state: RuntimeNativeCapabilityState;
+  eventRecords: RuntimeNativeCapabilityRecord[];
+  artifactRecords: RuntimeNativeCapabilityRecord[];
+}
+
+function deriveNativeCapabilityState(
+  manifest: RuntimeNativeCapabilityManifest
+): RuntimeNativeCapabilityDerivation {
+  const permissions: RuntimeNativeCapabilityState["permissions"] = {};
+  const eventRecords: RuntimeNativeCapabilityRecord[] = [];
+  const fixtureOutputs: RuntimeNativeFixtureOutputRecord[] = [];
+
+  for (const requirement of manifest.requiredCapabilities) {
+    const promptResult = nativePromptResult(requirement.id, manifest.configuredMocks);
+    const resolvedState = resolveNativePermissionState(requirement.permissionState, promptResult);
+    permissions[requirement.id] = {
+      state: requirement.permissionState,
+      resolvedState,
+      strictModeAlternative: requirement.strictModeAlternative,
+      prompt: {
+        presented: requirement.permissionState === "prompt",
+        result: promptResult,
+      },
+    };
+
+    if (requirement.permissionState === "prompt") {
+      eventRecords.push({
+        capability: requirement.id,
+        name: `native.permission.${requirement.id}.prompt`,
+        revision: 1,
+        payload: compactStringRecord({
+          state: requirement.permissionState,
+          result: promptResult,
+          resolvedState,
+        }),
+      });
+    }
+  }
+
+  for (const mock of manifest.configuredMocks) {
+    const fixtureName = nonEmptyString(mock.payload.fixtureName);
+    if (!fixtureName) {
+      continue;
+    }
+
+    const fixtureOutput: RuntimeNativeFixtureOutputRecord = {
+      capability: mock.capability,
+      identifier: mock.identifier,
+      fixtureName,
+      payload: { ...mock.payload },
+    };
+    const fixtureRecord: RuntimeNativeCapabilityRecord = {
+      capability: mock.capability,
+      name: `native.fixture.${mock.capability}.${mock.identifier}`,
+      revision: 1,
+      payload: { ...mock.payload, fixtureName },
+    };
+
+    fixtureOutputs.push(fixtureOutput);
+    eventRecords.push(fixtureRecord);
+  }
+
+  const scriptedRecords = manifest.scriptedEvents.map(nativeRecordFromScriptedEvent);
+  eventRecords.push(...scriptedRecords);
+
+  const locationEvents = manifest.scriptedEvents
+    .filter((event) => event.capability === "location")
+    .map(nativeLocationEventFromScriptedEvent)
+    .filter((event): event is RuntimeNativeLocationEventRecord => event !== null)
+    .sort((first, second) => first.revision - second.revision);
+
+  const state: RuntimeNativeCapabilityState = {
+    permissions,
+    fixtureOutputs,
+    locationEvents,
+    clipboard: deriveNativeClipboardState(manifest),
+    keyboard: deriveNativeKeyboardState(manifest),
+    filePickerRecords: manifest.configuredMocks
+      .filter((mock) => mock.capability === "files")
+      .map(nativeFilePickerRecordFromMock),
+    shareSheetRecords: manifest.configuredMocks
+      .filter((mock) => mock.capability === "shareSheet")
+      .map(nativeShareSheetRecordFromMock),
+    notificationRecords: manifest.scriptedEvents
+      .filter((event) => event.capability === "notifications")
+      .map((event) =>
+        nativeNotificationRecordFromEvent(event, permissions.notifications?.resolvedState)
+      )
+      .sort((first, second) => first.revision - second.revision),
+    diagnosticRecords: manifest.unsupportedSymbols.map(nativeDiagnosticRecordFromUnsupportedSymbol),
+  };
+
+  return {
+    state,
+    eventRecords,
+    artifactRecords: deriveNativeArtifactRecords(manifest, eventRecords),
+  };
+}
+
+function nativePromptResult(
+  capability: RuntimeNativeCapabilityID,
+  mocks: RuntimeNativeCapabilityMock[]
+): RuntimeNativePermissionState | undefined {
+  const result = mocks.find((mock) => mock.capability === capability)?.payload.result;
+  return isRuntimeNativePermissionState(result) ? result : undefined;
+}
+
+function resolveNativePermissionState(
+  state: RuntimeNativePermissionState,
+  promptResult: RuntimeNativePermissionState | undefined
+): RuntimeNativePermissionState {
+  return state === "prompt" ? promptResult ?? state : state;
+}
+
+function isRuntimeNativePermissionState(
+  value: string | undefined
+): value is RuntimeNativePermissionState {
+  return (
+    value === "unsupported" ||
+    value === "notRequested" ||
+    value === "prompt" ||
+    value === "granted" ||
+    value === "denied" ||
+    value === "restricted"
+  );
+}
+
+function nativeRecordFromScriptedEvent(
+  event: RuntimeNativeCapabilityEvent
+): RuntimeNativeCapabilityRecord {
+  return {
+    capability: event.capability,
+    name: `native.event.${event.capability}.${event.name}`,
+    revision: event.atRevision,
+    payload: { ...event.payload },
+  };
+}
+
+function nativeLocationEventFromScriptedEvent(
+  event: RuntimeNativeCapabilityEvent
+): RuntimeNativeLocationEventRecord | null {
+  const latitude = parseNativeNumber(event.payload.latitude);
+  const longitude = parseNativeNumber(event.payload.longitude);
+  if (latitude === undefined || longitude === undefined) {
+    return null;
+  }
+
+  return {
+    name: event.name,
+    latitude,
+    longitude,
+    accuracyMeters: parseNativeNumber(event.payload.accuracyMeters) ?? 0,
+    revision: event.atRevision,
+    payload: { ...event.payload },
+  };
+}
+
+function deriveNativeClipboardState(
+  manifest: RuntimeNativeCapabilityManifest
+): RuntimeNativeClipboardState | undefined {
+  const mock = manifest.configuredMocks.find((candidate) => candidate.capability === "clipboard");
+  const events = manifest.scriptedEvents.filter((event) => event.capability === "clipboard");
+  if (!mock && events.length === 0) {
+    return undefined;
+  }
+
+  const initialText = mock?.payload.initialText ?? mock?.payload.text;
+  const readRecords = events
+    .filter((event) => event.name.includes("read"))
+    .map((event) => ({
+      name: event.name,
+      revision: event.atRevision,
+      text: event.payload.text ?? initialText,
+      payload: { ...event.payload },
+    }))
+    .sort((first, second) => first.revision - second.revision);
+  const writeRecords = events
+    .filter((event) => event.name.includes("write"))
+    .map((event) => ({
+      name: event.name,
+      revision: event.atRevision,
+      text: event.payload.text,
+      payload: { ...event.payload },
+    }))
+    .sort((first, second) => first.revision - second.revision);
+  const currentText = writeRecords.at(-1)?.text ?? initialText;
+
+  return {
+    identifier: mock?.identifier ?? events[0]?.payload.identifier ?? "clipboard",
+    text: currentText,
+    initialText,
+    currentText,
+    readRecords,
+    writeRecords,
+    payload: { ...(mock?.payload ?? {}) },
+  };
+}
+
+function deriveNativeKeyboardState(
+  manifest: RuntimeNativeCapabilityManifest
+): RuntimeNativeKeyboardState | undefined {
+  const mocks = manifest.configuredMocks.filter((mock) => mock.capability === "keyboardInput");
+  const events = manifest.scriptedEvents.filter((event) => event.capability === "keyboardInput");
+  if (mocks.length === 0 && events.length === 0) {
+    return undefined;
+  }
+
+  const inputTraits = mocks.map(nativeKeyboardInputTraitFromMock);
+  const firstTrait = inputTraits[0];
+
+  return {
+    identifier: firstTrait?.identifier ?? events[0]?.payload.identifier ?? "keyboard-input",
+    focusedElementID: firstTrait?.focusedElementID,
+    keyboardType: firstTrait?.keyboardType,
+    returnKey: firstTrait?.returnKey,
+    textContentType: firstTrait?.textContentType,
+    autocorrection: firstTrait?.autocorrection,
+    secureTextEntry: firstTrait?.secureTextEntry,
+    isVisible: firstTrait?.isVisible,
+    inputTraits,
+    eventRecords: events.map(nativeRecordFromScriptedEvent),
+    payload: { ...(mocks[0]?.payload ?? {}) },
+  };
+}
+
+function nativeKeyboardInputTraitFromMock(
+  mock: RuntimeNativeCapabilityMock
+): RuntimeNativeKeyboardInputTraitRecord {
+  return {
+    identifier: mock.identifier,
+    focusedElementID: mock.payload.focusedElementID,
+    keyboardType: mock.payload.keyboardType,
+    returnKey: mock.payload.returnKey,
+    textContentType: mock.payload.textContentType,
+    autocorrection: mock.payload.autocorrection,
+    secureTextEntry: parseNativeBool(mock.payload.secureTextEntry),
+    isVisible: parseNativeBool(mock.payload.isVisible),
+    payload: { ...mock.payload },
+  };
+}
+
+function nativeFilePickerRecordFromMock(
+  mock: RuntimeNativeCapabilityMock
+): RuntimeNativeFilePickerRecord {
+  return {
+    identifier: mock.identifier,
+    selectedFiles: splitNativeList(mock.payload.selectedFiles),
+    contentTypes: splitNativeList(mock.payload.contentTypes),
+    allowsMultipleSelection: parseNativeBool(mock.payload.allowsMultipleSelection) ?? false,
+    payload: { ...mock.payload },
+  };
+}
+
+function nativeShareSheetRecordFromMock(
+  mock: RuntimeNativeCapabilityMock
+): RuntimeNativeShareSheetRecord {
+  return {
+    identifier: mock.identifier,
+    activityType: mock.payload.activityType,
+    items: splitNativeList(mock.payload.items),
+    completionState: mock.payload.completionState,
+    excludedActivityTypes: splitNativeList(mock.payload.excludedActivityTypes),
+    payload: { ...mock.payload },
+  };
+}
+
+function nativeNotificationRecordFromEvent(
+  event: RuntimeNativeCapabilityEvent,
+  authorizationState: RuntimeNativePermissionState | undefined
+): RuntimeNativeNotificationRecord {
+  return {
+    identifier: event.payload.identifier ?? event.name,
+    title: event.payload.title,
+    body: event.payload.body,
+    trigger: event.payload.trigger,
+    state: nativeNotificationStateFromEventName(event.name),
+    authorizationState: authorizationState ?? "unsupported",
+    revision: event.atRevision,
+    payload: { ...event.payload },
+  };
+}
+
+function nativeNotificationStateFromEventName(name: string): string {
+  return name.replace("notification-", "").replace("-notification", "");
+}
+
+function nativeDiagnosticRecordFromUnsupportedSymbol(
+  symbol: RuntimeNativeUnsupportedSymbol
+): RuntimeNativeDiagnosticRecord {
+  return {
+    capability: symbol.capability,
+    code: "unsupportedSymbol",
+    message: `Unsupported native symbol ${symbol.symbolName} was requested.`,
+    suggestedAdaptation: symbol.suggestedAdaptation,
+    payload: {
+      symbolName: symbol.symbolName,
+      capability: symbol.capability,
+    },
+  };
+}
+
+function deriveNativeArtifactRecords(
+  manifest: RuntimeNativeCapabilityManifest,
+  eventRecords: RuntimeNativeCapabilityRecord[]
+): RuntimeNativeCapabilityRecord[] {
+  if (manifest.artifactOutputs.length === 0) {
+    return eventRecords.filter(
+      (record) =>
+        record.name.startsWith("native.fixture.") || record.name.startsWith("native.event.")
+    );
+  }
+
+  return manifest.artifactOutputs.map((output) => {
+    const matchingRecord = eventRecords.find(
+      (record) =>
+        record.capability === output.capability &&
+        (record.name.startsWith("native.fixture.") || record.name.startsWith("native.event."))
+    );
+
+    return (
+      matchingRecord ?? {
+        capability: output.capability,
+        name: output.name,
+        revision: 1,
+        payload: {
+          capability: output.capability,
+          kind: output.kind,
+        },
+      }
+    );
+  });
+}
+
+function compactStringRecord(values: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(values).filter((entry): entry is [string, string] => entry[1] !== undefined)
+  );
+}
+
+function nonEmptyString(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function parseNativeNumber(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseNativeBool(value: string | undefined): boolean | undefined {
+  switch (value?.trim().toLowerCase()) {
+    case "true":
+    case "yes":
+    case "1":
+      return true;
+    case "false":
+    case "no":
+    case "0":
+      return false;
+    default:
+      return undefined;
+  }
+}
+
+function splitNativeList(value: string | undefined): string[] {
+  return value
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0) ?? [];
 }
 
 function createStrictModeBaselineTree(appIdentifier: string): SemanticUITree {
@@ -522,6 +929,8 @@ function cloneSession(session: RuntimeAutomationSession): RuntimeAutomationSessi
     artifactBundle: cloneArtifactBundle(session.artifactBundle),
     device: cloneDeviceSettings(session.device),
     nativeCapabilities: cloneNativeCapabilities(session.nativeCapabilities),
+    nativeCapabilityState: cloneNativeCapabilityState(session.nativeCapabilityState),
+    nativeCapabilityEvents: cloneNativeCapabilityRecords(session.nativeCapabilityEvents),
   };
 }
 
@@ -544,6 +953,7 @@ function cloneArtifactBundle(bundle: RuntimeArtifactBundle): RuntimeArtifactBund
     })),
     logs: cloneLogs(bundle.logs),
     networkRecords: bundle.networkRecords.map(cloneNetworkRequestRecord),
+    nativeCapabilityRecords: cloneNativeCapabilityRecords(bundle.nativeCapabilityRecords),
   };
 }
 
@@ -587,6 +997,130 @@ function cloneNativeCapabilities(
     unsupportedSymbols: manifest.unsupportedSymbols.map((symbol) => ({ ...symbol })),
     artifactOutputs: manifest.artifactOutputs.map((output) => ({ ...output })),
   };
+}
+
+function cloneNativeCapabilityState(
+  state: RuntimeNativeCapabilityState
+): RuntimeNativeCapabilityState {
+  return {
+    permissions: Object.fromEntries(
+      Object.entries(state.permissions).map(([capability, permission]) => [
+        capability,
+        {
+          state: permission.state,
+          resolvedState: permission.resolvedState,
+          strictModeAlternative: permission.strictModeAlternative,
+          prompt: {
+            presented: permission.prompt.presented,
+            result: permission.prompt.result,
+          },
+        },
+      ])
+    ),
+    fixtureOutputs: state.fixtureOutputs.map((record) => ({
+      capability: record.capability,
+      identifier: record.identifier,
+      fixtureName: record.fixtureName,
+      payload: { ...record.payload },
+    })),
+    locationEvents: state.locationEvents.map((record) => ({
+      name: record.name,
+      latitude: record.latitude,
+      longitude: record.longitude,
+      accuracyMeters: record.accuracyMeters,
+      revision: record.revision,
+      payload: { ...record.payload },
+    })),
+    clipboard: state.clipboard
+      ? {
+          identifier: state.clipboard.identifier,
+          text: state.clipboard.text,
+          initialText: state.clipboard.initialText,
+          currentText: state.clipboard.currentText,
+          readRecords: state.clipboard.readRecords.map((record) => ({
+            name: record.name,
+            revision: record.revision,
+            text: record.text,
+            payload: { ...record.payload },
+          })),
+          writeRecords: state.clipboard.writeRecords.map((record) => ({
+            name: record.name,
+            revision: record.revision,
+            text: record.text,
+            payload: { ...record.payload },
+          })),
+          payload: { ...state.clipboard.payload },
+        }
+      : undefined,
+    keyboard: state.keyboard
+      ? {
+          identifier: state.keyboard.identifier,
+          focusedElementID: state.keyboard.focusedElementID,
+          keyboardType: state.keyboard.keyboardType,
+          returnKey: state.keyboard.returnKey,
+          textContentType: state.keyboard.textContentType,
+          autocorrection: state.keyboard.autocorrection,
+          secureTextEntry: state.keyboard.secureTextEntry,
+          isVisible: state.keyboard.isVisible,
+          inputTraits: state.keyboard.inputTraits.map((trait) => ({
+            identifier: trait.identifier,
+            focusedElementID: trait.focusedElementID,
+            keyboardType: trait.keyboardType,
+            returnKey: trait.returnKey,
+            textContentType: trait.textContentType,
+            autocorrection: trait.autocorrection,
+            secureTextEntry: trait.secureTextEntry,
+            isVisible: trait.isVisible,
+            payload: { ...trait.payload },
+          })),
+          eventRecords: cloneNativeCapabilityRecords(state.keyboard.eventRecords),
+          payload: { ...state.keyboard.payload },
+        }
+      : undefined,
+    filePickerRecords: state.filePickerRecords.map((record) => ({
+      identifier: record.identifier,
+      selectedFiles: [...record.selectedFiles],
+      contentTypes: [...record.contentTypes],
+      allowsMultipleSelection: record.allowsMultipleSelection,
+      payload: { ...record.payload },
+    })),
+    shareSheetRecords: state.shareSheetRecords.map((record) => ({
+      identifier: record.identifier,
+      activityType: record.activityType,
+      items: [...record.items],
+      completionState: record.completionState,
+      excludedActivityTypes: [...record.excludedActivityTypes],
+      payload: { ...record.payload },
+    })),
+    notificationRecords: state.notificationRecords.map((record) => ({
+      identifier: record.identifier,
+      title: record.title,
+      body: record.body,
+      trigger: record.trigger,
+      state: record.state,
+      authorizationState: record.authorizationState,
+      revision: record.revision,
+      payload: { ...record.payload },
+    })),
+    diagnosticRecords: state.diagnosticRecords.map((record) => ({
+      capability: record.capability,
+      code: record.code,
+      message: record.message,
+      suggestedAdaptation: record.suggestedAdaptation,
+      payload: { ...record.payload },
+    })),
+  };
+}
+
+function cloneNativeCapabilityRecords(
+  records: RuntimeNativeCapabilityRecord[]
+): RuntimeNativeCapabilityRecord[] {
+  return records.map((record) => ({
+    capability: record.capability,
+    name: record.name,
+    revision: record.revision,
+    payload: { ...record.payload },
+  }));
 }
 
 function cloneNetworkRequestRecord(record: RuntimeNetworkRequestRecord): RuntimeNetworkRequestRecord {

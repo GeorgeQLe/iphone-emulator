@@ -2,57 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { Emulator } from "./index";
 import type {
-  RuntimeArtifactBundle,
-  RuntimeAutomationSession,
   RuntimeNativeCapabilityArtifactOutputKind,
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
   RuntimeNativePermissionState,
 } from "./types";
-
-interface RuntimeNativeCapabilityStateSnapshot {
-  permissions: Record<
-    string,
-    {
-      state: RuntimeNativePermissionState;
-      prompt: { presented: boolean; result?: RuntimeNativePermissionState };
-    }
-  >;
-  fixtureOutputs: Array<{
-    capability: RuntimeNativeCapabilityID;
-    identifier: string;
-    fixtureName?: string;
-  }>;
-  locationEvents: Array<{
-    latitude: number;
-    longitude: number;
-    accuracyMeters: number;
-    revision: number;
-  }>;
-  clipboard: { text: string };
-  keyboard: { focusedElementID: string; keyboardType: string; returnKey: string };
-  filePickerRecords: Array<{ identifier: string; selectedFiles: string[] }>;
-  shareSheetRecords: Array<{ identifier: string; activityType: string; items: string[] }>;
-  notificationRecords: Array<{ identifier: string; title: string; state: string }>;
-}
-
-interface RuntimeNativeCapabilityRecord {
-  capability: RuntimeNativeCapabilityID;
-  name: string;
-  revision: number;
-  payload: Record<string, string>;
-}
-
-interface RuntimeNativeAutomationSession extends RuntimeAutomationSession {
-  nativeCapabilityState: RuntimeNativeCapabilityStateSnapshot;
-  artifactBundle: RuntimeArtifactBundle & {
-    nativeCapabilityRecords: RuntimeNativeCapabilityRecord[];
-  };
-}
-
-interface NativeCapabilityEventInspection {
-  nativeCapabilityEvents(): Promise<RuntimeNativeCapabilityRecord[]>;
-}
 
 describe("Emulator", () => {
   it("runs a representative fixture-backed automation flow", async () => {
@@ -652,7 +606,7 @@ describe("Emulator", () => {
       },
     });
 
-    const session = (await app.session()) as RuntimeNativeAutomationSession;
+    const session = await app.session();
 
     expect(session.nativeCapabilityState).toMatchObject({
       permissions: {
@@ -736,10 +690,21 @@ describe("Emulator", () => {
         revision: 3,
       },
     ]);
+
+    session.nativeCapabilityState.fixtureOutputs[0].payload.fixtureName = "inspector-mutation";
+    session.artifactBundle.nativeCapabilityRecords[0].payload.fixtureName = "inspector-mutation";
+
+    const inspectedAgain = await app.session();
+    expect(inspectedAgain.nativeCapabilityState.fixtureOutputs[0].payload.fixtureName).toBe(
+      "profile-photo"
+    );
+    expect(inspectedAgain.artifactBundle.nativeCapabilityRecords[0].payload.fixtureName).toBe(
+      "profile-photo"
+    );
   });
 
   it("exposes native capability event inspection without the Phase 10 native control namespace", async () => {
-    const app = (await Emulator.launch({
+    const app = await Emulator.launch({
       appIdentifier: "FixtureApp",
       fixtureName: "strict-mode-baseline",
       nativeCapabilities: {
@@ -765,7 +730,7 @@ describe("Emulator", () => {
         unsupportedSymbols: [],
         artifactOutputs: [],
       },
-    })) as Awaited<ReturnType<typeof Emulator.launch>> & NativeCapabilityEventInspection;
+    });
 
     expect(app.nativeCapabilityEvents).toBeTypeOf("function");
     await expect(app.nativeCapabilityEvents()).resolves.toMatchObject([
@@ -787,6 +752,16 @@ describe("Emulator", () => {
         },
       },
     ]);
+    const inspectedEvents = await app.nativeCapabilityEvents();
+    inspectedEvents[0].payload.result = "denied";
+    const inspectedEventsAgain = await app.nativeCapabilityEvents();
+    expect(inspectedEventsAgain[0]).toMatchObject({
+      capability: "camera",
+      name: "native.permission.camera.prompt",
+      payload: {
+        result: "granted",
+      },
+    });
     expect("native" in app).toBe(false);
   });
 });

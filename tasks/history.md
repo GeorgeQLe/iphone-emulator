@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 9 Step 9.5 by surfacing deterministic native mock state through the automation SDK. The SDK now exports native capability state/record types, derives permission prompts, fixture outputs, location events, clipboard state, keyboard traits, file/share sheet records, notification records, diagnostics, and native capability records from launch manifests, exposes cloned `nativeCapabilityState`, `nativeCapabilityEvents`, and `artifactBundle.nativeCapabilityRecords`, and adds `nativeCapabilityEvents()` without introducing the Phase 10 `app.native.*` namespace.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` passed cleanly with no warnings. An intermediate test assertion around array matching was corrected before the final green run; no implementation regression was involved.
+
 - Completed Phase 9 Step 9.4 by extending the runtime native capability state layer for deterministic clipboard read/write records, keyboard input trait records, file picker selections, share sheet outcomes, and local notification authorization/schedule/delivery records. Launch-time runtime logs, semantic metadata, and artifact bundle records now expose those mock-service records without invoking host native frameworks or adding Phase 10 SDK controls.
 - Validation: `swift test --filter RuntimeHostContractTests` passed with 25 runtime host contract tests, and `swift build` passed cleanly. A parallel SwiftPM invocation waited for the `.build` lock and then completed successfully; no actionable warnings remained.
 
