@@ -456,6 +456,52 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.loweredTree == nil)
     }
 
+    @Test("compatibility analyzer fails closed for native services without mock contracts")
+    func compatibilityAnalyzerFailsClosedForNativeServicesWithoutMockContracts() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .sourceText(
+                """
+                import SwiftUI
+                import HealthKit
+                import Speech
+
+                struct UnsupportedNativeServices {
+                    func requestUnsupportedServices() {
+                        HKHealthStore().requestAuthorization(toShare: [], read: []) { _, _ in }
+                        SFSpeechRecognizer.requestAuthorization { _ in }
+                    }
+                }
+                """,
+                file: "UnsupportedNativeServices.swift"
+            )
+        )
+
+        #expect(analysis.report.diagnostics.map(\.category) == [.platformAPIs, .platformAPIs])
+        #expect(analysis.report.diagnostics.map(\.unsupportedName) == [
+            "HKHealthStore.requestAuthorization",
+            "SFSpeechRecognizer.requestAuthorization",
+        ])
+        #expect(analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance).map(\.capability) == [
+            .unsupported,
+            .unsupported,
+        ])
+        #expect(analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance).map(\.requiresManifestMock) == [
+            false,
+            false,
+        ])
+        #expect(analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance).map(\.suggestedManifestField) == [
+            "unsupportedSymbols",
+            "unsupportedSymbols",
+        ])
+        #expect(analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance).map(\.failClosedReason) == [
+            "This native service has no strict-mode capability contract.",
+            "This native service has no strict-mode capability contract.",
+        ])
+        #expect(analysis.loweredTree == nil)
+    }
+
     @Test("compatibility analyzer accepts the first supported SwiftUI-inspired subset fixture")
     func compatibilityAnalyzerAcceptsFirstSupportedSubsetFixture() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

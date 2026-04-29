@@ -2,11 +2,57 @@ import { describe, expect, it } from "vitest";
 
 import { Emulator } from "./index";
 import type {
+  RuntimeArtifactBundle,
+  RuntimeAutomationSession,
   RuntimeNativeCapabilityArtifactOutputKind,
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
   RuntimeNativePermissionState,
 } from "./types";
+
+interface RuntimeNativeCapabilityStateSnapshot {
+  permissions: Record<
+    string,
+    {
+      state: RuntimeNativePermissionState;
+      prompt: { presented: boolean; result?: RuntimeNativePermissionState };
+    }
+  >;
+  fixtureOutputs: Array<{
+    capability: RuntimeNativeCapabilityID;
+    identifier: string;
+    fixtureName?: string;
+  }>;
+  locationEvents: Array<{
+    latitude: number;
+    longitude: number;
+    accuracyMeters: number;
+    revision: number;
+  }>;
+  clipboard: { text: string };
+  keyboard: { focusedElementID: string; keyboardType: string; returnKey: string };
+  filePickerRecords: Array<{ identifier: string; selectedFiles: string[] }>;
+  shareSheetRecords: Array<{ identifier: string; activityType: string; items: string[] }>;
+  notificationRecords: Array<{ identifier: string; title: string; state: string }>;
+}
+
+interface RuntimeNativeCapabilityRecord {
+  capability: RuntimeNativeCapabilityID;
+  name: string;
+  revision: number;
+  payload: Record<string, string>;
+}
+
+interface RuntimeNativeAutomationSession extends RuntimeAutomationSession {
+  nativeCapabilityState: RuntimeNativeCapabilityStateSnapshot;
+  artifactBundle: RuntimeArtifactBundle & {
+    nativeCapabilityRecords: RuntimeNativeCapabilityRecord[];
+  };
+}
+
+interface NativeCapabilityEventInspection {
+  nativeCapabilityEvents(): Promise<RuntimeNativeCapabilityRecord[]>;
+}
 
 describe("Emulator", () => {
   it("runs a representative fixture-backed automation flow", async () => {
@@ -477,5 +523,270 @@ describe("Emulator", () => {
     expect(session.nativeCapabilities.artifactOutputs.map((output) => output.kind)).toEqual(
       artifactKinds
     );
+  });
+
+  it("exposes deterministic native mock state through session and artifact inspection", async () => {
+    const app = await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities: {
+        requiredCapabilities: [
+          {
+            id: "camera",
+            permissionState: "prompt",
+            strictModeAlternative:
+              "Use a fixture-backed camera capture instead of host camera access.",
+          },
+          {
+            id: "photos",
+            permissionState: "granted",
+            strictModeAlternative: "Use configured photo library fixtures.",
+          },
+          {
+            id: "location",
+            permissionState: "granted",
+            strictModeAlternative: "Use scripted location updates.",
+          },
+          {
+            id: "notifications",
+            permissionState: "prompt",
+            strictModeAlternative:
+              "Record deterministic notification authorization and delivery events.",
+          },
+        ],
+        configuredMocks: [
+          {
+            capability: "camera",
+            identifier: "front-camera-still",
+            payload: {
+              fixtureName: "profile-photo",
+              mediaType: "image",
+              result: "granted",
+            },
+          },
+          {
+            capability: "photos",
+            identifier: "recent-library-pick",
+            payload: {
+              fixtureName: "gallery-selection",
+              assetIdentifiers: "profile-photo,receipt-photo",
+            },
+          },
+          {
+            capability: "clipboard",
+            identifier: "pasteboard-text",
+            payload: {
+              text: "Fixture clipboard",
+            },
+          },
+          {
+            capability: "keyboardInput",
+            identifier: "name-entry",
+            payload: {
+              focusedElementID: "name-field",
+              keyboardType: "default",
+              returnKey: "done",
+            },
+          },
+          {
+            capability: "files",
+            identifier: "document-picker",
+            payload: {
+              selectedFiles: "Fixtures/profile.pdf",
+            },
+          },
+          {
+            capability: "shareSheet",
+            identifier: "share-receipt",
+            payload: {
+              activityType: "copy",
+              items: "Fixtures/profile.pdf",
+            },
+          },
+        ],
+        scriptedEvents: [
+          {
+            capability: "location",
+            name: "location-update",
+            atRevision: 2,
+            payload: {
+              latitude: "40.7128",
+              longitude: "-74.0060",
+              accuracyMeters: "12",
+            },
+          },
+          {
+            capability: "notifications",
+            name: "notification-scheduled",
+            atRevision: 3,
+            payload: {
+              identifier: "trip-reminder",
+              title: "Trip Reminder",
+            },
+          },
+        ],
+        unsupportedSymbols: [
+          {
+            symbolName: "LAContext.evaluatePolicy",
+            capability: "unsupported",
+            suggestedAdaptation: "Fail closed until a strict-mode capability contract exists.",
+          },
+        ],
+        artifactOutputs: [
+          {
+            capability: "camera",
+            name: "captured-profile-photo",
+            kind: "fixtureReference",
+          },
+          {
+            capability: "location",
+            name: "native-location-events",
+            kind: "eventLog",
+          },
+          {
+            capability: "notifications",
+            name: "notification-records",
+            kind: "eventLog",
+          },
+        ],
+      },
+    });
+
+    const session = (await app.session()) as RuntimeNativeAutomationSession;
+
+    expect(session.nativeCapabilityState).toMatchObject({
+      permissions: {
+        camera: {
+          state: "prompt",
+          prompt: {
+            presented: true,
+            result: "granted",
+          },
+        },
+        notifications: {
+          state: "prompt",
+          prompt: {
+            presented: true,
+          },
+        },
+      },
+      fixtureOutputs: [
+        {
+          capability: "camera",
+          identifier: "front-camera-still",
+          fixtureName: "profile-photo",
+        },
+        {
+          capability: "photos",
+          identifier: "recent-library-pick",
+          fixtureName: "gallery-selection",
+        },
+      ],
+      locationEvents: [
+        {
+          latitude: 40.7128,
+          longitude: -74.006,
+          accuracyMeters: 12,
+          revision: 2,
+        },
+      ],
+      clipboard: {
+        text: "Fixture clipboard",
+      },
+      keyboard: {
+        focusedElementID: "name-field",
+        keyboardType: "default",
+        returnKey: "done",
+      },
+      filePickerRecords: [
+        {
+          identifier: "document-picker",
+          selectedFiles: ["Fixtures/profile.pdf"],
+        },
+      ],
+      shareSheetRecords: [
+        {
+          identifier: "share-receipt",
+          activityType: "copy",
+          items: ["Fixtures/profile.pdf"],
+        },
+      ],
+      notificationRecords: [
+        {
+          identifier: "trip-reminder",
+          title: "Trip Reminder",
+          state: "scheduled",
+        },
+      ],
+    });
+    expect(session.artifactBundle.nativeCapabilityRecords).toMatchObject([
+      {
+        capability: "camera",
+        name: "native.fixture.camera.front-camera-still",
+        revision: 1,
+      },
+      {
+        capability: "location",
+        name: "native.event.location.location-update",
+        revision: 2,
+      },
+      {
+        capability: "notifications",
+        name: "native.event.notifications.notification-scheduled",
+        revision: 3,
+      },
+    ]);
+  });
+
+  it("exposes native capability event inspection without the Phase 10 native control namespace", async () => {
+    const app = (await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities: {
+        requiredCapabilities: [
+          {
+            id: "camera",
+            permissionState: "prompt",
+            strictModeAlternative:
+              "Use a fixture-backed camera capture instead of host camera access.",
+          },
+        ],
+        configuredMocks: [
+          {
+            capability: "camera",
+            identifier: "front-camera-still",
+            payload: {
+              fixtureName: "profile-photo",
+              result: "granted",
+            },
+          },
+        ],
+        scriptedEvents: [],
+        unsupportedSymbols: [],
+        artifactOutputs: [],
+      },
+    })) as Awaited<ReturnType<typeof Emulator.launch>> & NativeCapabilityEventInspection;
+
+    expect(app.nativeCapabilityEvents).toBeTypeOf("function");
+    await expect(app.nativeCapabilityEvents()).resolves.toMatchObject([
+      {
+        capability: "camera",
+        name: "native.permission.camera.prompt",
+        revision: 1,
+        payload: {
+          state: "prompt",
+          result: "granted",
+        },
+      },
+      {
+        capability: "camera",
+        name: "native.fixture.camera.front-camera-still",
+        revision: 1,
+        payload: {
+          fixtureName: "profile-photo",
+        },
+      },
+    ]);
+    expect("native" in app).toBe(false);
   });
 });

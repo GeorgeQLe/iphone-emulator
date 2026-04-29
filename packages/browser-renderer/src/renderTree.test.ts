@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { baselineFixtureTree } from "./fixtureTree";
 import { createRenderArtifactMetadata } from "./renderArtifacts";
 import { mountRenderer } from "./renderTree";
+import type { SemanticUITree } from "./types";
 
 describe("mountRenderer", () => {
   it("renders the fixed semantic fixture into an iPhone-like shell", () => {
@@ -134,5 +135,111 @@ describe("mountRenderer", () => {
       viewport: { width: 393, height: 852, scale: 3 },
       nodeCount: container.querySelectorAll("[data-node-id]").length,
     });
+  });
+
+  it("renders deterministic native capability preview state when semantic state includes mock services", () => {
+    const container = document.createElement("div");
+    const treeWithNativePreview = {
+      ...baselineFixtureTree,
+      nativePreview: {
+        permissionPrompts: [
+          {
+            capability: "camera",
+            state: "prompt",
+            result: "granted",
+          },
+          {
+            capability: "notifications",
+            state: "prompt",
+            result: "granted",
+          },
+        ],
+        fixtureOutputs: [
+          {
+            capability: "camera",
+            identifier: "front-camera-still",
+            fixtureName: "profile-photo",
+          },
+          {
+            capability: "photos",
+            identifier: "recent-library-pick",
+            fixtureName: "gallery-selection",
+          },
+        ],
+        locationEvents: [
+          {
+            latitude: 40.7128,
+            longitude: -74.006,
+            accuracyMeters: 12,
+          },
+        ],
+        clipboard: {
+          text: "Fixture clipboard",
+        },
+        keyboard: {
+          focusedElementID: "name-field",
+          keyboardType: "default",
+          returnKey: "done",
+        },
+        filePickerRecords: [
+          {
+            identifier: "document-picker",
+            selectedFiles: ["Fixtures/profile.pdf"],
+          },
+        ],
+        shareSheetRecords: [
+          {
+            identifier: "share-receipt",
+            activityType: "copy",
+            items: ["Fixtures/profile.pdf"],
+          },
+        ],
+        notificationRecords: [
+          {
+            identifier: "trip-reminder",
+            title: "Trip Reminder",
+            state: "scheduled",
+          },
+        ],
+      },
+    } satisfies SemanticUITree & {
+      nativePreview: {
+        permissionPrompts: Array<{ capability: string; state: string; result: string }>;
+        fixtureOutputs: Array<{ capability: string; identifier: string; fixtureName: string }>;
+        locationEvents: Array<{ latitude: number; longitude: number; accuracyMeters: number }>;
+        clipboard: { text: string };
+        keyboard: { focusedElementID: string; keyboardType: string; returnKey: string };
+        filePickerRecords: Array<{ identifier: string; selectedFiles: string[] }>;
+        shareSheetRecords: Array<{ identifier: string; activityType: string; items: string[] }>;
+        notificationRecords: Array<{ identifier: string; title: string; state: string }>;
+      };
+    };
+
+    mountRenderer(container, treeWithNativePreview);
+
+    expect(container.querySelector("[data-native-capability='camera']")?.textContent ?? "").toContain(
+      "front-camera-still"
+    );
+    expect(container.querySelector("[data-native-capability='photos']")?.textContent ?? "").toContain(
+      "gallery-selection"
+    );
+    expect(container.querySelector("[data-native-capability='location']")?.textContent ?? "").toContain(
+      "40.7128"
+    );
+    expect(container.querySelector("[data-native-capability='clipboard']")?.textContent ?? "").toContain(
+      "Fixture clipboard"
+    );
+    expect(
+      container.querySelector("[data-native-capability='keyboardInput']")?.textContent ?? ""
+    ).toContain("name-field");
+    expect(container.querySelector("[data-native-capability='files']")?.textContent ?? "").toContain(
+      "Fixtures/profile.pdf"
+    );
+    expect(container.querySelector("[data-native-capability='shareSheet']")?.textContent ?? "").toContain(
+      "share-receipt"
+    );
+    expect(
+      container.querySelector("[data-native-capability='notifications']")?.textContent ?? ""
+    ).toContain("Trip Reminder");
   });
 });

@@ -127,4 +127,97 @@ struct UnsupportedImportDemo {
     expect(result.tree.appIdentifier).toBe("EmptyDemo");
     expect(result.tree.scene.rootNode?.children[0]?.children[0]?.children).toEqual([]);
   });
+
+  it("extracts deterministic native capability preview state from mock service declarations", () => {
+    const result = compileDemoProject(`import StrictModeSDK
+
+@StrictModeApp
+struct NativePreviewDemo {
+  var body: some StrictScene {
+    NavigationStack(title: "Native Preview") {
+      Text("Native services")
+    }
+  }
+
+  var nativeMocks: some NativeCapabilityMocks {
+    PermissionPrompt(.camera, result: .granted)
+    CameraFixture("front-camera-still", fixtureName: "profile-photo")
+    PhotoPickerFixture("recent-library-pick", assets: ["profile-photo", "receipt-photo"])
+    LocationEvent(latitude: 40.7128, longitude: -74.0060, accuracyMeters: 12)
+    ClipboardFixture(text: "Fixture clipboard")
+    KeyboardFixture(focusedElementID: "traveler-field", keyboardType: .default, returnKey: .done)
+    FilePickerFixture("document-picker", selectedFiles: ["Fixtures/profile.pdf"])
+    ShareSheetFixture("share-receipt", activityType: .copy, items: ["Fixtures/profile.pdf"])
+    NotificationFixture("trip-reminder", title: "Trip Reminder", state: .scheduled)
+  }
+}
+`) as ReturnType<typeof compileDemoProject> & {
+      nativePreview: {
+        permissionPrompts: Array<{ capability: string; result: string }>;
+        fixtureOutputs: Array<{ capability: string; identifier: string; fixtureName?: string }>;
+        locationEvents: Array<{ latitude: number; longitude: number; accuracyMeters: number }>;
+        clipboard: { text: string };
+        keyboard: { focusedElementID: string; keyboardType: string; returnKey: string };
+        filePickerRecords: Array<{ identifier: string; selectedFiles: string[] }>;
+        shareSheetRecords: Array<{ identifier: string; activityType: string; items: string[] }>;
+        notificationRecords: Array<{ identifier: string; title: string; state: string }>;
+      };
+    };
+
+    expect(result.nativePreview).toMatchObject({
+      permissionPrompts: [
+        {
+          capability: "camera",
+          result: "granted",
+        },
+      ],
+      fixtureOutputs: [
+        {
+          capability: "camera",
+          identifier: "front-camera-still",
+          fixtureName: "profile-photo",
+        },
+        {
+          capability: "photos",
+          identifier: "recent-library-pick",
+          fixtureName: "profile-photo,receipt-photo",
+        },
+      ],
+      locationEvents: [
+        {
+          latitude: 40.7128,
+          longitude: -74.006,
+          accuracyMeters: 12,
+        },
+      ],
+      clipboard: {
+        text: "Fixture clipboard",
+      },
+      keyboard: {
+        focusedElementID: "traveler-field",
+        keyboardType: "default",
+        returnKey: "done",
+      },
+      filePickerRecords: [
+        {
+          identifier: "document-picker",
+          selectedFiles: ["Fixtures/profile.pdf"],
+        },
+      ],
+      shareSheetRecords: [
+        {
+          identifier: "share-receipt",
+          activityType: "copy",
+          items: ["Fixtures/profile.pdf"],
+        },
+      ],
+      notificationRecords: [
+        {
+          identifier: "trip-reminder",
+          title: "Trip Reminder",
+          state: "scheduled",
+        },
+      ],
+    });
+  });
 });

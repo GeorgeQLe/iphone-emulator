@@ -1133,6 +1133,151 @@ struct RuntimeHostContractTests {
         #expect(session.nativeCapabilities.artifactOutputs.first?.kind == .eventLog)
     }
 
+    @Test("runtime native service red contract exposes mock state events and artifacts")
+    func runtimeNativeServiceRedContractExposesMockStateEventsAndArtifacts() throws {
+        let manifest = RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .camera,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Use a fixture-backed camera capture instead of host camera access."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .photos,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use configured photo library fixtures."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .location,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use scripted location updates."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .notifications,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Record deterministic notification authorization and delivery events."
+                ),
+            ],
+            configuredMocks: [
+                RuntimeNativeCapabilityMock(
+                    capability: .camera,
+                    identifier: "front-camera-still",
+                    payload: [
+                        "fixtureName": "profile-photo",
+                        "mediaType": "image",
+                        "result": "granted",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .photos,
+                    identifier: "recent-library-pick",
+                    payload: [
+                        "fixtureName": "gallery-selection",
+                        "assetIdentifiers": "profile-photo,receipt-photo",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .clipboard,
+                    identifier: "pasteboard-text",
+                    payload: [
+                        "text": "Fixture clipboard",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .keyboardInput,
+                    identifier: "name-entry",
+                    payload: [
+                        "focusedElementID": "name-field",
+                        "keyboardType": "default",
+                        "returnKey": "done",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .files,
+                    identifier: "document-picker",
+                    payload: [
+                        "selectedFiles": "Fixtures/profile.pdf",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .shareSheet,
+                    identifier: "share-receipt",
+                    payload: [
+                        "activityType": "copy",
+                        "items": "Fixtures/profile.pdf",
+                    ]
+                ),
+            ],
+            scriptedEvents: [
+                RuntimeNativeCapabilityEvent(
+                    capability: .location,
+                    name: "location-update",
+                    atRevision: 2,
+                    payload: [
+                        "latitude": "40.7128",
+                        "longitude": "-74.0060",
+                        "accuracyMeters": "12",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .notifications,
+                    name: "notification-scheduled",
+                    atRevision: 3,
+                    payload: [
+                        "identifier": "trip-reminder",
+                        "title": "Trip Reminder",
+                    ]
+                ),
+            ],
+            artifactOutputs: [
+                RuntimeNativeCapabilityArtifactOutput(
+                    capability: .camera,
+                    name: "captured-profile-photo",
+                    kind: .fixtureReference
+                ),
+                RuntimeNativeCapabilityArtifactOutput(
+                    capability: .location,
+                    name: "native-location-events",
+                    kind: .eventLog
+                ),
+                RuntimeNativeCapabilityArtifactOutput(
+                    capability: .notifications,
+                    name: "notification-records",
+                    kind: .eventLog
+                ),
+            ]
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-services",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        nativeCapabilities: manifest
+                    )
+                )
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        #expect(reflectedChild(named: "nativeCapabilityState", in: session) != nil)
+        #expect(reflectedChild(named: "nativeCapabilityEvents", in: session) != nil)
+        #expect(reflectedChild(named: "nativeCapabilityRecords", in: session.artifactBundle) != nil)
+        #expect(session.logs.map(\.message).contains("native.permission.camera.prompt"))
+        #expect(session.logs.map(\.message).contains("native.fixture.camera.front-camera-still"))
+        #expect(session.logs.map(\.message).contains("native.event.location.location-update"))
+        #expect(session.logs.map(\.message).contains("native.event.notifications.notification-scheduled"))
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.camera.fixture"] == "profile-photo")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.keyboard.focusedElementID"] == "name-field")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.notification.trip-reminder"] == "scheduled")
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)
@@ -1157,5 +1302,9 @@ struct RuntimeHostContractTests {
             "compatibility-button",
         ])
         #expect(snapshot.tree.scene.modalState?.presentedNode?.id == "compatibility-modal")
+    }
+
+    private func reflectedChild(named name: String, in value: Any) -> Any? {
+        Mirror(reflecting: value).children.first { $0.label == name }?.value
     }
 }
