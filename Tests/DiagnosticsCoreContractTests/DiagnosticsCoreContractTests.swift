@@ -456,6 +456,60 @@ struct DiagnosticsCoreContractTests {
         #expect(analysis.loweredTree == nil)
     }
 
+    @Test("compatibility analyzer keeps supported native mocks distinct from fail-closed services")
+    func compatibilityAnalyzerKeepsSupportedNativeMocksDistinctFromFailClosedServices() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .sourceText(
+                """
+                import SwiftUI
+                import AVFoundation
+                import LocalAuthentication
+
+                struct MixedNativeFeatureScreen {
+                    func requestNativeFeatures() {
+                        AVCaptureSession().startRunning()
+                        UIPasteboard.general.string = "Copied"
+                        UIActivityViewController(activityItems: [], applicationActivities: nil)
+                        LAContext().evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Sign in") { _, _ in }
+                    }
+                }
+                """,
+                file: "MixedNativeFeatureScreen.swift"
+            )
+        )
+
+        let guidance = analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance)
+
+        #expect(analysis.report.diagnostics.map(\.unsupportedName) == [
+            "AVCaptureSession.startRunning",
+            "UIPasteboard.general",
+            "UIActivityViewController",
+            "LAContext.evaluatePolicy",
+        ])
+        #expect(guidance.map(\.capability) == [
+            .camera,
+            .clipboard,
+            .shareSheet,
+            .unsupported,
+        ])
+        #expect(guidance.map(\.requiresManifestMock) == [
+            true,
+            true,
+            true,
+            false,
+        ])
+        #expect(guidance.map(\.suggestedManifestField) == [
+            "configuredMocks.camera",
+            "configuredMocks.clipboard",
+            "configuredMocks.shareSheet",
+            "unsupportedSymbols",
+        ])
+        #expect(guidance.last?.failClosedReason == "This native API has no strict-mode capability contract.")
+        #expect(analysis.loweredTree == nil)
+    }
+
     @Test("compatibility analyzer fails closed for native services without mock contracts")
     func compatibilityAnalyzerFailsClosedForNativeServicesWithoutMockContracts() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

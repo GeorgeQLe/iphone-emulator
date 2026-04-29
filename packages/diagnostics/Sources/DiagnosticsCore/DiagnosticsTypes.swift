@@ -980,5 +980,31 @@ private extension NativePlatformAPI {
                 failClosedReason: "This native API has no strict-mode capability contract."
             )
         ),
+        NativePlatformAPI(
+            requestedAPI: "HKHealthStore.requestAuthorization",
+            matchTokens: ["HKHealthStore", "requestAuthorization"],
+            locationToken: "HKHealthStore",
+            adaptationMessage: "Fail closed or replace HKHealthStore.requestAuthorization with an explicit strict-mode test fixture boundary.",
+            guidance: NativeCapabilityGuidance(
+                capability: .unsupported,
+                requestedAPI: "HKHealthStore.requestAuthorization",
+                requiresManifestMock: false,
+                suggestedManifestField: "unsupportedSymbols",
+                failClosedReason: "This native service has no strict-mode capability contract."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "SFSpeechRecognizer.requestAuthorization",
+            matchTokens: ["SFSpeechRecognizer", "requestAuthorization"],
+            locationToken: "SFSpeechRecognizer",
+            adaptationMessage: "Fail closed or replace SFSpeechRecognizer.requestAuthorization with an explicit strict-mode test fixture boundary.",
+            guidance: NativeCapabilityGuidance(
+                capability: .unsupported,
+                requestedAPI: "SFSpeechRecognizer.requestAuthorization",
+                requiresManifestMock: false,
+                suggestedManifestField: "unsupportedSymbols",
+                failClosedReason: "This native service has no strict-mode capability contract."
+            )
+        ),
     ]
 }

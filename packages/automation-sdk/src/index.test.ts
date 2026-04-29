@@ -764,4 +764,353 @@ describe("Emulator", () => {
     });
     expect("native" in app).toBe(false);
   });
+
+  it("covers representative Phase 9 native mock flows through SDK inspection", async () => {
+    const nativeCapabilities = representativeNativeMockManifest();
+    const app = await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities,
+    });
+
+    nativeCapabilities.requiredCapabilities[0].permissionState = "denied";
+    nativeCapabilities.configuredMocks[0].payload.fixtureName = "mutated-photo";
+    nativeCapabilities.scriptedEvents[2].payload.text = "Mutated clipboard";
+
+    const session = await app.session();
+    const artifacts = await app.artifacts();
+    const nativeEvents = await app.nativeCapabilityEvents();
+
+    expect(session.nativeCapabilityState).toMatchObject({
+      permissions: {
+        camera: {
+          state: "prompt",
+          resolvedState: "granted",
+          prompt: {
+            presented: true,
+            result: "granted",
+          },
+        },
+        notifications: {
+          state: "prompt",
+          resolvedState: "granted",
+          prompt: {
+            presented: true,
+            result: "granted",
+          },
+        },
+      },
+      fixtureOutputs: [
+        {
+          capability: "camera",
+          identifier: "front-camera-still",
+          fixtureName: "profile-photo",
+        },
+        {
+          capability: "photos",
+          identifier: "recent-library-pick",
+          fixtureName: "recent-library",
+        },
+      ],
+      locationEvents: [
+        {
+          name: "location-update",
+          latitude: 40.7134,
+          longitude: -74.0059,
+          accuracyMeters: 18,
+          revision: 2,
+        },
+      ],
+      clipboard: {
+        identifier: "clipboard",
+        initialText: "Draft profile notes",
+        currentText: "Updated profile notes",
+        readRecords: [
+          {
+            name: "clipboard-read",
+            text: "Draft profile notes",
+            revision: 2,
+          },
+        ],
+        writeRecords: [
+          {
+            name: "clipboard-write",
+            text: "Updated profile notes",
+            revision: 3,
+          },
+        ],
+      },
+      keyboard: {
+        identifier: "name-entry",
+        focusedElementID: "name-field",
+        keyboardType: "default",
+        returnKey: "done",
+        textContentType: "name",
+        isVisible: true,
+      },
+      filePickerRecords: [
+        {
+          identifier: "document-picker",
+          selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+          contentTypes: ["com.adobe.pdf", "public.image"],
+          allowsMultipleSelection: true,
+        },
+      ],
+      shareSheetRecords: [
+        {
+          identifier: "share-receipt",
+          activityType: "com.apple.UIKit.activity.Mail",
+          items: ["Fixtures/profile.pdf", "Summary"],
+          completionState: "completed",
+        },
+      ],
+      notificationRecords: [
+        {
+          identifier: "profile-reminder",
+          title: "Profile Reminder",
+          state: "scheduled",
+          authorizationState: "granted",
+          revision: 4,
+        },
+        {
+          identifier: "profile-reminder",
+          title: "Profile Reminder",
+          state: "delivered",
+          authorizationState: "granted",
+          revision: 5,
+        },
+      ],
+      diagnosticRecords: [
+        {
+          capability: "unsupported",
+          code: "unsupportedSymbol",
+          payload: {
+            symbolName: "LAContext.evaluatePolicy",
+          },
+        },
+      ],
+    });
+
+    expect(nativeEvents.map((event) => event.name)).toEqual([
+      "native.permission.camera.prompt",
+      "native.permission.notifications.prompt",
+      "native.fixture.camera.front-camera-still",
+      "native.fixture.photos.recent-library-pick",
+      "native.event.location.location-update",
+      "native.event.clipboard.clipboard-read",
+      "native.event.clipboard.clipboard-write",
+      "native.event.notifications.notification-scheduled",
+      "native.event.notifications.notification-delivered",
+    ]);
+    expect(artifacts.nativeCapabilityRecords.map((record) => record.name)).toEqual([
+      "native.fixture.camera.front-camera-still",
+      "native.fixture.photos.recent-library-pick",
+      "native.event.location.location-update",
+      "native.event.clipboard.clipboard-read",
+      "native.event.clipboard.clipboard-write",
+      "native.event.notifications.notification-scheduled",
+      "native.event.notifications.notification-delivered",
+    ]);
+    expect("native" in app).toBe(false);
+
+    expect(session.nativeCapabilityState.clipboard).toBeDefined();
+    session.nativeCapabilityState.clipboard!.payload.initialText = "inspector mutation";
+    artifacts.nativeCapabilityRecords[0].payload.fixtureName = "inspector mutation";
+    nativeEvents[0].payload.result = "denied";
+
+    const inspectedAgain = await app.session();
+    const nativeEventsAgain = await app.nativeCapabilityEvents();
+    const artifactsAgain = await app.artifacts();
+
+    expect(inspectedAgain.nativeCapabilities.requiredCapabilities[0].permissionState).toBe("prompt");
+    expect(inspectedAgain.nativeCapabilityState.clipboard?.payload.initialText).toBe(
+      "Draft profile notes"
+    );
+    expect(nativeEventsAgain[0].payload.result).toBe("granted");
+    expect(artifactsAgain.nativeCapabilityRecords[0].payload.fixtureName).toBe("profile-photo");
+  });
 });
+
+function representativeNativeMockManifest(): RuntimeNativeCapabilityManifest {
+  return {
+    requiredCapabilities: [
+      {
+        id: "camera",
+        permissionState: "prompt",
+        strictModeAlternative:
+          "Use a deterministic camera fixture instead of live capture.",
+      },
+      {
+        id: "photos",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Use photo picker fixtures instead of reading the host photo library.",
+      },
+      {
+        id: "location",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Script deterministic coordinates instead of using CoreLocation.",
+      },
+      {
+        id: "clipboard",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Use deterministic clipboard fixtures instead of host pasteboard access.",
+      },
+      {
+        id: "keyboardInput",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Use semantic input traits instead of host keyboard state.",
+      },
+      {
+        id: "files",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Use deterministic file picker fixtures instead of host document UI.",
+      },
+      {
+        id: "shareSheet",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Record share sheet outcomes instead of presenting native UI.",
+      },
+      {
+        id: "notifications",
+        permissionState: "prompt",
+        strictModeAlternative:
+          "Record notification schedules instead of using a platform notification center.",
+      },
+    ],
+    configuredMocks: [
+      {
+        capability: "camera",
+        identifier: "front-camera-still",
+        payload: {
+          result: "granted",
+          fixtureName: "profile-photo",
+          mediaType: "image",
+          outputPath: "Fixtures/profile-photo.heic",
+        },
+      },
+      {
+        capability: "photos",
+        identifier: "recent-library-pick",
+        payload: {
+          fixtureName: "recent-library",
+          assetIdentifiers: "profile-photo,receipt-photo",
+          mediaTypes: "image",
+        },
+      },
+      {
+        capability: "location",
+        identifier: "initial-location",
+        payload: {
+          latitude: "40.7128",
+          longitude: "-74.0060",
+          accuracyMeters: "25",
+        },
+      },
+      {
+        capability: "clipboard",
+        identifier: "clipboard",
+        payload: {
+          initialText: "Draft profile notes",
+        },
+      },
+      {
+        capability: "keyboardInput",
+        identifier: "name-entry",
+        payload: {
+          focusedElementID: "name-field",
+          keyboardType: "default",
+          returnKey: "done",
+          textContentType: "name",
+          isVisible: "true",
+        },
+      },
+      {
+        capability: "files",
+        identifier: "document-picker",
+        payload: {
+          selectedFiles: "Fixtures/profile.pdf,Fixtures/receipt.pdf",
+          contentTypes: "com.adobe.pdf,public.image",
+          allowsMultipleSelection: "true",
+        },
+      },
+      {
+        capability: "shareSheet",
+        identifier: "share-receipt",
+        payload: {
+          activityType: "com.apple.UIKit.activity.Mail",
+          items: "Fixtures/profile.pdf,Summary",
+          completionState: "completed",
+        },
+      },
+      {
+        capability: "notifications",
+        identifier: "notification-permission",
+        payload: {
+          result: "granted",
+        },
+      },
+    ],
+    scriptedEvents: [
+      {
+        capability: "location",
+        name: "location-update",
+        atRevision: 2,
+        payload: {
+          latitude: "40.7134",
+          longitude: "-74.0059",
+          accuracyMeters: "18",
+        },
+      },
+      {
+        capability: "clipboard",
+        name: "clipboard-read",
+        atRevision: 2,
+        payload: {},
+      },
+      {
+        capability: "clipboard",
+        name: "clipboard-write",
+        atRevision: 3,
+        payload: {
+          text: "Updated profile notes",
+        },
+      },
+      {
+        capability: "notifications",
+        name: "notification-scheduled",
+        atRevision: 4,
+        payload: {
+          identifier: "profile-reminder",
+          title: "Profile Reminder",
+          body: "Review the saved profile.",
+          trigger: "2026-04-28T12:15:00Z",
+        },
+      },
+      {
+        capability: "notifications",
+        name: "notification-delivered",
+        atRevision: 5,
+        payload: {
+          identifier: "profile-reminder",
+          title: "Profile Reminder",
+          body: "Review the saved profile.",
+        },
+      },
+    ],
+    unsupportedSymbols: [
+      {
+        symbolName: "LAContext.evaluatePolicy",
+        capability: "unsupported",
+        suggestedAdaptation:
+          "Biometric policy evaluation is not part of the strict-mode native mock contract.",
+      },
+    ],
+    artifactOutputs: [],
+  };
+}

@@ -1594,6 +1594,91 @@ struct RuntimeHostContractTests {
         #expect(session.snapshot.tree.scene.rootNode?.metadata["native.notification.trip-reminder"] == "delivered")
     }
 
+    @Test("runtime native mock regression covers representative strict-mode baseline flow")
+    func runtimeNativeMockRegressionCoversRepresentativeStrictModeBaselineFlow() throws {
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-step-9-8",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        nativeCapabilities: representativeNativeMockManifest()
+                    )
+                )
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        let metadata = session.snapshot.tree.scene.rootNode?.metadata ?? [:]
+        let artifactNames = session.artifactBundle.nativeCapabilityRecords.map(\.name)
+        let logMessages = session.logs.map(\.message)
+
+        #expect(session.nativeCapabilityState.permissions.first { $0.capability == .camera }?.resolvedState == .granted)
+        #expect(session.nativeCapabilityState.permissions.first { $0.capability == .notifications }?.resolvedState == .granted)
+        #expect(session.nativeCapabilityState.cameraCaptures.first?.fixtureName == "profile-photo")
+        #expect(session.nativeCapabilityState.cameraCaptures.first?.outputPath == "Fixtures/profile-photo.heic")
+        #expect(session.nativeCapabilityState.photoSelections.first?.assetIdentifiers == ["profile-photo", "receipt-photo"])
+        #expect(session.nativeCapabilityState.location?.currentCoordinate?.latitude == 40.7134)
+        #expect(session.nativeCapabilityState.location?.currentCoordinate?.accuracyMeters == 18)
+        #expect(session.nativeCapabilityState.clipboard?.initialText == "Draft profile notes")
+        #expect(session.nativeCapabilityState.clipboard?.currentText == "Updated profile notes")
+        #expect(session.nativeCapabilityState.clipboard?.readRecords.first?.text == "Draft profile notes")
+        #expect(session.nativeCapabilityState.keyboard?.inputTraits.first?.focusedElementID == "name-field")
+        #expect(session.nativeCapabilityState.keyboard?.inputTraits.first?.textContentType == "name")
+        #expect(session.nativeCapabilityState.fileSelections.first?.selectedFiles == ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"])
+        #expect(session.nativeCapabilityState.fileSelections.first?.allowsMultipleSelection == true)
+        #expect(session.nativeCapabilityState.shareSheetRecords.first?.activityType == "com.apple.UIKit.activity.Mail")
+        #expect(session.nativeCapabilityState.shareSheetRecords.first?.completionState == "completed")
+        #expect(session.nativeCapabilityState.notificationRecords.map(\.state) == ["scheduled", "delivered"])
+        #expect(session.nativeCapabilityState.notificationRecords.last?.identifier == "profile-reminder")
+        #expect(session.nativeCapabilityState.notificationRecords.last?.authorizationState == .granted)
+        #expect(session.nativeCapabilityState.diagnosticRecords.first?.payload["symbolName"] == "LAContext.evaluatePolicy")
+        #expect(session.nativeCapabilityEvents.map(\.name) == [
+            "location-update",
+            "clipboard-read",
+            "clipboard-write",
+            "notification-scheduled",
+            "notification-delivered",
+        ])
+
+        #expect(logMessages.contains("native.permission.camera.prompt.granted"))
+        #expect(logMessages.contains("native.camera.capture.front-camera-still"))
+        #expect(logMessages.contains("native.photos.selection.recent-library-pick"))
+        #expect(logMessages.contains("native.location.update.location-update.2"))
+        #expect(logMessages.contains("native.clipboard.write.clipboard-write.3"))
+        #expect(logMessages.contains("native.keyboard.input.name-entry"))
+        #expect(logMessages.contains("native.files.selection.document-picker"))
+        #expect(logMessages.contains("native.shareSheet.record.share-receipt"))
+        #expect(logMessages.contains("native.notifications.delivered.profile-reminder"))
+        #expect(logMessages.contains("native.diagnostic.unsupported.unsupportedSymbol"))
+
+        #expect(artifactNames.contains("camera-capture-front-camera-still"))
+        #expect(artifactNames.contains("photos-selection-recent-library-pick"))
+        #expect(artifactNames.contains("location-scripted-events"))
+        #expect(artifactNames.contains("clipboard-records"))
+        #expect(artifactNames.contains("keyboard-input-name-entry"))
+        #expect(artifactNames.contains("files-selection-document-picker"))
+        #expect(artifactNames.contains("share-sheet-share-receipt"))
+        #expect(artifactNames.contains("notification-delivered-profile-reminder"))
+        #expect(artifactNames.contains("unsupported-diagnostic-unsupportedSymbol"))
+
+        #expect(metadata["native.permission.camera.state"] == "granted")
+        #expect(metadata["native.camera.fixture"] == "profile-photo")
+        #expect(metadata["native.photos.selection.recent-library-pick"] == "profile-photo,receipt-photo")
+        #expect(metadata["native.location.latitude"] == "40.7134")
+        #expect(metadata["native.clipboard.currentText"] == "Updated profile notes")
+        #expect(metadata["native.keyboard.focusedElementID"] == "name-field")
+        #expect(metadata["native.files.selection.document-picker"] == "Fixtures/profile.pdf,Fixtures/receipt.pdf")
+        #expect(metadata["native.shareSheet.share-receipt.activityType"] == "com.apple.UIKit.activity.Mail")
+        #expect(metadata["native.notification.profile-reminder"] == "delivered")
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)
@@ -1618,6 +1703,180 @@ struct RuntimeHostContractTests {
             "compatibility-button",
         ])
         #expect(snapshot.tree.scene.modalState?.presentedNode?.id == "compatibility-modal")
+    }
+
+    private func representativeNativeMockManifest() -> RuntimeNativeCapabilityManifest {
+        RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .camera,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Use a deterministic camera fixture instead of live capture."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .photos,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use photo picker fixtures instead of reading the host photo library."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .location,
+                    permissionState: .granted,
+                    strictModeAlternative: "Script deterministic coordinates instead of using CoreLocation."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .clipboard,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use deterministic clipboard fixtures instead of host pasteboard access."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .keyboardInput,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use semantic input traits instead of host keyboard state."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .files,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use deterministic file picker fixtures instead of host document UI."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .shareSheet,
+                    permissionState: .granted,
+                    strictModeAlternative: "Record share sheet outcomes instead of presenting native UI."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .notifications,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Record notification schedules instead of using a platform notification center."
+                ),
+            ],
+            configuredMocks: [
+                RuntimeNativeCapabilityMock(
+                    capability: .camera,
+                    identifier: "front-camera-still",
+                    payload: [
+                        "result": "granted",
+                        "fixtureName": "profile-photo",
+                        "mediaType": "image",
+                        "outputPath": "Fixtures/profile-photo.heic",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .photos,
+                    identifier: "recent-library-pick",
+                    payload: [
+                        "fixtureName": "recent-library",
+                        "assetIdentifiers": "profile-photo,receipt-photo",
+                        "mediaTypes": "image",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .location,
+                    identifier: "initial-location",
+                    payload: [
+                        "latitude": "40.7128",
+                        "longitude": "-74.0060",
+                        "accuracyMeters": "25",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .clipboard,
+                    identifier: "clipboard",
+                    payload: [
+                        "initialText": "Draft profile notes",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .keyboardInput,
+                    identifier: "name-entry",
+                    payload: [
+                        "focusedElementID": "name-field",
+                        "keyboardType": "default",
+                        "returnKey": "done",
+                        "textContentType": "name",
+                        "isVisible": "true",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .files,
+                    identifier: "document-picker",
+                    payload: [
+                        "selectedFiles": "Fixtures/profile.pdf,Fixtures/receipt.pdf",
+                        "contentTypes": "com.adobe.pdf,public.image",
+                        "allowsMultipleSelection": "true",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .shareSheet,
+                    identifier: "share-receipt",
+                    payload: [
+                        "activityType": "com.apple.UIKit.activity.Mail",
+                        "items": "Fixtures/profile.pdf,Summary",
+                        "completionState": "completed",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .notifications,
+                    identifier: "notification-permission",
+                    payload: [
+                        "result": "granted",
+                    ]
+                ),
+            ],
+            scriptedEvents: [
+                RuntimeNativeCapabilityEvent(
+                    capability: .location,
+                    name: "location-update",
+                    atRevision: 2,
+                    payload: [
+                        "latitude": "40.7134",
+                        "longitude": "-74.0059",
+                        "accuracyMeters": "18",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .clipboard,
+                    name: "clipboard-read",
+                    atRevision: 2,
+                    payload: [:]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .clipboard,
+                    name: "clipboard-write",
+                    atRevision: 3,
+                    payload: [
+                        "text": "Updated profile notes",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .notifications,
+                    name: "notification-scheduled",
+                    atRevision: 4,
+                    payload: [
+                        "identifier": "profile-reminder",
+                        "title": "Profile Reminder",
+                        "body": "Review the saved profile.",
+                        "trigger": "2026-04-28T12:15:00Z",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .notifications,
+                    name: "notification-delivered",
+                    atRevision: 5,
+                    payload: [
+                        "identifier": "profile-reminder",
+                        "title": "Profile Reminder",
+                        "body": "Review the saved profile.",
+                    ]
+                ),
+            ],
+            unsupportedSymbols: [
+                RuntimeNativeUnsupportedSymbol(
+                    symbolName: "LAContext.evaluatePolicy",
+                    capability: .unsupported,
+                    suggestedAdaptation: "Biometric policy evaluation is not part of the strict-mode native mock contract."
+                ),
+            ]
+        )
     }
 
     private func reflectedChild(named name: String, in value: Any) -> Any? {

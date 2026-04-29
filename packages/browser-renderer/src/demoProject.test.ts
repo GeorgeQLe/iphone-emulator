@@ -141,14 +141,15 @@ struct NativePreviewDemo {
 
   var nativeMocks: some NativeCapabilityMocks {
     PermissionPrompt(.camera, result: .granted)
+    PermissionPrompt(.notifications, result: .granted)
     CameraFixture("front-camera-still", fixtureName: "profile-photo")
     PhotoPickerFixture("recent-library-pick", assets: ["profile-photo", "receipt-photo"])
-    LocationEvent(latitude: 40.7128, longitude: -74.0060, accuracyMeters: 12)
-    ClipboardFixture(text: "Fixture clipboard")
-    KeyboardFixture(focusedElementID: "traveler-field", keyboardType: .default, returnKey: .done)
-    FilePickerFixture("document-picker", selectedFiles: ["Fixtures/profile.pdf"])
-    ShareSheetFixture("share-receipt", activityType: .copy, items: ["Fixtures/profile.pdf"])
-    NotificationFixture("trip-reminder", title: "Trip Reminder", state: .scheduled)
+    LocationEvent(latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18)
+    ClipboardFixture(text: "Draft profile notes")
+    KeyboardFixture(focusedElementID: "name-field", keyboardType: .default, returnKey: .done)
+    FilePickerFixture("document-picker", selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"])
+    ShareSheetFixture("share-receipt", activityType: .mail, items: ["Fixtures/profile.pdf", "Summary"])
+    NotificationFixture("profile-reminder", title: "Profile Reminder", state: .delivered)
   }
 }
 `) as ReturnType<typeof compileDemoProject> & {
@@ -170,6 +171,10 @@ struct NativePreviewDemo {
           capability: "camera",
           result: "granted",
         },
+        {
+          capability: "notifications",
+          result: "granted",
+        },
       ],
       fixtureOutputs: [
         {
@@ -185,37 +190,37 @@ struct NativePreviewDemo {
       ],
       locationEvents: [
         {
-          latitude: 40.7128,
-          longitude: -74.006,
-          accuracyMeters: 12,
+          latitude: 40.7134,
+          longitude: -74.0059,
+          accuracyMeters: 18,
         },
       ],
       clipboard: {
-        text: "Fixture clipboard",
+        text: "Draft profile notes",
       },
       keyboard: {
-        focusedElementID: "traveler-field",
+        focusedElementID: "name-field",
         keyboardType: "default",
         returnKey: "done",
       },
       filePickerRecords: [
         {
           identifier: "document-picker",
-          selectedFiles: ["Fixtures/profile.pdf"],
+          selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
         },
       ],
       shareSheetRecords: [
         {
           identifier: "share-receipt",
-          activityType: "copy",
-          items: ["Fixtures/profile.pdf"],
+          activityType: "mail",
+          items: ["Fixtures/profile.pdf", "Summary"],
         },
       ],
       notificationRecords: [
         {
-          identifier: "trip-reminder",
-          title: "Trip Reminder",
-          state: "scheduled",
+          identifier: "profile-reminder",
+          title: "Profile Reminder",
+          state: "delivered",
         },
       ],
     });

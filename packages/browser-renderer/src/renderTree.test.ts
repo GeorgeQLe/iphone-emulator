@@ -168,13 +168,13 @@ describe("mountRenderer", () => {
         ],
         locationEvents: [
           {
-            latitude: 40.7128,
-            longitude: -74.006,
-            accuracyMeters: 12,
+            latitude: 40.7134,
+            longitude: -74.0059,
+            accuracyMeters: 18,
           },
         ],
         clipboard: {
-          text: "Fixture clipboard",
+          text: "Draft profile notes",
         },
         keyboard: {
           focusedElementID: "name-field",
@@ -184,21 +184,21 @@ describe("mountRenderer", () => {
         filePickerRecords: [
           {
             identifier: "document-picker",
-            selectedFiles: ["Fixtures/profile.pdf"],
+            selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
           },
         ],
         shareSheetRecords: [
           {
             identifier: "share-receipt",
-            activityType: "copy",
-            items: ["Fixtures/profile.pdf"],
+            activityType: "mail",
+            items: ["Fixtures/profile.pdf", "Summary"],
           },
         ],
         notificationRecords: [
           {
-            identifier: "trip-reminder",
-            title: "Trip Reminder",
-            state: "scheduled",
+            identifier: "profile-reminder",
+            title: "Profile Reminder",
+            state: "delivered",
           },
         ],
       },
@@ -217,6 +217,20 @@ describe("mountRenderer", () => {
 
     mountRenderer(container, treeWithNativePreview);
 
+    expect(
+      Array.from(container.querySelectorAll("[data-native-capability]")).map((card) =>
+        card.getAttribute("data-native-capability")
+      )
+    ).toEqual([
+      "camera",
+      "photos",
+      "location",
+      "clipboard",
+      "keyboardInput",
+      "files",
+      "shareSheet",
+      "notifications",
+    ]);
     expect(container.querySelector("[data-native-capability='camera']")?.textContent ?? "").toContain(
       "front-camera-still"
     );
@@ -224,22 +238,22 @@ describe("mountRenderer", () => {
       "gallery-selection"
     );
     expect(container.querySelector("[data-native-capability='location']")?.textContent ?? "").toContain(
-      "40.7128"
+      "40.7134"
     );
     expect(container.querySelector("[data-native-capability='clipboard']")?.textContent ?? "").toContain(
-      "Fixture clipboard"
+      "Draft profile notes"
     );
     expect(
       container.querySelector("[data-native-capability='keyboardInput']")?.textContent ?? ""
     ).toContain("name-field");
     expect(container.querySelector("[data-native-capability='files']")?.textContent ?? "").toContain(
-      "Fixtures/profile.pdf"
+      "Fixtures/profile.pdf, Fixtures/receipt.pdf"
     );
     expect(container.querySelector("[data-native-capability='shareSheet']")?.textContent ?? "").toContain(
       "share-receipt"
     );
     expect(
       container.querySelector("[data-native-capability='notifications']")?.textContent ?? ""
-    ).toContain("Trip Reminder");
+    ).toContain("Profile Reminder");
   });
 });
