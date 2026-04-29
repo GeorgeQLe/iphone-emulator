@@ -2,11 +2,89 @@ import { describe, expect, it } from "vitest";
 
 import { Emulator } from "./index";
 import type {
+  RuntimeDeviceSettings,
   RuntimeNativeCapabilityArtifactOutputKind,
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
+  RuntimeNativeCapabilityRecord,
   RuntimeNativePermissionState,
 } from "./types";
+
+type NativeAutomationApp = Awaited<ReturnType<typeof Emulator.launch>> & {
+  native: NativeAutomationNamespace;
+};
+
+type NativeAutomationSupportedCapability =
+  | "camera"
+  | "photos"
+  | "location"
+  | "clipboard"
+  | "files"
+  | "shareSheet"
+  | "notifications"
+  | "deviceEnvironment";
+
+type NativePermissionSnapshot = Record<
+  string,
+  {
+    state: RuntimeNativePermissionState;
+    resolvedState: RuntimeNativePermissionState;
+  }
+>;
+
+interface NativeAutomationNamespace {
+  permissions: {
+    snapshot(): Promise<NativePermissionSnapshot>;
+    request(capability: NativeAutomationSupportedCapability): Promise<RuntimeNativeCapabilityRecord>;
+    set(
+      capability: NativeAutomationSupportedCapability,
+      state: RuntimeNativePermissionState
+    ): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  camera: {
+    capture(fixtureIdentifier: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  photos: {
+    select(fixtureIdentifier: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  location: {
+    current(): Promise<{
+      permissionState: RuntimeNativePermissionState;
+      diagnostic?: { code: string };
+    }>;
+    update(coordinate: {
+      latitude: number;
+      longitude: number;
+      accuracyMeters: number;
+    }): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  clipboard: {
+    read(): Promise<{ text?: string; record: RuntimeNativeCapabilityRecord }>;
+    write(text: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  files: {
+    select(fixtureIdentifier: string): Promise<{
+      selectedFiles: string[];
+      record: RuntimeNativeCapabilityRecord;
+    }>;
+  };
+  shareSheet: {
+    complete(
+      identifier: string,
+      result: { completionState: string }
+    ): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  notifications: {
+    requestAuthorization(): Promise<RuntimeNativeCapabilityRecord>;
+    schedule(identifier: string): Promise<RuntimeNativeCapabilityRecord>;
+    deliver(identifier: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  device: {
+    snapshot(): Promise<RuntimeDeviceSettings>;
+  };
+  events(): Promise<RuntimeNativeCapabilityRecord[]>;
+  artifacts(): Promise<RuntimeNativeCapabilityRecord[]>;
+}
 
 describe("Emulator", () => {
   it("runs a representative fixture-backed automation flow", async () => {
@@ -703,7 +781,7 @@ describe("Emulator", () => {
     );
   });
 
-  it("exposes native capability event inspection without the Phase 10 native control namespace", async () => {
+  it("exposes native capability event inspection as a stable lower-level surface", async () => {
     const app = await Emulator.launch({
       appIdentifier: "FixtureApp",
       fixtureName: "strict-mode-baseline",
@@ -762,7 +840,197 @@ describe("Emulator", () => {
         result: "granted",
       },
     });
-    expect("native" in app).toBe(false);
+  });
+
+  it("drives native mocks through the future app.native namespace for agent flows", async () => {
+    const nativeCapabilities = representativeNativeMockManifest();
+    const app = (await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      device: {
+        viewport: { width: 393, height: 852, scale: 3 },
+        colorScheme: "dark",
+        locale: "en_US",
+        clock: {
+          frozenAtISO8601: "2026-04-28T12:00:00Z",
+          timeZone: "America/New_York",
+        },
+        geolocation: { latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18 },
+        network: { isOnline: true, latencyMilliseconds: 20, downloadKbps: 2_500 },
+      },
+      nativeCapabilities,
+    })) as NativeAutomationApp;
+
+    await app.getByText("Save").tap();
+    await app.getByRole("textField", { text: "Name" }).fill("Riley");
+
+    await expect(app.native.permissions.snapshot()).resolves.toMatchObject({
+      camera: {
+        state: "prompt",
+        resolvedState: "granted",
+      },
+      location: {
+        state: "granted",
+        resolvedState: "granted",
+      },
+      notifications: {
+        state: "prompt",
+        resolvedState: "granted",
+      },
+    });
+    await expect(app.native.permissions.request("camera")).resolves.toMatchObject({
+      capability: "camera",
+      name: "native.permission.camera.request",
+      payload: {
+        resolvedState: "granted",
+      },
+    });
+    await expect(app.native.permissions.set("location", "denied")).resolves.toMatchObject({
+      capability: "location",
+      name: "native.permission.location.set",
+      payload: {
+        state: "denied",
+      },
+    });
+    await expect(app.native.camera.capture("front-camera-still")).resolves.toMatchObject({
+      capability: "camera",
+      name: "native.camera.capture.front-camera-still",
+      payload: {
+        fixtureName: "profile-photo",
+      },
+    });
+    await expect(app.native.photos.select("recent-library-pick")).resolves.toMatchObject({
+      capability: "photos",
+      name: "native.photos.selection.recent-library-pick",
+      payload: {
+        assetIdentifiers: "profile-photo,receipt-photo",
+      },
+    });
+    await expect(app.native.location.current()).resolves.toMatchObject({
+      permissionState: "denied",
+      diagnostic: {
+        code: "permissionDenied",
+      },
+    });
+    await expect(
+      app.native.location.update({
+        latitude: 40.714,
+        longitude: -74.0063,
+        accuracyMeters: 9,
+      })
+    ).resolves.toMatchObject({
+      capability: "location",
+      name: "native.location.update.automation",
+      payload: {
+        latitude: "40.714",
+      },
+    });
+    await expect(app.native.clipboard.read()).resolves.toMatchObject({
+      text: "Updated profile notes",
+      record: {
+        capability: "clipboard",
+        name: "native.clipboard.read.automation",
+      },
+    });
+    await expect(app.native.clipboard.write("Copied by agent")).resolves.toMatchObject({
+      capability: "clipboard",
+      name: "native.clipboard.write.automation",
+      payload: {
+        text: "Copied by agent",
+      },
+    });
+    await expect(app.native.files.select("document-picker")).resolves.toMatchObject({
+      selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+      record: {
+        capability: "files",
+        name: "native.files.selection.document-picker",
+      },
+    });
+    await expect(
+      app.native.shareSheet.complete("share-receipt", { completionState: "completed" })
+    ).resolves.toMatchObject({
+      capability: "shareSheet",
+      name: "native.shareSheet.complete.share-receipt",
+      payload: {
+        completionState: "completed",
+      },
+    });
+    await expect(app.native.notifications.requestAuthorization()).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.authorization.request",
+      payload: {
+        resolvedState: "granted",
+      },
+    });
+    await expect(app.native.notifications.schedule("profile-reminder")).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.schedule.profile-reminder",
+    });
+    await expect(app.native.notifications.deliver("profile-reminder")).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.deliver.profile-reminder",
+    });
+    await expect(app.native.device.snapshot()).resolves.toMatchObject({
+      colorScheme: "dark",
+      locale: "en_US",
+      geolocation: {
+        latitude: 40.7134,
+      },
+    });
+
+    const unsupportedControls = app.native as unknown as Record<string, unknown>;
+    expect(unsupportedControls.biometrics).toBeUndefined();
+    expect(unsupportedControls.health).toBeUndefined();
+    expect(unsupportedControls.speech).toBeUndefined();
+    expect(unsupportedControls.sensors).toBeUndefined();
+    expect(unsupportedControls.haptics).toBeUndefined();
+
+    const permissionSnapshot = await app.native.permissions.snapshot();
+    const nativeEvents = await app.native.events();
+    const nativeArtifacts = await app.native.artifacts();
+    permissionSnapshot.camera.resolvedState = "denied";
+    nativeEvents[0].payload.result = "denied";
+    nativeArtifacts[0].payload.fixtureName = "mutated-photo";
+
+    await expect(app.native.permissions.snapshot()).resolves.toMatchObject({
+      camera: {
+        resolvedState: "granted",
+      },
+    });
+    expect((await app.native.events())[0].payload.result).toBe("granted");
+    expect((await app.native.artifacts())[0].payload.fixtureName).toBe("profile-photo");
+    expect((await app.native.events()).map((event) => event.name)).toEqual([
+      "native.permission.camera.prompt",
+      "native.permission.notifications.prompt",
+      "native.fixture.camera.front-camera-still",
+      "native.fixture.photos.recent-library-pick",
+      "native.event.location.location-update",
+      "native.event.clipboard.clipboard-read",
+      "native.event.clipboard.clipboard-write",
+      "native.event.notifications.notification-scheduled",
+      "native.event.notifications.notification-delivered",
+      "native.permission.camera.request",
+      "native.permission.location.set",
+      "native.camera.capture.front-camera-still",
+      "native.photos.selection.recent-library-pick",
+      "native.location.update.automation",
+      "native.clipboard.read.automation",
+      "native.clipboard.write.automation",
+      "native.files.selection.document-picker",
+      "native.shareSheet.complete.share-receipt",
+      "native.notifications.authorization.request",
+      "native.notifications.schedule.profile-reminder",
+      "native.notifications.deliver.profile-reminder",
+      "native.deviceEnvironment.snapshot",
+    ]);
+    expect((await app.artifacts()).nativeCapabilityRecords.map((record) => record.name)).toEqual(
+      expect.arrayContaining([
+        "native.camera.capture.front-camera-still",
+        "native.clipboard.write.automation",
+        "native.notifications.schedule.profile-reminder",
+        "native.deviceEnvironment.snapshot",
+      ])
+    );
   });
 
   it("covers representative Phase 9 native mock flows through SDK inspection", async () => {
@@ -911,7 +1179,6 @@ describe("Emulator", () => {
       "native.event.notifications.notification-scheduled",
       "native.event.notifications.notification-delivered",
     ]);
-    expect("native" in app).toBe(false);
 
     expect(session.nativeCapabilityState.clipboard).toBeDefined();
     session.nativeCapabilityState.clipboard!.payload.initialText = "inspector mutation";

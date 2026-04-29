@@ -225,4 +225,113 @@ struct NativePreviewDemo {
       ],
     });
   });
+
+  it("extracts native agent flow preview state from automation declarations", () => {
+    const result = compileDemoProject(`import StrictModeSDK
+
+@StrictModeApp
+struct NativeAgentFlowPreviewDemo {
+  var body: some StrictScene {
+    NavigationStack(title: "Native Agent Flow") {
+      Text("Native agent workflow")
+    }
+  }
+
+  var nativeMocks: some NativeCapabilityMocks {
+    PermissionPrompt(.camera, result: .granted)
+    PermissionPrompt(.location, result: .denied)
+    PermissionPrompt(.notifications, result: .granted)
+    CameraFixture("front-camera-still", fixtureName: "profile-photo")
+    PhotoPickerFixture("recent-library-pick", assets: ["profile-photo", "receipt-photo"])
+    LocationEvent(latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18)
+    ClipboardFixture(text: "Draft profile notes")
+    FilePickerFixture("document-picker", selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"])
+    ShareSheetFixture("share-receipt", activityType: .mail, items: ["Fixtures/profile.pdf", "Summary"])
+    NotificationFixture("profile-reminder", title: "Profile Reminder", state: .scheduled)
+  }
+
+  var nativeAgentFlow: some NativeAutomationFlow {
+    NativePermissionRequest(.camera)
+    NativePermissionSet(.location, .denied)
+    NativeCameraCapture("front-camera-still")
+    NativePhotoSelection("recent-library-pick")
+    NativeLocationRead(expectPermission: .denied)
+    NativeClipboardWrite("Copied by agent")
+    NativeFileSelection("document-picker")
+    NativeShareCompletion("share-receipt", state: .completed)
+    NativeNotificationSchedule("profile-reminder")
+    NativeNotificationDelivery("profile-reminder")
+    NativeDeviceEnvironmentSnapshot()
+    UnsupportedNativeControl(.biometrics)
+    UnsupportedNativeControl(.health)
+    UnsupportedNativeControl(.speech)
+    UnsupportedNativeControl(.sensors)
+    UnsupportedNativeControl(.haptics)
+  }
+}
+`) as ReturnType<typeof compileDemoProject> & {
+      nativePreview: {
+        automationFlow: {
+          steps: Array<{ action: string; capability: string; identifier?: string }>;
+          unsupportedControls: string[];
+          deviceEnvironment: {
+            colorScheme: string;
+            locale: string;
+          };
+        };
+      };
+    };
+
+    expect(result.nativePreview).toMatchObject({
+      permissionPrompts: [
+        { capability: "camera", result: "granted" },
+        { capability: "location", result: "denied" },
+        { capability: "notifications", result: "granted" },
+      ],
+      automationFlow: {
+        steps: [
+          { action: "native.permissions.request", capability: "camera" },
+          { action: "native.permissions.set", capability: "location" },
+          {
+            action: "native.camera.capture",
+            capability: "camera",
+            identifier: "front-camera-still",
+          },
+          {
+            action: "native.photos.select",
+            capability: "photos",
+            identifier: "recent-library-pick",
+          },
+          { action: "native.location.current", capability: "location" },
+          { action: "native.clipboard.write", capability: "clipboard" },
+          {
+            action: "native.files.select",
+            capability: "files",
+            identifier: "document-picker",
+          },
+          {
+            action: "native.shareSheet.complete",
+            capability: "shareSheet",
+            identifier: "share-receipt",
+          },
+          {
+            action: "native.notifications.schedule",
+            capability: "notifications",
+            identifier: "profile-reminder",
+          },
+          {
+            action: "native.notifications.deliver",
+            capability: "notifications",
+            identifier: "profile-reminder",
+          },
+          { action: "native.device.snapshot", capability: "deviceEnvironment" },
+        ],
+        unsupportedControls: ["biometrics", "health", "speech", "sensors", "haptics"],
+        deviceEnvironment: {
+          colorScheme: "light",
+          locale: "en_US",
+        },
+      },
+    });
+  });
 });

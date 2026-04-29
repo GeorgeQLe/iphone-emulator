@@ -1686,6 +1686,45 @@ struct RuntimeHostContractTests {
         #expect(metadata["native.notification.profile-reminder"] == "delivered")
     }
 
+    @Test("runtime native automation red contract defines deterministic command values")
+    func runtimeNativeAutomationRedContractDefinesDeterministicCommandValues() throws {
+        let requestPermission = RuntimeNativeAutomationAction.requestPermission(
+            capability: RuntimeNativeCapabilityID.camera
+        )
+        let recordedEvent = requestPermission.eventRecord(revision: 4)
+        let command = RuntimeAutomationCommand.nativeAutomation(requestPermission)
+        let response = RuntimeAutomationResponse.Result.nativeCapabilityEvents([recordedEvent])
+
+        #expect(RuntimeNativeAutomationAction.supportedCapabilities == [
+            RuntimeNativeCapabilityID.camera,
+            RuntimeNativeCapabilityID.location,
+            RuntimeNativeCapabilityID.photos,
+            RuntimeNativeCapabilityID.clipboard,
+            RuntimeNativeCapabilityID.files,
+            RuntimeNativeCapabilityID.shareSheet,
+            RuntimeNativeCapabilityID.notifications,
+            RuntimeNativeCapabilityID.deviceEnvironment,
+        ])
+        #expect(RuntimeNativeAutomationAction.canonicalEventNames == [
+            "native.permission.camera.request",
+            "native.permission.location.set",
+            "native.camera.capture.front-camera-still",
+            "native.photos.selection.recent-library-pick",
+            "native.location.update.automation",
+            "native.clipboard.read.automation",
+            "native.clipboard.write.automation",
+            "native.files.selection.document-picker",
+            "native.shareSheet.complete.share-receipt",
+            "native.notifications.schedule.profile-reminder",
+            "native.notifications.deliver.profile-reminder",
+            "native.deviceEnvironment.snapshot",
+        ])
+        #expect(recordedEvent.name == "native.permission.camera.request")
+        #expect(recordedEvent.payload["capability"] == "camera")
+        #expect(command != RuntimeAutomationCommand.logs())
+        #expect(response != RuntimeAutomationResponse.Result.closed)
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

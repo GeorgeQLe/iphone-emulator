@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { baselineFixtureTree } from "./fixtureTree";
 import { createRenderArtifactMetadata } from "./renderArtifacts";
 import { mountRenderer } from "./renderTree";
-import type { SemanticUITree } from "./types";
+import type { NativePreviewState, SemanticUITree } from "./types";
 
 describe("mountRenderer", () => {
   it("renders the fixed semantic fixture into an iPhone-like shell", () => {
@@ -255,5 +255,139 @@ describe("mountRenderer", () => {
     expect(
       container.querySelector("[data-native-capability='notifications']")?.textContent ?? ""
     ).toContain("Profile Reminder");
+  });
+
+  it("renders native agent flow preview cards for device environment and unsupported controls", () => {
+    const container = document.createElement("div");
+    const treeWithNativeAgentFlow = {
+      ...baselineFixtureTree,
+      nativePreview: {
+        permissionPrompts: [
+          {
+            capability: "camera",
+            state: "prompt",
+            result: "granted",
+          },
+          {
+            capability: "location",
+            state: "prompt",
+            result: "denied",
+          },
+          {
+            capability: "notifications",
+            state: "prompt",
+            result: "granted",
+          },
+        ],
+        fixtureOutputs: [
+          {
+            capability: "camera",
+            identifier: "front-camera-still",
+            fixtureName: "profile-photo",
+          },
+          {
+            capability: "photos",
+            identifier: "recent-library-pick",
+            fixtureName: "profile-photo,receipt-photo",
+          },
+        ],
+        locationEvents: [
+          {
+            latitude: 40.7134,
+            longitude: -74.0059,
+            accuracyMeters: 18,
+          },
+        ],
+        clipboard: {
+          text: "Copied by agent",
+        },
+        filePickerRecords: [
+          {
+            identifier: "document-picker",
+            selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+          },
+        ],
+        shareSheetRecords: [
+          {
+            identifier: "share-receipt",
+            activityType: "mail",
+            items: ["Fixtures/profile.pdf", "Summary"],
+          },
+        ],
+        notificationRecords: [
+          {
+            identifier: "profile-reminder",
+            title: "Profile Reminder",
+            state: "scheduled",
+          },
+        ],
+        automationFlow: {
+          steps: [
+            { action: "native.permissions.request", capability: "camera" },
+            { action: "native.permissions.set", capability: "location" },
+            {
+              action: "native.camera.capture",
+              capability: "camera",
+              identifier: "front-camera-still",
+            },
+            {
+              action: "native.notifications.schedule",
+              capability: "notifications",
+              identifier: "profile-reminder",
+            },
+            { action: "native.device.snapshot", capability: "deviceEnvironment" },
+          ],
+        },
+        deviceEnvironment: {
+          viewport: "393x852@3x",
+          colorScheme: "dark",
+          locale: "en_US",
+          timeZone: "America/New_York",
+        },
+        unsupportedControls: ["biometrics", "health", "speech", "sensors", "haptics"],
+      },
+    } as SemanticUITree & {
+      nativePreview: NativePreviewState & {
+        automationFlow: {
+          steps: Array<{ action: string; capability: string; identifier?: string }>;
+        };
+        deviceEnvironment: {
+          viewport: string;
+          colorScheme: string;
+          locale: string;
+          timeZone: string;
+        };
+        unsupportedControls: string[];
+      };
+    };
+
+    mountRenderer(container, treeWithNativeAgentFlow);
+
+    const capabilityCards = Array.from(
+      container.querySelectorAll("[data-native-capability]")
+    ).map((card) => card.getAttribute("data-native-capability"));
+
+    expect(capabilityCards).toEqual(
+      expect.arrayContaining([
+        "camera",
+        "photos",
+        "location",
+        "clipboard",
+        "files",
+        "shareSheet",
+        "notifications",
+        "deviceEnvironment",
+        "unsupported",
+      ])
+    );
+    expect(container.querySelector("[data-native-flow]")?.textContent ?? "").toContain(
+      "native.camera.capture"
+    );
+    expect(
+      container.querySelector("[data-native-capability='deviceEnvironment']")?.textContent ?? ""
+    ).toContain("America/New_York");
+    expect(
+      container.querySelector("[data-native-capability='unsupported']")?.textContent ?? ""
+    ).toContain("biometrics, health, speech, sensors, haptics");
   });
 });
