@@ -882,6 +882,152 @@ struct RuntimeHostContractTests {
         #expect(coordinator.session?.artifactBundle.renderArtifacts.last?.kind == .screenshot)
     }
 
+    @Test("runtime native capability manifest exposes deterministic mock contract shapes")
+    func runtimeNativeCapabilityManifestContract() throws {
+        let manifest = RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .camera,
+                    permissionState: .denied,
+                    strictModeAlternative: "Configure a deterministic camera mock instead of requesting host camera access."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .location,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use launch-time device geolocation or scripted location events."
+                ),
+            ],
+            configuredMocks: [
+                RuntimeNativeCapabilityMock(
+                    capability: .camera,
+                    identifier: "front-camera-still",
+                    payload: [
+                        "mediaType": "image",
+                        "fixtureName": "profile-photo",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .clipboard,
+                    identifier: "pasteboard-text",
+                    payload: [
+                        "text": "Fixture clipboard",
+                    ]
+                ),
+            ],
+            scriptedEvents: [
+                RuntimeNativeCapabilityEvent(
+                    capability: .location,
+                    name: "location-update",
+                    atRevision: 2,
+                    payload: [
+                        "latitude": "40.7128",
+                        "longitude": "-74.0060",
+                    ]
+                ),
+            ],
+            unsupportedSymbols: [
+                RuntimeNativeUnsupportedSymbol(
+                    symbolName: "AVCaptureSession.startRunning",
+                    capability: .camera,
+                    suggestedAdaptation: "Replace live capture with a camera fixture in the native capability manifest."
+                ),
+            ],
+            artifactOutputs: [
+                RuntimeNativeCapabilityArtifactOutput(
+                    capability: .camera,
+                    name: "captured-profile-photo",
+                    kind: .fixtureReference
+                ),
+            ]
+        )
+
+        #expect(manifest.requiredCapabilities.map(\.id) == [.camera, .location])
+        #expect(manifest.requiredCapabilities.map(\.permissionState) == [.denied, .granted])
+        #expect(manifest.configuredMocks.map(\.capability) == [.camera, .clipboard])
+        #expect(manifest.configuredMocks.first?.payload["fixtureName"] == "profile-photo")
+        #expect(manifest.scriptedEvents.first?.payload["latitude"] == "40.7128")
+        #expect(manifest.unsupportedSymbols.first?.capability == .camera)
+        #expect(manifest.artifactOutputs.first?.kind == .fixtureReference)
+
+        let defaults = RuntimeNativeCapabilityManifest()
+        #expect(defaults.requiredCapabilities.isEmpty)
+        #expect(defaults.configuredMocks.isEmpty)
+        #expect(defaults.scriptedEvents.isEmpty)
+        #expect(defaults.unsupportedSymbols.isEmpty)
+        #expect(defaults.artifactOutputs.isEmpty)
+        #expect(defaults.permissionState(for: .notifications) == .unsupported)
+    }
+
+    @Test("runtime automation launch and session carry native capability manifests without host side effects")
+    func runtimeAutomationCarriesNativeCapabilityManifest() throws {
+        let manifest = RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .notifications,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Script notification delivery through deterministic native capability events."
+                ),
+            ],
+            configuredMocks: [
+                RuntimeNativeCapabilityMock(
+                    capability: .network,
+                    identifier: "offline-mode",
+                    payload: [
+                        "isOnline": "false",
+                    ]
+                ),
+            ],
+            scriptedEvents: [
+                RuntimeNativeCapabilityEvent(
+                    capability: .notifications,
+                    name: "notification-delivered",
+                    atRevision: 3,
+                    payload: [
+                        "title": "Reminder",
+                    ]
+                ),
+            ],
+            unsupportedSymbols: [
+                RuntimeNativeUnsupportedSymbol(
+                    symbolName: "UNUserNotificationCenter.current",
+                    capability: .notifications,
+                    suggestedAdaptation: "Declare notification mocks in the manifest."
+                ),
+            ],
+            artifactOutputs: [
+                RuntimeNativeCapabilityArtifactOutput(
+                    capability: .notifications,
+                    name: "notification-log",
+                    kind: .eventLog
+                ),
+            ]
+        )
+        let configuration = RuntimeAutomationLaunchConfiguration(
+            appIdentifier: "FixtureApp",
+            fixtureName: "strict-mode-baseline",
+            nativeCapabilities: manifest
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-capabilities",
+                command: .launch(configuration)
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        #expect(configuration.nativeCapabilities == manifest)
+        #expect(session.nativeCapabilities == manifest)
+        #expect(coordinator.session?.nativeCapabilities == manifest)
+        #expect(session.nativeCapabilities.permissionState(for: .notifications) == .prompt)
+        #expect(session.nativeCapabilities.configuredMocks.first?.payload["isOnline"] == "false")
+        #expect(session.nativeCapabilities.artifactOutputs.first?.kind == .eventLog)
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

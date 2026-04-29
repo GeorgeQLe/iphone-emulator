@@ -314,6 +314,98 @@ struct DiagnosticsCoreContractTests {
         ])
     }
 
+    @Test("compatibility analyzer maps recognized native APIs to native capability guidance")
+    func compatibilityAnalyzerMapsRecognizedNativeAPIsToCapabilityGuidance() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .sourceText(
+                """
+                import SwiftUI
+                import AVFoundation
+                import CoreLocation
+                import PhotosUI
+                import UserNotifications
+
+                struct NativeFeatureScreen {
+                    func requestNativeFeatures() {
+                        AVCaptureSession().startRunning()
+                        CLLocationManager().requestWhenInUseAuthorization()
+                        PHPickerViewController(configuration: PHPickerConfiguration())
+                        UIPasteboard.general.string = "Copied"
+                        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+                    }
+                }
+                """,
+                file: "NativeFeatureScreen.swift"
+            )
+        )
+
+        let nativeDiagnostics = analysis.report.diagnostics.compactMap(\.nativeCapabilityGuidance)
+
+        #expect(nativeDiagnostics.map(\.capability) == [
+            .camera,
+            .location,
+            .photos,
+            .clipboard,
+            .notifications,
+        ])
+        #expect(nativeDiagnostics.map(\.requestedAPI) == [
+            "AVCaptureSession.startRunning",
+            "CLLocationManager.requestWhenInUseAuthorization",
+            "PHPickerViewController",
+            "UIPasteboard.general",
+            "UNUserNotificationCenter.current",
+        ])
+        #expect(nativeDiagnostics.allSatisfy { $0.requiresManifestMock })
+        #expect(nativeDiagnostics.map(\.suggestedManifestField) == [
+            "configuredMocks.camera",
+            "scriptedEvents.location",
+            "configuredMocks.photos",
+            "configuredMocks.clipboard",
+            "scriptedEvents.notifications",
+        ])
+        #expect(nativeDiagnostics.map(\.failClosedReason) == [
+            "Live camera capture is unavailable in strict mode.",
+            "Live device location and host permission prompts are unavailable in strict mode.",
+            "Live photo library access is unavailable in strict mode.",
+            "Host clipboard access is unavailable by default in strict mode.",
+            "Live notification authorization and delivery are unavailable in strict mode.",
+        ])
+        #expect(analysis.report.unsupportedGroups.last?.adaptationHints.map(\.message).contains(
+            "Declare deterministic native capability mocks in RuntimeNativeCapabilityManifest instead of calling live native APIs."
+        ) == true)
+    }
+
+    @Test("compatibility analyzer fails closed for unrecognized native APIs")
+    func compatibilityAnalyzerFailsClosedForUnrecognizedNativeAPIs() throws {
+        let analyzer = CompatibilityAnalyzer(matrix: .v1)
+
+        let analysis = try analyzer.analyze(
+            .sourceText(
+                """
+                import SwiftUI
+                import LocalAuthentication
+
+                struct BiometricLogin {
+                    func authenticate() {
+                        LAContext().evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Sign in") { _, _ in }
+                    }
+                }
+                """,
+                file: "BiometricLogin.swift"
+            )
+        )
+
+        #expect(analysis.report.diagnostics.map(\.category) == [.platformAPIs])
+        #expect(analysis.report.diagnostics.map(\.unsupportedName) == ["LAContext.evaluatePolicy"])
+        #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.capability == .unsupported)
+        #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.requiresManifestMock == false)
+        #expect(analysis.report.diagnostics.first?.nativeCapabilityGuidance?.failClosedReason == "This native API has no strict-mode capability contract.")
+        #expect(analysis.report.diagnostics.first?.suggestedAdaptation?.message == "Fail closed or replace LAContext.evaluatePolicy with an explicit strict-mode test fixture boundary.")
+        #expect(analysis.loweredTree == nil)
+    }
+
     @Test("compatibility analyzer accepts the first supported SwiftUI-inspired subset fixture")
     func compatibilityAnalyzerAcceptsFirstSupportedSubsetFixture() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

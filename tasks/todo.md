@@ -49,7 +49,7 @@
   - Deliverable: suggested red-phase diagnostics assertions and implementation files.
 
 ### Tests First
-- [ ] Step 8.1: Write failing runtime and diagnostics contracts for native capability manifests
+- [x] Step 8.1: Write failing runtime and diagnostics contracts for native capability manifests
   - Files: modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`; add fixtures under `tests/fixtures/compatibility/` only if needed.
   - Add red-phase assertions for typed capability manifest shapes, deterministic mock/default values, unsupported symbol mapping to capability guidance, and fail-closed behavior for unrecognized native APIs.
   - Implementation plan: first inspect existing runtime automation/device settings types and compatibility analyzer tests. Add the smallest contract tests that name the future manifest types and diagnostics output without implementing them. Keep tests focused on value shapes and source analysis, not real host permissions or native device behavior.
