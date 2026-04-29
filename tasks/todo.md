@@ -106,7 +106,7 @@
   - Validation focus: run package/type validation only if examples or code snippets change; otherwise docs-only validation can reuse the prior green source checks.
 
 ### Green
-- [ ] Step 9.8: Add regression coverage for native mock service flows
+- [x] Step 9.8: Add regression coverage for native mock service flows
   - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, `packages/automation-sdk/src/index.test.ts`, `packages/browser-renderer/src/demoProject.test.ts`, and `packages/browser-renderer/src/renderTree.test.ts`.
   - Cover a representative strict-mode flow that configures permissions, camera/photo fixtures, location events, clipboard state, keyboard traits, file/share sheet records, and notification records, then inspects runtime logs, semantic state, artifact records, SDK snapshots, and renderer preview output.
   - Implementation plan: keep tests fixture-only and deterministic. Include unsupported native service assertions so new mocks do not weaken diagnostics fail-closed behavior.
@@ -118,6 +118,7 @@
 - [ ] Step 9.9: Run full validation across Swift, browser renderer, and automation SDK
   - Files: no intended source edits unless validation exposes missing package or TypeScript wiring.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
+  - Current context from Step 9.8: representative native mock regression coverage now spans the Swift runtime contract, diagnostics fail-closed boundaries, automation SDK session/event/artifact inspection, and browser preview compiler/renderer output. The diagnostics analyzer also now explicitly maps `HKHealthStore.requestAuthorization` and `SFSpeechRecognizer.requestAuthorization` to unsupported fail-closed native capability guidance so health and speech APIs remain outside the Phase 9 mock contract. The focused Step 9.8 validation passed: `swift test --filter RuntimeHostContractTests`, `swift test --filter DiagnosticsCoreContractTests`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/browser-renderer test`, plus the two package `typecheck` commands.
   - Validation focus: inspect warnings as well as failures. Existing Vite large-chunk warnings for Monaco/editor assets can be accepted only if no renderer bundling behavior changed in this phase.
 - [ ] Step 9.10: Refactor native mock service boundaries if needed while keeping validation green
   - Files: modify runtime native capability service types, automation SDK native service types, browser renderer native preview helpers, and docs only as needed.
