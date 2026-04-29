@@ -61,7 +61,7 @@
   - Define explicit value types for capability identifiers, permission states, configured mocks, scripted events, unsupported symbols, artifact outputs, and deterministic defaults.
   - Implementation plan: align naming with existing runtime automation launch/device setting types. Keep manifests serializable value data with no host permission probing, no live network access, and no side effects. Thread the manifest into launch/session configuration only where the existing automation contract needs to carry it.
   - Validation focus: run `swift test --filter RuntimeHostContractTests` and `swift build`.
-- [ ] Step 8.3: Extend diagnostics with recognized native API capability guidance
+- [x] Step 8.3: Extend diagnostics with recognized native API capability guidance
   - Files: modify `packages/diagnostics-core/Sources/DiagnosticsCore/DiagnosticsCore.swift`, compatibility fixtures under `tests/fixtures/compatibility/`, and `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`.
   - Map recognized native API requests to native capability guidance and keep unrecognized native APIs fail-closed with structured unsupported diagnostics.
   - Implementation plan: extend the existing compatibility analyzer rather than creating a second diagnostics engine. Add a compact native API mapping table for camera/photos, location, network, clipboard, notifications, files/share sheet, sensors, haptics, and device environment where source symbols are currently detectable. Preserve existing diagnostic ordering and source-location behavior.

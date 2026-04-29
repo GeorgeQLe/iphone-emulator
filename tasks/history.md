@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 8 Step 8.3 by adding diagnostics-side native capability guidance for platform API diagnostics and extending the compatibility analyzer with deterministic mappings for camera, location, photos, network, clipboard, notifications, files, share sheet, sensors, haptics, device environment, and a fail-closed unsupported biometric API boundary.
+- Validation: `swift test --filter DiagnosticsCoreContractTests` passed with 13 diagnostics tests and no warnings. `swift build` passed cleanly with no warnings.
+
 - Completed Phase 8 Step 8.1 by adding red-phase runtime and diagnostics contract tests for the native capability manifest surface. The runtime contracts now name future manifest value shapes for capability requirements, permission states, configured mocks, scripted events, unsupported symbols, artifact outputs, deterministic defaults, and automation launch/session propagation. The diagnostics contracts now name future native API capability guidance for recognized camera, location, photos, clipboard, and notifications APIs, plus fail-closed handling for an unrecognized biometric API.
 - Validation: `swift test --filter RuntimeHostContractTests` and `swift test --filter DiagnosticsCoreContractTests` both failed as expected in the red phase. SwiftPM stopped during test compilation on missing `CompatibilityDiagnostic.nativeCapabilityGuidance` and related native capability symbols/fields, which is the intended Step 8.1 failure boundary before implementation.
 

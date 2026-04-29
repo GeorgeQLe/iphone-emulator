@@ -89,15 +89,40 @@ public struct UnsupportedPlatformAPIDiagnostic: Sendable, Hashable {
     public let apiName: String
     public let location: SourceLocation
     public let suggestedAdaptation: SuggestedAdaptation?
+    public let nativeCapabilityGuidance: NativeCapabilityGuidance?
 
     public init(
         apiName: String,
         location: SourceLocation,
-        suggestedAdaptation: SuggestedAdaptation? = nil
+        suggestedAdaptation: SuggestedAdaptation? = nil,
+        nativeCapabilityGuidance: NativeCapabilityGuidance? = nil
     ) {
         self.apiName = apiName
         self.location = location
         self.suggestedAdaptation = suggestedAdaptation
+        self.nativeCapabilityGuidance = nativeCapabilityGuidance
+    }
+}
+
+public struct NativeCapabilityGuidance: Sendable, Hashable {
+    public let capability: RuntimeNativeCapabilityID
+    public let requestedAPI: String
+    public let requiresManifestMock: Bool
+    public let suggestedManifestField: String
+    public let failClosedReason: String
+
+    public init(
+        capability: RuntimeNativeCapabilityID,
+        requestedAPI: String,
+        requiresManifestMock: Bool,
+        suggestedManifestField: String,
+        failClosedReason: String
+    ) {
+        self.capability = capability
+        self.requestedAPI = requestedAPI
+        self.requiresManifestMock = requiresManifestMock
+        self.suggestedManifestField = suggestedManifestField
+        self.failClosedReason = failClosedReason
     }
 }
 
@@ -207,6 +232,15 @@ public enum CompatibilityDiagnostic: Sendable, Hashable {
             return diagnostic.suggestedAdaptation
         case let .unsupportedPlatformAPI(diagnostic):
             return diagnostic.suggestedAdaptation
+        }
+    }
+
+    public var nativeCapabilityGuidance: NativeCapabilityGuidance? {
+        switch self {
+        case let .unsupportedPlatformAPI(diagnostic):
+            return diagnostic.nativeCapabilityGuidance
+        case .unsupportedImport, .unsupportedSymbol, .unsupportedModifier, .unsupportedLifecycleHook:
+            return nil
         }
     }
 
@@ -602,25 +636,28 @@ private extension CompatibilityAnalyzer {
     }
 
     func platformAPIDiagnostics(in lines: [String], file: String) -> [CompatibilityDiagnostic] {
-        symbolDiagnostics(
-            in: lines,
-            file: file,
-            symbolName: "UIApplication.shared.open",
-            message: "Replace UIApplication usage with strict-mode environment and runtime controls."
-        ).map { diagnostic in
-            switch diagnostic {
-            case let .unsupportedSymbol(symbolDiagnostic):
-                return .unsupportedPlatformAPI(
-                    UnsupportedPlatformAPIDiagnostic(
-                        apiName: symbolDiagnostic.symbolName,
-                        location: symbolDiagnostic.location,
-                        suggestedAdaptation: symbolDiagnostic.suggestedAdaptation
+        var diagnostics: [CompatibilityDiagnostic] = []
+
+        for (index, line) in lines.enumerated() {
+            for nativeAPI in NativePlatformAPI.knownAPIs where nativeAPI.matches(line) {
+                diagnostics.append(
+                    .unsupportedPlatformAPI(
+                        UnsupportedPlatformAPIDiagnostic(
+                            apiName: nativeAPI.requestedAPI,
+                            location: SourceLocation(
+                                file: file,
+                                line: index + 1,
+                                column: column(in: line, matching: nativeAPI.locationToken)
+                            ),
+                            suggestedAdaptation: SuggestedAdaptation(message: nativeAPI.adaptationMessage),
+                            nativeCapabilityGuidance: nativeAPI.guidance
+                        )
                     )
                 )
-            default:
-                return diagnostic
             }
         }
+
+        return diagnostics
     }
 
     func unsupportedMemberDiagnostics(
@@ -756,4 +793,192 @@ private extension CompatibilityAnalyzer {
 
         return line.distance(from: line.startIndex, to: range.lowerBound) + 1
     }
+}
+
+private struct NativePlatformAPI: Sendable, Hashable {
+    let requestedAPI: String
+    let matchTokens: [String]
+    let locationToken: String
+    let adaptationMessage: String
+    let guidance: NativeCapabilityGuidance
+
+    func matches(_ line: String) -> Bool {
+        matchTokens.allSatisfy { line.contains($0) }
+    }
+}
+
+private extension NativePlatformAPI {
+    static let nativeMockMessage = "Declare deterministic native capability mocks in RuntimeNativeCapabilityManifest instead of calling live native APIs."
+
+    static let knownAPIs: [NativePlatformAPI] = [
+        NativePlatformAPI(
+            requestedAPI: "UIApplication.shared.open",
+            matchTokens: ["UIApplication.shared.open"],
+            locationToken: "UIApplication.shared.open",
+            adaptationMessage: "Replace UIApplication usage with strict-mode environment and runtime controls.",
+            guidance: NativeCapabilityGuidance(
+                capability: .deviceEnvironment,
+                requestedAPI: "UIApplication.shared.open",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.deviceEnvironment",
+                failClosedReason: "Live application environment interactions are unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "AVCaptureSession.startRunning",
+            matchTokens: ["AVCaptureSession", "startRunning"],
+            locationToken: "AVCaptureSession",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .camera,
+                requestedAPI: "AVCaptureSession.startRunning",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.camera",
+                failClosedReason: "Live camera capture is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "CLLocationManager.requestWhenInUseAuthorization",
+            matchTokens: ["CLLocationManager", "requestWhenInUseAuthorization"],
+            locationToken: "CLLocationManager",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .location,
+                requestedAPI: "CLLocationManager.requestWhenInUseAuthorization",
+                requiresManifestMock: true,
+                suggestedManifestField: "scriptedEvents.location",
+                failClosedReason: "Live device location and host permission prompts are unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "PHPickerViewController",
+            matchTokens: ["PHPickerViewController"],
+            locationToken: "PHPickerViewController",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .photos,
+                requestedAPI: "PHPickerViewController",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.photos",
+                failClosedReason: "Live photo library access is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "URLSession.dataTask",
+            matchTokens: ["URLSession", "dataTask"],
+            locationToken: "URLSession",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .network,
+                requestedAPI: "URLSession.dataTask",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.network",
+                failClosedReason: "Live network access is unavailable by default in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "UIPasteboard.general",
+            matchTokens: ["UIPasteboard.general"],
+            locationToken: "UIPasteboard.general",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .clipboard,
+                requestedAPI: "UIPasteboard.general",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.clipboard",
+                failClosedReason: "Host clipboard access is unavailable by default in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "UNUserNotificationCenter.current",
+            matchTokens: ["UNUserNotificationCenter.current"],
+            locationToken: "UNUserNotificationCenter.current",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .notifications,
+                requestedAPI: "UNUserNotificationCenter.current",
+                requiresManifestMock: true,
+                suggestedManifestField: "scriptedEvents.notifications",
+                failClosedReason: "Live notification authorization and delivery are unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "UIDocumentPickerViewController",
+            matchTokens: ["UIDocumentPickerViewController"],
+            locationToken: "UIDocumentPickerViewController",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .files,
+                requestedAPI: "UIDocumentPickerViewController",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.files",
+                failClosedReason: "Live file picker access is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "UIActivityViewController",
+            matchTokens: ["UIActivityViewController"],
+            locationToken: "UIActivityViewController",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .shareSheet,
+                requestedAPI: "UIActivityViewController",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.shareSheet",
+                failClosedReason: "Live share sheet presentation is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "CMMotionManager.deviceMotion",
+            matchTokens: ["CMMotionManager", "deviceMotion"],
+            locationToken: "CMMotionManager",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .sensors,
+                requestedAPI: "CMMotionManager.deviceMotion",
+                requiresManifestMock: true,
+                suggestedManifestField: "scriptedEvents.sensors",
+                failClosedReason: "Live device sensor data is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "UIImpactFeedbackGenerator.impactOccurred",
+            matchTokens: ["UIImpactFeedbackGenerator", "impactOccurred"],
+            locationToken: "UIImpactFeedbackGenerator",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .haptics,
+                requestedAPI: "UIImpactFeedbackGenerator.impactOccurred",
+                requiresManifestMock: true,
+                suggestedManifestField: "scriptedEvents.haptics",
+                failClosedReason: "Live haptic feedback is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "UIDevice.current",
+            matchTokens: ["UIDevice.current"],
+            locationToken: "UIDevice.current",
+            adaptationMessage: nativeMockMessage,
+            guidance: NativeCapabilityGuidance(
+                capability: .deviceEnvironment,
+                requestedAPI: "UIDevice.current",
+                requiresManifestMock: true,
+                suggestedManifestField: "configuredMocks.deviceEnvironment",
+                failClosedReason: "Live device environment state is unavailable in strict mode."
+            )
+        ),
+        NativePlatformAPI(
+            requestedAPI: "LAContext.evaluatePolicy",
+            matchTokens: ["LAContext", "evaluatePolicy"],
+            locationToken: "LAContext",
+            adaptationMessage: "Fail closed or replace LAContext.evaluatePolicy with an explicit strict-mode test fixture boundary.",
+            guidance: NativeCapabilityGuidance(
+                capability: .unsupported,
+                requestedAPI: "LAContext.evaluatePolicy",
+                requiresManifestMock: false,
+                suggestedManifestField: "unsupportedSymbols",
+                failClosedReason: "This native API has no strict-mode capability contract."
+            )
+        ),
+    ]
 }
