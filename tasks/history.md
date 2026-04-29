@@ -1,5 +1,9 @@
 # History
 
+- Completed Phase 8 Step 8.8 as an intentional no-op native capability boundary review. The runtime manifest value types, diagnostics native guidance mapping, TypeScript automation SDK manifest mirror/cloning, README/example docs, and `docs/native-capabilities.md` remain aligned around deterministic fixture data, with no premature native service behavior, host permission probing, live device dependency, live network access, or type-name drift found.
+- Validation: no source validation rerun was needed because Step 8.8 changed no runtime, diagnostics, SDK, renderer, or documentation source files. Reused the Step 8.7 full green validation surface.
+- Archived the completed Phase 8 plan to `tasks/phases/phase-8.md`, marked Phase 8 complete in `tasks/roadmap.md`, and generated the just-in-time Phase 9 plan in `tasks/todo.md` for first mock native services.
+
 - Completed Phase 8 Step 8.7 by running the full Swift, browser renderer, and automation SDK validation matrix without needing source, package, or validation wiring changes.
 - Validation: `swift test` passed with 39 tests across 4 suites, `swift build` passed, `npm --prefix packages/browser-renderer run typecheck` passed, `npm --prefix packages/browser-renderer test` passed with 7 tests, `npm --prefix packages/browser-renderer run build` passed, `npm --prefix packages/automation-sdk run typecheck` passed, `npm --prefix packages/automation-sdk test` passed with 5 tests, and `npm --prefix packages/automation-sdk run build` passed. The browser renderer build emitted Vite's large-chunk warning for Monaco/editor assets; accepted as an existing non-regression for this validation-only step.
 

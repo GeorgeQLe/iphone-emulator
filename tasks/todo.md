@@ -1,115 +1,126 @@
 # Todo — iPhone Emulator Workspace
 
-> Current phase: 8 of 10 — M7 Native Capability Registry and Manifest
+> Current phase: 9 of 10 — M8 First Mock Native Services
 > Source roadmap: `tasks/roadmap.md`
 > Test strategy: tdd
 
-## Phase 8: M7 Native Capability Registry and Manifest
+## Phase 9: M8 First Mock Native Services
 
 **Status:** planned.
 
-**Goal:** Define the deterministic native capability model that lets the harness simulate native functionality requested by source code without claiming real iOS behavior.
+**Goal:** Implement the first useful deterministic native mocks for app flows that agents commonly need to exercise.
 
 **Scope:**
-- Add a native capability taxonomy for permissions, camera/photos, location, network, clipboard, keyboard/input, files/share sheet, notifications, device environment, sensors, and haptics.
-- Define capability manifests that list required capabilities, configured mocks, permission states, scripted events, unsupported symbols, and artifact outputs.
-- Extend diagnostics so recognized native API requests either map to a capability contract or fail closed with adaptation guidance.
-- Document the distinction between mock native capability support and real native framework fidelity.
+- Add permission state and prompt simulation.
+- Add fixture-backed camera capture and photo picker outputs.
+- Add deterministic location state and scripted location events.
+- Add clipboard, keyboard/input traits, file picker/share sheet records, and local notification scheduling records.
+- Surface capability events through runtime logs, semantic state, and artifact bundles.
+- Add browser preview UI for permission prompts, pickers, camera/photo outcomes, keyboard state, and notification records where applicable.
 
 **Acceptance Criteria:**
-- The spec and docs define what a supported native capability must include before implementation.
-- Runtime and automation contracts have typed manifest shapes, even if most capabilities are initially unsupported.
-- Unsupported native APIs produce structured diagnostics with suggested strict-mode mock alternatives.
-- No capability depends on live host permissions, live device state, or live network access by default.
+- Strict-mode fixture apps can request supported native capabilities and receive deterministic mock results.
+- Automation can configure mock state at launch and inspect capability events after interaction.
+- Runtime artifacts include native capability logs and records.
+- Unsupported native services still fail closed with diagnostics.
 
 ### Execution Profile
-**Parallel mode:** research-only
+**Parallel mode:** implementation-safe
 **Integration owner:** main agent
-**Conflict risk:** medium
-**Review gates:** capability taxonomy coherence, diagnostics/API conformance, deterministic defaults, docs accuracy
+**Conflict risk:** high
+**Review gates:** capability contract coherence, deterministic behavior, tests, docs/API conformance, renderer UX
 
 **Subagent lanes:**
-- Lane: capability-taxonomy
-  - Agent: explorer
-  - Role: read-only researcher
-  - Mode: read
-  - Scope: inspect existing runtime, diagnostics, automation, and docs surfaces for places where native capability taxonomy terms must align.
-  - Owns: none
-  - Must not edit: all files
-  - Depends on: none
-  - Deliverable: recommended capability categories, naming constraints, and likely contract touchpoints.
-- Lane: diagnostics-contract
-  - Agent: explorer
-  - Role: read-only researcher
-  - Mode: read
-  - Scope: inspect `DiagnosticsCore` compatibility report and fixture tests for the narrowest native API diagnostic extension path.
-  - Owns: none
-  - Must not edit: all files
-  - Depends on: none
-  - Deliverable: suggested red-phase diagnostics assertions and implementation files.
+- Lane: runtime-native-services
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: implement runtime native capability state, permission/prompt simulation, mock service event records, artifact/log integration, and focused Swift tests after the red contracts exist.
+  - Owns: `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/**`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`
+  - Must not edit: `packages/automation-sdk/**`, `packages/browser-renderer/**`, `packages/diagnostics/**`, `docs/**`, `examples/**`, `tasks/**`
+  - Depends on: Step 9.1
+  - Deliverable: runtime native service implementation patch and focused Swift validation output.
+- Lane: automation-native-services
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: expose configured native mock state and native event inspection through the TypeScript automation SDK without adding the final Phase 10 high-level `app.native.*` API family.
+  - Owns: `packages/automation-sdk/src/**`
+  - Must not edit: `packages/runtime-host/**`, `packages/browser-renderer/**`, `packages/diagnostics/**`, `docs/**`, `examples/**`, `tasks/**`
+  - Depends on: Step 9.2, Step 9.3, Step 9.4
+  - Deliverable: automation SDK patch and package validation output.
+- Lane: renderer-native-preview
+  - Agent: worker
+  - Role: implementer
+  - Mode: write
+  - Scope: add browser demo preview states for deterministic permission prompts, pickers, camera/photo outcomes, keyboard state, and notification records using the existing semantic preview model.
+  - Owns: `packages/browser-renderer/src/**`
+  - Must not edit: `packages/runtime-host/**`, `packages/automation-sdk/**`, `packages/diagnostics/**`, `docs/**`, `examples/**`, `tasks/**`
+  - Depends on: Step 9.2
+  - Deliverable: browser renderer patch and package validation output.
 
 ### Tests First
-- [x] Step 8.1: Write failing runtime and diagnostics contracts for native capability manifests
-  - Files: modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`; add fixtures under `tests/fixtures/compatibility/` only if needed.
-  - Add red-phase assertions for typed capability manifest shapes, deterministic mock/default values, unsupported symbol mapping to capability guidance, and fail-closed behavior for unrecognized native APIs.
-  - Implementation plan: first inspect existing runtime automation/device settings types and compatibility analyzer tests. Add the smallest contract tests that name the future manifest types and diagnostics output without implementing them. Keep tests focused on value shapes and source analysis, not real host permissions or native device behavior.
-  - Validation focus: run `swift test --filter RuntimeHostContractTests` and `swift test --filter DiagnosticsCoreContractTests`; failures are expected in this red phase and should be limited to missing native capability symbols or diagnostics fields.
+- [ ] Step 9.1: Write failing native service contracts for permissions, fixture outputs, events, and artifacts
+  - Files: modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, `packages/automation-sdk/src/index.test.ts`, `packages/browser-renderer/src/demoProject.test.ts`, and `packages/browser-renderer/src/renderTree.test.ts` only where needed.
+  - Add red-phase assertions for permission prompt state, deterministic camera/photo fixture outputs, scripted location events, clipboard state, keyboard/input traits, file/share sheet records, notification scheduling records, native capability event logs, artifact bundle records, SDK launch/inspection parity, renderer preview state, and diagnostics that still fail closed for unsupported native services.
+  - Implementation plan: build directly on the Phase 8 manifest contracts. Tests should name the future runtime value types and SDK inspection shapes, but should not depend on host permissions, real camera/photos/files/clipboard/sensors/haptics, live notification delivery, or live network access. Keep Phase 10's high-level `app.native.*` API out of scope; this phase should prove configured mock services and event inspection through existing launch/session/artifact surfaces.
+  - Current context from Phase 8: native capability manifest data lives in `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`, is carried through `RuntimeAutomationLaunchConfiguration` and `RuntimeAutomationSession`, is mirrored in `packages/automation-sdk/src/types.ts`, and is documented in `docs/native-capabilities.md`. Diagnostics native guidance already maps recognized native API requests to manifest fields and fails closed for unsupported biometrics.
+  - Validation focus: run `swift test --filter RuntimeHostContractTests`, `swift test --filter DiagnosticsCoreContractTests`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/browser-renderer test`; failures are expected in this red phase and should be limited to missing native service state/API/preview symbols.
 
 ### Implementation
-- [x] Step 8.2: Add runtime native capability manifest value types
-  - Files: create `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
-  - Define explicit value types for capability identifiers, permission states, configured mocks, scripted events, unsupported symbols, artifact outputs, and deterministic defaults.
-  - Implementation plan: align naming with existing runtime automation launch/device setting types. Keep manifests serializable value data with no host permission probing, no live network access, and no side effects. Thread the manifest into launch/session configuration only where the existing automation contract needs to carry it.
+- [ ] Step 9.2: Add runtime native service state and event records
+  - Files: create `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityState.swift` or equivalent; modify `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Define deterministic state and event records for permission prompts/results, fixture outputs, location updates, clipboard values, keyboard traits, file/share sheet selections, notification scheduling/delivery records, and capability artifact/log references.
+  - Implementation plan: keep state serializable and fixture-backed. Derive initial state only from `RuntimeNativeCapabilityManifest` and launch configuration. Append native capability events to runtime logs and `RuntimeArtifactBundle` records without executing real native services.
   - Validation focus: run `swift test --filter RuntimeHostContractTests` and `swift build`.
-- [x] Step 8.3: Extend diagnostics with recognized native API capability guidance
-  - Files: modify `packages/diagnostics-core/Sources/DiagnosticsCore/DiagnosticsCore.swift`, compatibility fixtures under `tests/fixtures/compatibility/`, and `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`.
-  - Map recognized native API requests to native capability guidance and keep unrecognized native APIs fail-closed with structured unsupported diagnostics.
-  - Implementation plan: extend the existing compatibility analyzer rather than creating a second diagnostics engine. Add a compact native API mapping table for camera/photos, location, network, clipboard, notifications, files/share sheet, sensors, haptics, and device environment where source symbols are currently detectable. Preserve existing diagnostic ordering and source-location behavior.
-  - Current context from Step 8.2: runtime manifest types now live in `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`, and `RuntimeAutomationLaunchConfiguration`/`RuntimeAutomationSession` carry `nativeCapabilities` with an empty deterministic default. `swift build` passes. `swift test --filter RuntimeHostContractTests` currently stops during test compilation on the intended Step 8.3 red-phase diagnostics failures because `CompatibilityDiagnostic.nativeCapabilityGuidance` and related native guidance value types are not implemented yet.
-  - Next implementation detail: add the diagnostics-side native guidance type surface before attempting analyzer mappings so the full test target compiles, then wire recognized API symbols to guidance while leaving unknown native APIs as structured fail-closed diagnostics.
-  - Validation focus: run `swift test --filter DiagnosticsCoreContractTests` and `swift build`.
-- [x] Step 8.4: Surface capability manifest shapes through the automation SDK contract
-  - Files: modify `packages/automation-sdk/src/types.ts`, `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/src/index.test.ts`, and package-local types only if extraction is warranted.
-  - Add launch option and inspection types that mirror the runtime manifest shape while remaining deterministic and fixture-backed.
-  - Implementation plan: extend the in-memory `Emulator.launch` options and session inspection surface with native capability manifest data. Do not implement real native service behavior in this phase; only preserve and expose configured manifest state consistently with runtime contracts.
-  - Current context from Step 8.3: diagnostics native capability guidance now lives in `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift`. `UnsupportedPlatformAPIDiagnostic` exposes `nativeCapabilityGuidance`, and the analyzer maps detected native API symbols to `RuntimeNativeCapabilityID` values for camera, location, photos, network, clipboard, notifications, files, share sheet, sensors, haptics, device environment, plus fail-closed `.unsupported` guidance for `LAContext.evaluatePolicy`.
-  - Next implementation detail: mirror the Swift `RuntimeNativeCapabilityManifest` shape from `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift` into TypeScript types, add `nativeCapabilities?: RuntimeNativeCapabilityManifest` to `RuntimeAutomationLaunchOptions`, carry a deterministic default manifest into `RuntimeAutomationSession`, clone it in session snapshots, and add SDK tests that configured mocks, scripted events, unsupported symbols, and permission defaults survive launch/inspection without live host access.
+- [ ] Step 9.3: Implement first runtime mocks for permissions, camera/photos, and location
+  - Files: modify runtime native capability files under `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Add deterministic permission state/prompt transitions, fixture-backed camera capture and photo picker outputs, and location state/scripted event handling.
+  - Implementation plan: use manifest `requiredCapabilities`, `configuredMocks`, and `scriptedEvents` as the only service inputs. Unsupported or missing fixtures should produce structured runtime records and diagnostics-style adaptation text rather than falling back to host behavior.
+  - Validation focus: run `swift test --filter RuntimeHostContractTests` and `swift build`.
+- [ ] Step 9.4: Implement runtime mocks for clipboard, keyboard/input, files/share sheet, and notifications
+  - Files: modify runtime native capability files under `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Add deterministic clipboard read/write state, keyboard/input trait records, file picker and share sheet records, and local notification authorization/schedule/delivery records.
+  - Implementation plan: preserve the Phase 8 boundary by implementing mock service records only, not native framework behavior. Reflect records through semantic state and artifacts where the existing runtime tree can represent them; otherwise keep them as inspectable native capability events.
+  - Validation focus: run `swift test --filter RuntimeHostContractTests` and `swift build`.
+- [ ] Step 9.5: Surface native mock state and events through the automation SDK
+  - Files: modify `packages/automation-sdk/src/types.ts`, `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/src/index.test.ts`, and package-local helper types only if extraction is warranted.
+  - Mirror runtime native service state/event shapes, preserve configured launch mocks, expose deterministic native event inspection through session/artifact surfaces, and keep the SDK clone-isolation guarantees added in Phase 8.
+  - Implementation plan: extend the in-memory `Emulator` with native mock state derived from `nativeCapabilities`, but do not add the final Phase 10 `app.native.*` control namespace yet. Keep launch inputs, session snapshots, artifacts, and native event records deeply cloned.
   - Validation focus: run `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
-- [x] Step 8.5: Document the native capability registry and mock-fidelity boundary
-  - Files: update `README.md`; create or modify docs under `docs/` such as `docs/native-capabilities.md`; update `examples/strict-mode-baseline/README.md` only if the example needs capability setup context.
-  - Describe the capability taxonomy, manifest fields, unsupported/native API diagnostic behavior, deterministic mock constraints, and the distinction from real iOS/native framework fidelity.
-  - Implementation plan: keep docs aligned with the exact runtime/automation type names and diagnostics categories implemented in Steps 8.2-8.4. Avoid promising live host permissions, real device state, or real native framework fidelity.
-  - Current context from Step 8.4: automation SDK manifest types now live in `packages/automation-sdk/src/types.ts` and are re-exported from `packages/automation-sdk/src/index.ts`. `RuntimeAutomationLaunchOptions.nativeCapabilities` accepts the manifest, `RuntimeAutomationSession.nativeCapabilities` exposes a cloned manifest, and default launches return empty `requiredCapabilities`, `configuredMocks`, `scriptedEvents`, `unsupportedSymbols`, and `artifactOutputs` arrays. SDK tests cover configured requirements, mocks, scripted events, unsupported symbols, artifact outputs, launch-input clone isolation, and session-inspection clone isolation.
-  - Next implementation detail: document the same field names and capability IDs used by Swift and TypeScript: `RuntimeNativeCapabilityID`, `RuntimeNativePermissionState`, `RuntimeNativeCapabilityRequirement`, `RuntimeNativeCapabilityMock`, `RuntimeNativeCapabilityEvent`, `RuntimeNativeUnsupportedSymbol`, `RuntimeNativeCapabilityArtifactOutput`, and `RuntimeNativeCapabilityManifest`. Cross-link diagnostics guidance (`nativeCapabilityGuidance`, `configuredMocks.*`, `scriptedEvents.*`, `unsupportedSymbols`) and explicitly state that manifests are deterministic fixtures, not live iOS/native framework access.
-  - Validation focus: run the relevant Swift and TypeScript validation touched by docs examples if snippets compile; otherwise no code validation is required for docs-only edits.
+- [ ] Step 9.6: Add browser preview UI for deterministic native capability states
+  - Files: modify `packages/browser-renderer/src/demoProject.ts`, `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/renderTree.ts`, `packages/browser-renderer/src/demoProject.test.ts`, and `packages/browser-renderer/src/renderTree.test.ts` only where preview behavior requires it.
+  - Add preview states for permission prompts, camera/photo fixture outcomes, keyboard visibility/input traits, file/share sheet records, and notification records where applicable.
+  - Implementation plan: keep browser preview behavior illustrative and deterministic. Reuse the existing semantic preview and artifact panels; avoid claiming live Swift execution or real native framework/device fidelity.
+  - Validation focus: run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`.
+- [ ] Step 9.7: Document first mock native services and update fixture examples
+  - Files: update `README.md`, `docs/native-capabilities.md`, and `examples/strict-mode-baseline/README.md`; update `examples/strict-mode-baseline/automation-example.ts` only if the SDK example can demonstrate inspection without Phase 10 APIs.
+  - Document supported mock services, manifest payload keys, deterministic defaults, event/artifact records, renderer preview behavior, and unsupported-service fail-closed behavior.
+  - Implementation plan: distinguish the newly supported deterministic mock services from unsupported native framework fidelity. Include exact validation commands and keep the Phase 10 high-level automation API as future work.
+  - Validation focus: run package/type validation only if examples or code snippets change; otherwise docs-only validation can reuse the prior green source checks.
 
 ### Green
-- [x] Step 8.6: Add regression coverage for manifest defaults and native diagnostics
-  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, and `packages/automation-sdk/src/index.test.ts`.
-  - Cover deterministic default manifests, explicit configured mocks, permission states, unsupported symbol records, diagnostics guidance for recognized native APIs, and automation SDK launch/inspection parity.
-  - Implementation plan: add focused regression tests that protect the newly implemented value contracts and source-analysis mappings without introducing end-to-end native service behavior reserved for Phase 9.
-  - Current context from Step 8.5: `docs/native-capabilities.md` now documents the capability taxonomy, manifest fields, permission states, supported-capability contract, diagnostics `nativeCapabilityGuidance` mappings, and mock-fidelity boundary. `README.md` links that registry and shows `nativeCapabilities` as deterministic launch fixture data. `examples/strict-mode-baseline/README.md` points to the runtime manifest type and documents that the example carries native capability manifests without executing native services.
-  - Next implementation detail: keep Step 8.6 test-only unless a regression exposes drift. In runtime tests, assert empty manifest defaults, `permissionState(for:)`, explicit requirements, configured mock payloads, scripted event revisions, unsupported symbol adaptation text, and artifact output kinds. In diagnostics tests, assert the current native API mapping table still yields `nativeCapabilityGuidance` with the expected `capability`, `requiresManifestMock`, `suggestedManifestField`, and fail-closed `.unsupported` behavior. In automation SDK tests, assert launch and session inspection clone parity for default and configured manifests.
-  - Validation focus: run `swift test --filter RuntimeHostContractTests`, `swift test --filter DiagnosticsCoreContractTests`, and `npm --prefix packages/automation-sdk test`.
-- [x] Step 8.7: Run full validation across Swift, browser renderer, and automation SDK
+- [ ] Step 9.8: Add regression coverage for native mock service flows
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, `packages/automation-sdk/src/index.test.ts`, `packages/browser-renderer/src/demoProject.test.ts`, and `packages/browser-renderer/src/renderTree.test.ts`.
+  - Cover a representative strict-mode flow that configures permissions, camera/photo fixtures, location events, clipboard state, keyboard traits, file/share sheet records, and notification records, then inspects runtime logs, semantic state, artifact records, SDK snapshots, and renderer preview output.
+  - Implementation plan: keep tests fixture-only and deterministic. Include unsupported native service assertions so new mocks do not weaken diagnostics fail-closed behavior.
+  - Validation focus: run `swift test --filter RuntimeHostContractTests`, `swift test --filter DiagnosticsCoreContractTests`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/browser-renderer test`.
+- [ ] Step 9.9: Run full validation across Swift, browser renderer, and automation SDK
   - Files: no intended source edits unless validation exposes missing package or TypeScript wiring.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
-  - Current context from Step 8.6: runtime regressions now lock native capability raw values, permission states, artifact output kinds, explicit `permissionState(for:)` lookups, and unsupported defaults. Diagnostics regressions cover the full current native API guidance mapping table for application environment, camera, location, photos, network, clipboard, notifications, files, share sheet, sensors, haptics, device environment, and fail-closed unsupported biometrics. Automation SDK regressions cover typed taxonomy literals, manifest launch/session inspection parity, clone isolation, empty defaults, unsupported symbol records, and artifact output kinds in `packages/automation-sdk/src/index.test.ts`.
-  - Validation already completed for Step 8.6: `swift test --filter RuntimeHostContractTests` passed with 22 tests, `swift test --filter DiagnosticsCoreContractTests` passed with 13 tests, `npm --prefix packages/automation-sdk test` passed with 5 tests, and `npm --prefix packages/automation-sdk run typecheck` passed. Step 8.7 should still run the full validation matrix listed above, including browser renderer checks and package builds.
-- [ ] Step 8.8: Refactor native capability boundaries if needed while keeping validation green
-  - Files: modify runtime native capability types, diagnostics capability mapping, automation SDK types, and docs only as needed.
-  - Keep native capability manifest data separate from concrete native service mock implementations so Phase 9 can add services without rewriting contracts.
-  - Implementation plan: re-read the runtime manifest types, diagnostics mapping, automation SDK launch surface, and docs together. Only refactor if there is concrete duplication, type drift, or premature service behavior in the manifest layer; otherwise complete this as a documented no-op boundary review.
-  - Current context from Step 8.7: full validation passed across Swift, browser renderer, and automation SDK. `swift test` passed with 39 tests, `swift build` passed, browser renderer typecheck/test/build passed, automation SDK typecheck/test/build passed. The browser renderer production build emitted Vite's large-chunk warning for Monaco/editor assets; accepted as an existing bundling warning because no renderer source or build behavior changed in Step 8.7.
-  - Next implementation detail: compare `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`, diagnostics native guidance in `packages/diagnostics/Sources/DiagnosticsCore/`, automation SDK manifest types in `packages/automation-sdk/src/types.ts`, and `docs/native-capabilities.md`. Confirm there is no premature service behavior, host permission probing, live device dependency, or type-name drift. If no concrete issue is found, complete Step 8.8 as a no-op boundary review and mark the phase acceptance criteria that are already satisfied by Steps 8.2-8.7.
-  - Validation focus: reuse the Step 8.7 validation surface after source changes. If the review is no-op, no validation rerun is required beyond documenting that Step 8.7 already proved the phase green.
+  - Validation focus: inspect warnings as well as failures. Existing Vite large-chunk warnings for Monaco/editor assets can be accepted only if no renderer bundling behavior changed in this phase.
+- [ ] Step 9.10: Refactor native mock service boundaries if needed while keeping validation green
+  - Files: modify runtime native capability service types, automation SDK native service types, browser renderer native preview helpers, and docs only as needed.
+  - Keep deterministic mock services separate from manifest declarations and from the Phase 10 high-level automation API namespace.
+  - Implementation plan: re-read the runtime native service state, automation SDK state/inspection surface, browser preview state, diagnostics fail-closed behavior, and docs together. Only refactor if there is concrete duplication, type drift, premature Phase 10 API behavior, or accidental live host dependency.
+  - Validation focus: reuse Step 9.9 validation after source changes. If the review is no-op, no validation rerun is required beyond documenting that Step 9.9 already proved the phase green.
 
-### Milestone: M7 Native Capability Registry and Manifest
+### Milestone: M8 First Mock Native Services
 **Acceptance Criteria:**
-- [ ] The spec and docs define what a supported native capability must include before implementation.
-- [ ] Runtime and automation contracts have typed manifest shapes, even if most capabilities are initially unsupported.
-- [ ] Unsupported native APIs produce structured diagnostics with suggested strict-mode mock alternatives.
-- [ ] No capability depends on live host permissions, live device state, or live network access by default.
+- [ ] Strict-mode fixture apps can request supported native capabilities and receive deterministic mock results.
+- [ ] Automation can configure mock state at launch and inspect capability events after interaction.
+- [ ] Runtime artifacts include native capability logs and records.
+- [ ] Unsupported native services still fail closed with diagnostics.
 - [ ] All phase tests pass.
 - [ ] No regressions in previous phase tests.
 
