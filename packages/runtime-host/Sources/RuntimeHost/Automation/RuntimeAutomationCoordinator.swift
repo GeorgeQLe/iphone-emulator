@@ -77,9 +77,17 @@ public struct RuntimeAutomationCoordinator {
         configuration: RuntimeAutomationLaunchConfiguration
     ) throws -> RuntimeAutomationResponse.Result {
         let snapshot = try loadFixtureSnapshot(configuration: configuration)
+        let nativeCapabilityState = RuntimeNativeCapabilityState(manifest: configuration.nativeCapabilities)
+        let nativeCapabilityLogs = nativeCapabilityState.logMessages.map {
+            RuntimeAutomationLogEntry(level: .info, message: $0)
+        }
+        let nativeTree = tree(
+            snapshot.tree,
+            applying: nativeCapabilityState.semanticMetadata
+        )
         let deviceSnapshot = RuntimeTreeSnapshot(
             appIdentifier: snapshot.appIdentifier,
-            tree: snapshot.tree,
+            tree: nativeTree,
             lifecycleState: snapshot.lifecycleState,
             revision: snapshot.revision,
             device: configuration.device
@@ -91,12 +99,13 @@ public struct RuntimeAutomationCoordinator {
             level: .info,
             message: "Launched fixture \(configuration.fixtureName)"
         )
+        let logs = [logEntry] + nativeCapabilityLogs
         let sessionID = "session-\(sessionSequence)"
         let launchedSession = RuntimeAutomationSession(
             id: sessionID,
             appIdentifier: configuration.appIdentifier,
             snapshot: deviceSnapshot,
-            logs: [logEntry],
+            logs: logs,
             artifactBundle: RuntimeArtifactBundle(
                 sessionID: sessionID,
                 semanticSnapshots: [
@@ -106,16 +115,40 @@ public struct RuntimeAutomationCoordinator {
                         revision: deviceSnapshot.revision
                     )
                 ],
-                logs: [logEntry]
+                logs: logs,
+                nativeCapabilityRecords: nativeCapabilityState.artifactRecords
             ),
             device: configuration.device,
-            nativeCapabilities: configuration.nativeCapabilities
+            nativeCapabilities: configuration.nativeCapabilities,
+            nativeCapabilityState: nativeCapabilityState,
+            nativeCapabilityEvents: nativeCapabilityState.scriptedEvents
         )
 
         session = launchedSession
         bridge.retain(deviceSnapshot)
 
         return .launched(launchedSession)
+    }
+
+    private func tree(
+        _ tree: SemanticUITree,
+        applying metadata: [String: String]
+    ) -> SemanticUITree {
+        guard !metadata.isEmpty, var rootNode = tree.scene.rootNode else {
+            return tree
+        }
+
+        for (key, value) in metadata {
+            rootNode.metadata[key] = value
+        }
+
+        var updatedScene = tree.scene
+        updatedScene.rootNode = rootNode
+
+        return SemanticUITree(
+            appIdentifier: tree.appIdentifier,
+            scene: updatedScene
+        )
     }
 
     private mutating func performInteraction(

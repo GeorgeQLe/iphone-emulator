@@ -4,19 +4,22 @@ public struct RuntimeArtifactBundle: Hashable, Codable, Sendable {
     public var semanticSnapshots: [RuntimeSemanticSnapshotArtifact]
     public var logs: [RuntimeAutomationLogEntry]
     public var networkRecords: [RuntimeNetworkRequestRecord]
+    public var nativeCapabilityRecords: [RuntimeNativeCapabilityArtifactRecord]
 
     public init(
         sessionID: String,
         renderArtifacts: [RuntimeRenderArtifactMetadata] = [],
         semanticSnapshots: [RuntimeSemanticSnapshotArtifact] = [],
         logs: [RuntimeAutomationLogEntry] = [],
-        networkRecords: [RuntimeNetworkRequestRecord] = []
+        networkRecords: [RuntimeNetworkRequestRecord] = [],
+        nativeCapabilityRecords: [RuntimeNativeCapabilityArtifactRecord] = []
     ) {
         self.sessionID = sessionID
         self.renderArtifacts = renderArtifacts
         self.semanticSnapshots = semanticSnapshots
         self.logs = logs
         self.networkRecords = networkRecords
+        self.nativeCapabilityRecords = nativeCapabilityRecords
     }
 }
 

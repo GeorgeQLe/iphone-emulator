@@ -6,6 +6,8 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
     public var artifactBundle: RuntimeArtifactBundle
     public var device: RuntimeDeviceSettings
     public var nativeCapabilities: RuntimeNativeCapabilityManifest
+    public var nativeCapabilityState: RuntimeNativeCapabilityState
+    public var nativeCapabilityEvents: [RuntimeNativeCapabilityEventRecord]
 
     public init(
         id: String,
@@ -14,7 +16,9 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
         logs: [RuntimeAutomationLogEntry] = [],
         artifactBundle: RuntimeArtifactBundle? = nil,
         device: RuntimeDeviceSettings = RuntimeDeviceSettings(),
-        nativeCapabilities: RuntimeNativeCapabilityManifest = RuntimeNativeCapabilityManifest()
+        nativeCapabilities: RuntimeNativeCapabilityManifest = RuntimeNativeCapabilityManifest(),
+        nativeCapabilityState: RuntimeNativeCapabilityState? = nil,
+        nativeCapabilityEvents: [RuntimeNativeCapabilityEventRecord] = []
     ) {
         self.id = id
         self.appIdentifier = appIdentifier
@@ -23,6 +27,8 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
         self.artifactBundle = artifactBundle ?? RuntimeArtifactBundle(sessionID: id, logs: logs)
         self.device = device
         self.nativeCapabilities = nativeCapabilities
+        self.nativeCapabilityState = nativeCapabilityState ?? RuntimeNativeCapabilityState(manifest: nativeCapabilities)
+        self.nativeCapabilityEvents = nativeCapabilityEvents
     }
 }
 
