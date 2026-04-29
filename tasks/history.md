@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 9 Step 9.3 by adding deterministic runtime mocks for permission prompt resolution, fixture-backed camera capture records, photo picker selection records, location state/scripted update records, and diagnostics/artifact records for unsupported symbols or missing camera/photo fixtures. Launch-time native capability logs, semantic metadata, and artifact bundles now reflect those records without calling host native services or adding the Phase 10 high-level SDK API.
+- Validation: `swift test --filter RuntimeHostContractTests` passed with 24 runtime host contract tests, and `swift build` passed cleanly. One parallel SwiftPM build waited for the `.build` lock behind the test command and then completed successfully; no actionable warnings remained.
+
 - Completed Phase 9 Step 9.2 by adding runtime native capability state and event records derived from the launch manifest. Runtime sessions now expose native capability state and events, artifact bundles now include native capability records, launch logs include deterministic permission/fixture/event messages, and the baseline semantic root carries native camera, keyboard, and notification metadata without calling host native services.
 - Validation: `swift test --filter RuntimeHostContractTests` passed with 23 runtime host contract tests, and `swift build` passed cleanly with no warnings.
 
