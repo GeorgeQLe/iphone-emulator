@@ -266,6 +266,7 @@ function renderInspector(result: DemoCompileResult): void {
         inputValues: Object.fromEntries(previewInputValues),
       },
       artifact,
+      nativePreview: result.nativePreview ?? null,
       executionMode: result.executionMode,
       semanticRoot: result.tree.scene.rootNode,
     },

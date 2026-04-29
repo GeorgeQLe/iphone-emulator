@@ -1,5 +1,6 @@
 import { rendererStyles } from "./styles";
 import type {
+  NativePreviewState,
   SemanticUITree,
   UIAlertPayload,
   UIModalState,
@@ -88,6 +89,11 @@ function createSurface(document: Document, tree: SemanticUITree): HTMLElement {
     body.append(renderNode(document, tree.scene.rootNode, tree.scene.tabState));
   }
 
+  const nativePreview = renderNativePreview(document, tree.nativePreview);
+  if (nativePreview) {
+    body.append(nativePreview);
+  }
+
   surface.append(body);
 
   if (tree.scene.modalState?.isPresented && tree.scene.modalState.presentedNode) {
@@ -123,6 +129,202 @@ function createMetaPill(document: Document, label: string): HTMLElement {
   pill.className = "scene-meta-pill";
   pill.textContent = label;
   return pill;
+}
+
+function renderNativePreview(
+  document: Document,
+  nativePreview: NativePreviewState | undefined
+): HTMLElement | undefined {
+  if (!nativePreview || !hasNativePreviewRecords(nativePreview)) {
+    return undefined;
+  }
+
+  const section = document.createElement("section");
+  section.className = "native-preview";
+  section.setAttribute("aria-label", "Deterministic native capability preview");
+
+  const heading = document.createElement("h2");
+  heading.textContent = "Native Mocks";
+  section.append(heading);
+
+  const cameraFixtures = nativePreview.fixtureOutputs.filter(
+    (fixture) => fixture.capability === "camera"
+  );
+  if (cameraFixtures.length > 0 || promptsFor(nativePreview, "camera").length > 0) {
+    section.append(
+      createNativePreviewCard(document, "camera", "Camera", [
+        ...promptRows(nativePreview, "camera"),
+        ...cameraFixtures.map((fixture) => [
+          fixture.identifier,
+          fixture.fixtureName ?? "fixture",
+        ] as const),
+      ])
+    );
+  }
+
+  const photoFixtures = nativePreview.fixtureOutputs.filter(
+    (fixture) => fixture.capability === "photos"
+  );
+  if (photoFixtures.length > 0 || promptsFor(nativePreview, "photos").length > 0) {
+    section.append(
+      createNativePreviewCard(document, "photos", "Photos", [
+        ...promptRows(nativePreview, "photos"),
+        ...photoFixtures.map((fixture) => [
+          fixture.identifier,
+          fixture.fixtureName ?? "fixture",
+        ] as const),
+      ])
+    );
+  }
+
+  if (nativePreview.locationEvents.length > 0) {
+    section.append(
+      createNativePreviewCard(
+        document,
+        "location",
+        "Location",
+        nativePreview.locationEvents.map((event, index) => [
+          `event ${index + 1}`,
+          `${event.latitude}, ${event.longitude} ±${event.accuracyMeters}m`,
+        ])
+      )
+    );
+  }
+
+  if (nativePreview.clipboard) {
+    section.append(
+      createNativePreviewCard(document, "clipboard", "Clipboard", [
+        ["text", nativePreview.clipboard.text],
+      ])
+    );
+  }
+
+  if (nativePreview.keyboard) {
+    section.append(
+      createNativePreviewCard(document, "keyboardInput", "Keyboard", [
+        ["focused", nativePreview.keyboard.focusedElementID],
+        ["type", nativePreview.keyboard.keyboardType],
+        ["return", nativePreview.keyboard.returnKey],
+      ])
+    );
+  }
+
+  if (nativePreview.filePickerRecords.length > 0) {
+    section.append(
+      createNativePreviewCard(
+        document,
+        "files",
+        "Files",
+        nativePreview.filePickerRecords.map((record) => [
+          record.identifier,
+          record.selectedFiles.join(", "),
+        ])
+      )
+    );
+  }
+
+  if (nativePreview.shareSheetRecords.length > 0) {
+    section.append(
+      createNativePreviewCard(
+        document,
+        "shareSheet",
+        "Share Sheet",
+        nativePreview.shareSheetRecords.map((record) => [
+          record.identifier,
+          `${record.activityType}: ${record.items.join(", ")}`,
+        ])
+      )
+    );
+  }
+
+  if (nativePreview.notificationRecords.length > 0 || promptsFor(nativePreview, "notifications").length > 0) {
+    section.append(
+      createNativePreviewCard(document, "notifications", "Notifications", [
+        ...promptRows(nativePreview, "notifications"),
+        ...nativePreview.notificationRecords.map((record) => [
+          record.identifier,
+          `${record.title}: ${record.state}`,
+        ] as const),
+      ])
+    );
+  }
+
+  for (const prompt of nativePreview.permissionPrompts.filter(
+    (prompt) => !["camera", "photos", "notifications"].includes(prompt.capability)
+  )) {
+    section.append(
+      createNativePreviewCard(document, prompt.capability, titleCase(prompt.capability), [
+        ["permission", `${prompt.state ?? "prompt"} -> ${prompt.result}`],
+      ])
+    );
+  }
+
+  return section;
+}
+
+function createNativePreviewCard(
+  document: Document,
+  capability: string,
+  title: string,
+  rows: Array<readonly [string, string]>
+): HTMLElement {
+  const card = document.createElement("section");
+  card.className = "native-preview-card";
+  card.dataset.nativeCapability = capability;
+
+  const heading = document.createElement("h3");
+  heading.textContent = title;
+  card.append(heading);
+
+  const list = document.createElement("dl");
+  for (const [label, value] of rows) {
+    const term = document.createElement("dt");
+    term.textContent = label;
+
+    const description = document.createElement("dd");
+    description.textContent = value;
+
+    list.append(term, description);
+  }
+
+  card.append(list);
+  return card;
+}
+
+function promptRows(
+  nativePreview: NativePreviewState,
+  capability: string
+): Array<readonly [string, string]> {
+  return promptsFor(nativePreview, capability).map((prompt) => [
+    "permission",
+    `${prompt.state ?? "prompt"} -> ${prompt.result}`,
+  ]);
+}
+
+function promptsFor(
+  nativePreview: NativePreviewState,
+  capability: string
+): NativePreviewState["permissionPrompts"] {
+  return nativePreview.permissionPrompts.filter((prompt) => prompt.capability === capability);
+}
+
+function hasNativePreviewRecords(nativePreview: NativePreviewState): boolean {
+  return (
+    nativePreview.permissionPrompts.length > 0 ||
+    nativePreview.fixtureOutputs.length > 0 ||
+    nativePreview.locationEvents.length > 0 ||
+    nativePreview.clipboard !== undefined ||
+    nativePreview.keyboard !== undefined ||
+    nativePreview.filePickerRecords.length > 0 ||
+    nativePreview.shareSheetRecords.length > 0 ||
+    nativePreview.notificationRecords.length > 0
+  );
+}
+
+function titleCase(value: string): string {
+  return value.replace(/(^|[A-Z])([a-z])/gu, (match, boundary: string, character: string) =>
+    boundary === "" ? character.toUpperCase() : `${boundary} ${character}`
+  );
 }
 
 function renderNode(

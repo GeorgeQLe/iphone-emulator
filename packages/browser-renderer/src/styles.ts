@@ -248,6 +248,56 @@ body {
   letter-spacing: 0.04em;
 }
 
+.native-preview {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.native-preview h2 {
+  margin: 0;
+  color: #536578;
+  font-size: 12px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.native-preview-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(82, 102, 122, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.native-preview-card h3 {
+  margin: 0;
+  color: #17202a;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.native-preview-card dl {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.native-preview-card dt {
+  color: #607180;
+  overflow-wrap: anywhere;
+}
+
+.native-preview-card dd {
+  margin: 0;
+  color: #263442;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 360px) {
   body {
     padding: 16px 8px;
