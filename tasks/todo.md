@@ -50,7 +50,7 @@
   - Surface copy or diagnostics that explain the demo is a browser IDE loop over illustrative strict-mode lowering until live Swift runtime transport exists.
   - Implementation plan: audit the existing sidebar/footer, preview header, diagnostics copy, and mock project README text for places that imply live Swift execution. Add a concise browser-visible execution-mode indicator and, if needed, a non-error diagnostic emitted by `compileDemoProject` that labels the current path as illustrative source lowering rather than runtime execution. Keep this as demo copy/metadata only; do not change semantic tree contracts or renderer behavior.
   - Validation focus: run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build` because this step touches browser-facing demo code/copy.
-- [ ] Step 7.5: Polish responsive layout and preview ergonomics
+- [x] Step 7.5: Polish responsive layout and preview ergonomics
   - Files: modify `packages/browser-renderer/src/demoStyles.ts`, `packages/browser-renderer/src/styles.ts`
   - Ensure the editor, preview, keyboard, diagnostics, and inspector remain usable on desktop and narrower viewports without overlapping content.
   - Implementation plan: audit the current CSS grid breakpoints, phone-shell scaling, keyboard placement, diagnostics area, and inspector sizing in `demoStyles.ts` and reusable renderer dimensions in `styles.ts`. Tighten responsive constraints so the editor, preview stage, keyboard, diagnostics, and inspector remain visible and non-overlapping on desktop, tablet-width, and mobile-width viewports. Prefer package-local CSS changes over renderer contract changes unless a reusable renderer style is clearly responsible for overflow.
@@ -60,6 +60,8 @@
 - [ ] Step 7.6: Write regression tests covering the demo compiler and interactive renderer behavior
   - Files: create or modify `packages/browser-renderer/src/demoProject.test.ts`, `packages/browser-renderer/src/renderTree.test.ts`, and only test helpers if needed
   - Cover semantic tree generation from the mock strict-mode source, unsupported import diagnostics, editable text field rendering, and keyboard/input state update behavior where practical in jsdom.
+  - Implementation plan: add focused Vitest coverage for `compileDemoProject` using the bundled mock strict-mode source and a small unsupported-import sample, asserting deterministic semantic root structure, execution-mode metadata, and diagnostics. Extend `renderTree.test.ts` with DOM-level assertions for text field metadata, editable input values, focusable controls, and renderer-owned node IDs. For keyboard/input state, prefer testing the public rendered DOM affordances that `main.ts` wires to instead of exporting demo-only internals; only extract a tiny package-local helper if jsdom cannot cover an interaction without coupling to the full Monaco shell.
+  - Validation focus: run `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` after adding the tests; run `npm --prefix packages/browser-renderer run build` if test helper extraction touches Vite-facing source.
 - [ ] Step 7.7: Run browser renderer validation
   - Files: no intended source edits unless validation exposes missing package or TypeScript wiring
   - Run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`.

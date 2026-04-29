@@ -18,19 +18,21 @@ body {
   align-items: center;
   justify-content: center;
   padding: 32px 16px;
+  overflow-x: hidden;
 }
 
 [data-renderer-root] {
   width: 100%;
   display: flex;
   justify-content: center;
+  min-width: 0;
 }
 
 .phone-shell {
-  width: min(390px, 100%);
+  width: min(390px, calc(100vw - 24px));
   min-height: 844px;
-  padding: 18px;
-  border-radius: 42px;
+  padding: clamp(12px, 4vw, 18px);
+  border-radius: clamp(30px, 10vw, 42px);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 245, 250, 0.95));
   box-shadow:
@@ -50,7 +52,7 @@ body {
 }
 
 .phone-notch {
-  width: 110px;
+  width: clamp(80px, 28vw, 110px);
   height: 28px;
   border-radius: 999px;
   background: #0f1821;
@@ -60,7 +62,7 @@ body {
   position: relative;
   overflow: hidden;
   min-height: 770px;
-  border-radius: 28px;
+  border-radius: clamp(20px, 7vw, 28px);
   background:
     linear-gradient(180deg, rgba(250, 252, 255, 0.96), rgba(239, 244, 249, 0.98));
   border: 1px solid rgba(103, 122, 139, 0.18);
@@ -71,7 +73,7 @@ body {
 }
 
 .surface-header {
-  padding: 20px 20px 12px;
+  padding: 20px clamp(14px, 5vw, 20px) 12px;
   border-bottom: 1px solid rgba(103, 122, 139, 0.14);
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(12px);
@@ -92,7 +94,8 @@ body {
 }
 
 .surface-body {
-  padding: 20px;
+  padding: clamp(14px, 5vw, 20px);
+  min-width: 0;
 }
 
 .node-stack,
@@ -107,7 +110,7 @@ body {
 
 .node-hStack {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
 }
@@ -119,10 +122,9 @@ body {
 }
 
 .node-text[data-emphasis="headline"] {
-  font-size: 32px;
+  font-size: clamp(26px, 8vw, 32px);
   line-height: 1.1;
   font-weight: 700;
-  letter-spacing: -0.03em;
 }
 
 .node-button {
@@ -134,6 +136,8 @@ body {
   cursor: default;
   background: #d7e2ec;
   color: #13212e;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .node-button:focus-visible {
@@ -160,6 +164,7 @@ body {
 
 .node-textField input {
   width: 100%;
+  min-width: 0;
   border: 1px solid rgba(82, 102, 122, 0.24);
   border-radius: 14px;
   padding: 12px 14px;
@@ -241,5 +246,25 @@ body {
   color: #0d5fc8;
   font-size: 12px;
   letter-spacing: 0.04em;
+}
+
+@media (max-width: 360px) {
+  body {
+    padding: 16px 8px;
+  }
+
+  .phone-chrome {
+    margin-bottom: 12px;
+    font-size: 11px;
+  }
+
+  .node-hStack {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .node-button {
+    width: 100%;
+  }
 }
 `;

@@ -13,6 +13,7 @@ export const demoStyles = `
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button,
@@ -23,7 +24,7 @@ select {
 .demo-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(420px, 1fr) minmax(360px, 480px);
+  grid-template-columns: minmax(260px, 300px) minmax(380px, 1fr) minmax(360px, 460px);
   background: #f4f7fb;
 }
 
@@ -94,7 +95,7 @@ select {
 
 .demo-editor-pane {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(150px, 24vh);
+  grid-template-rows: auto minmax(0, 1fr) minmax(150px, clamp(160px, 24vh, 260px));
   border-right: 1px solid #d9e1ea;
   background: #101820;
 }
@@ -181,7 +182,7 @@ select {
 
 .demo-preview-pane {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(170px, 28vh);
+  grid-template-rows: auto minmax(0, 1fr) minmax(170px, clamp(180px, 28vh, 300px));
   background: #e9eef4;
 }
 
@@ -221,7 +222,7 @@ select {
   overflow: auto;
   display: flex;
   justify-content: center;
-  padding: 24px 18px;
+  padding: 20px 16px;
 }
 
 .demo-preview-stage [data-renderer-root] {
@@ -229,9 +230,9 @@ select {
 }
 
 .demo-preview-stage .phone-shell {
-  transform: scale(0.78);
+  transform: scale(clamp(0.68, calc((100vw - 660px) * 0.001470588), 0.78));
   transform-origin: top center;
-  margin-bottom: -170px;
+  margin-bottom: calc(-220px * (1 - clamp(0.68, calc((100vw - 660px) * 0.001470588), 0.78)));
 }
 
 .demo-preview-stage .phone-surface {
@@ -246,7 +247,7 @@ select {
   z-index: 20;
   display: grid;
   gap: 7px;
-  padding: 12px 10px 16px;
+  padding: 12px clamp(6px, 2.2vw, 10px) 16px;
   border-top: 1px solid rgba(102, 116, 130, 0.24);
   background: rgba(214, 221, 229, 0.96);
   box-shadow: 0 -18px 38px rgba(23, 32, 42, 0.16);
@@ -256,11 +257,11 @@ select {
 .demo-keyboard-row {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: clamp(3px, 1.3vw, 6px);
 }
 
 .demo-key {
-  min-width: 25px;
+  min-width: clamp(20px, 6.2vw, 25px);
   min-height: 34px;
   border: 0;
   border-radius: 6px;
@@ -278,11 +279,11 @@ select {
 }
 
 .demo-key[data-wide="true"] {
-  min-width: 72px;
+  min-width: clamp(54px, 18vw, 72px);
 }
 
 .demo-key[data-action="done"] {
-  min-width: 58px;
+  min-width: clamp(50px, 15vw, 58px);
   background: #1677ff;
   color: #ffffff;
   font-weight: 650;
@@ -301,13 +302,18 @@ select {
 
 @media (max-width: 1120px) {
   .demo-shell {
-    grid-template-columns: 240px minmax(360px, 1fr);
+    grid-template-columns: 230px minmax(340px, 1fr);
   }
 
   .demo-preview-pane {
     grid-column: 1 / -1;
-    min-height: 760px;
+    min-height: min(820px, 100vh);
     border-top: 1px solid #d9e1ea;
+  }
+
+  .demo-preview-stage .phone-shell {
+    transform: scale(0.82);
+    margin-bottom: -150px;
   }
 }
 
@@ -323,11 +329,54 @@ select {
   }
 
   .demo-editor-pane {
-    grid-template-rows: auto 520px minmax(150px, auto);
+    grid-template-rows: auto minmax(380px, 52vh) minmax(150px, auto);
   }
 
   .demo-preview-pane {
-    grid-template-rows: auto 720px 260px;
+    grid-template-rows: auto minmax(560px, 72vh) minmax(220px, 32vh);
+  }
+
+  .demo-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .demo-run-button {
+    width: 100%;
+  }
+
+  .demo-preview-stage {
+    padding: 16px 10px;
+  }
+
+  .demo-preview-stage .phone-shell {
+    transform: scale(min(0.78, calc((100vw - 24px) * 0.002347418)));
+    margin-bottom: calc(-190px * (1 - min(0.78, calc((100vw - 24px) * 0.002347418))));
+  }
+}
+
+@media (max-width: 430px) {
+  .demo-brand,
+  .demo-sidebar-footer,
+  .demo-preview-header,
+  .demo-output,
+  .demo-inspector {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .demo-file-list {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .demo-preview-pane {
+    grid-template-rows: auto minmax(520px, 68vh) minmax(220px, 34vh);
+  }
+
+  .demo-preview-stage .phone-shell {
+    transform: scale(calc((100vw - 20px) * 0.002347418));
+    margin-bottom: calc(-210px * (1 - calc((100vw - 20px) * 0.002347418)));
   }
 }
 `;
