@@ -221,7 +221,7 @@
 - Ready for next phase: no further implementation phase is currently queued; refresh research/spec/task docs before adding new build phases.
 
 ## Phase 7: M6 Browser IDE Demo and Interactive Preview Loop
-**Status:** planned.
+**Status:** complete on 2026-04-29.
 
 **Goal:** Turn the renderer demo into a credible browser-based IDE harness that shows the intended agent/codegen workflow.
 
@@ -289,9 +289,9 @@
 - [ ] No regressions in previous phase tests.
 
 **On Completion:**
-- Deviations from plan: none yet
-- Tech debt / follow-ups: none yet
-- Ready for next phase: no
+- Deviations from plan: Step 7.8 completed as an intentional no-op boundary review; no demo or renderer refactor was justified after the audit.
+- Tech debt / follow-ups: live Swift runtime transport remains future work; the browser demo continues to label source lowering as illustrative.
+- Ready for next phase: yes
 
 ## Phase 8: M7 Native Capability Registry and Manifest
 **Status:** planned.
