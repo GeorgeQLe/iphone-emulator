@@ -62,12 +62,14 @@
   - Cover semantic tree generation from the mock strict-mode source, unsupported import diagnostics, editable text field rendering, and keyboard/input state update behavior where practical in jsdom.
   - Implementation plan: add focused Vitest coverage for `compileDemoProject` using the bundled mock strict-mode source and a small unsupported-import sample, asserting deterministic semantic root structure, execution-mode metadata, and diagnostics. Extend `renderTree.test.ts` with DOM-level assertions for text field metadata, editable input values, focusable controls, and renderer-owned node IDs. For keyboard/input state, prefer testing the public rendered DOM affordances that `main.ts` wires to instead of exporting demo-only internals; only extract a tiny package-local helper if jsdom cannot cover an interaction without coupling to the full Monaco shell.
   - Validation focus: run `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` after adding the tests; run `npm --prefix packages/browser-renderer run build` if test helper extraction touches Vite-facing source.
-- [ ] Step 7.7: Run browser renderer validation
+- [x] Step 7.7: Run browser renderer validation
   - Files: no intended source edits unless validation exposes missing package or TypeScript wiring
   - Run `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`.
 - [ ] Step 7.8: Refactor demo boundaries if needed while keeping validation green
   - Files: modify `packages/browser-renderer/src/main.ts`, `packages/browser-renderer/src/demoProject.ts`, `packages/browser-renderer/src/demoStyles.ts`, and `packages/browser-renderer/src/renderTree.ts` only as needed
   - Keep demo-specific code separated from reusable renderer behavior so later native capability phases can reuse the renderer contracts.
+  - Implementation plan: re-read `main.ts`, `demoProject.ts`, `demoStyles.ts`, and `renderTree.ts` together and classify each concern as demo shell orchestration, illustrative strict-mode lowering, demo-only styling, or reusable semantic tree rendering. Only refactor if that audit finds concrete mixing that increases risk for future live runtime transport; otherwise complete the step as a documented no-op boundary review. Preserve public renderer contracts, semantic node metadata, and the current Monaco/browser demo behavior.
+  - Validation focus: reuse the Step 7.7 validation surface after any source change: `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, and `npm --prefix packages/browser-renderer run build`. If the review is no-op, no validation rerun is required beyond documenting that Step 7.7 already proved the current boundary is green.
 
 ### Milestone: M6 Browser IDE Demo and Interactive Preview Loop
 **Acceptance Criteria:**

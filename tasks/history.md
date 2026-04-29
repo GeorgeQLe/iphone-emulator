@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 7 Step 7.7 by running the browser renderer validation surface without needing source or package wiring changes.
+- Validation: `npm --prefix packages/browser-renderer run typecheck` passed cleanly; `npm --prefix packages/browser-renderer test` passed with 2 test files and 7 tests; `npm --prefix packages/browser-renderer run build` passed. The build emitted Vite's large-chunk warning for Monaco/editor assets, accepted for this validation-only step because no bundling behavior changed.
+
 ## 2026-04-28
 
 - Completed Phase 7 Step 7.5 by tightening the browser IDE demo's responsive layout and preview ergonomics. The demo shell now uses narrower grid constraints, bounded editor/output/inspector rows, responsive phone preview scaling, mobile toolbar stacking, compact small-screen padding, and keyboard key sizing that avoids horizontal overflow. Reusable renderer styles now allow the phone shell, notch, surface padding, hStack content, headline text, buttons, and text fields to shrink cleanly on narrow viewports.
