@@ -108,7 +108,8 @@ public struct RuntimeAutomationCoordinator {
                 ],
                 logs: [logEntry]
             ),
-            device: configuration.device
+            device: configuration.device,
+            nativeCapabilities: configuration.nativeCapabilities
         )
 
         session = launchedSession

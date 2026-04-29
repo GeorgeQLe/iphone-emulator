@@ -5,6 +5,7 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
     public var logs: [RuntimeAutomationLogEntry]
     public var artifactBundle: RuntimeArtifactBundle
     public var device: RuntimeDeviceSettings
+    public var nativeCapabilities: RuntimeNativeCapabilityManifest
 
     public init(
         id: String,
@@ -12,7 +13,8 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
         snapshot: RuntimeTreeSnapshot,
         logs: [RuntimeAutomationLogEntry] = [],
         artifactBundle: RuntimeArtifactBundle? = nil,
-        device: RuntimeDeviceSettings = RuntimeDeviceSettings()
+        device: RuntimeDeviceSettings = RuntimeDeviceSettings(),
+        nativeCapabilities: RuntimeNativeCapabilityManifest = RuntimeNativeCapabilityManifest()
     ) {
         self.id = id
         self.appIdentifier = appIdentifier
@@ -20,6 +22,7 @@ public struct RuntimeAutomationSession: Hashable, Codable, Sendable {
         self.logs = logs
         self.artifactBundle = artifactBundle ?? RuntimeArtifactBundle(sessionID: id, logs: logs)
         self.device = device
+        self.nativeCapabilities = nativeCapabilities
     }
 }
 
@@ -28,17 +31,20 @@ public struct RuntimeAutomationLaunchConfiguration: Hashable, Codable, Sendable 
     public var fixtureName: String
     public var device: RuntimeDeviceSettings
     public var networkFixtures: [RuntimeNetworkFixture]
+    public var nativeCapabilities: RuntimeNativeCapabilityManifest
 
     public init(
         appIdentifier: String,
         fixtureName: String,
         device: RuntimeDeviceSettings = RuntimeDeviceSettings(),
-        networkFixtures: [RuntimeNetworkFixture] = []
+        networkFixtures: [RuntimeNetworkFixture] = [],
+        nativeCapabilities: RuntimeNativeCapabilityManifest = RuntimeNativeCapabilityManifest()
     ) {
         self.appIdentifier = appIdentifier
         self.fixtureName = fixtureName
         self.device = device
         self.networkFixtures = networkFixtures
+        self.nativeCapabilities = nativeCapabilities
     }
 }
 

@@ -56,7 +56,7 @@
   - Validation focus: run `swift test --filter RuntimeHostContractTests` and `swift test --filter DiagnosticsCoreContractTests`; failures are expected in this red phase and should be limited to missing native capability symbols or diagnostics fields.
 
 ### Implementation
-- [ ] Step 8.2: Add runtime native capability manifest value types
+- [x] Step 8.2: Add runtime native capability manifest value types
   - Files: create `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`; modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` and `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Define explicit value types for capability identifiers, permission states, configured mocks, scripted events, unsupported symbols, artifact outputs, and deterministic defaults.
   - Implementation plan: align naming with existing runtime automation launch/device setting types. Keep manifests serializable value data with no host permission probing, no live network access, and no side effects. Thread the manifest into launch/session configuration only where the existing automation contract needs to carry it.
@@ -65,6 +65,8 @@
   - Files: modify `packages/diagnostics-core/Sources/DiagnosticsCore/DiagnosticsCore.swift`, compatibility fixtures under `tests/fixtures/compatibility/`, and `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`.
   - Map recognized native API requests to native capability guidance and keep unrecognized native APIs fail-closed with structured unsupported diagnostics.
   - Implementation plan: extend the existing compatibility analyzer rather than creating a second diagnostics engine. Add a compact native API mapping table for camera/photos, location, network, clipboard, notifications, files/share sheet, sensors, haptics, and device environment where source symbols are currently detectable. Preserve existing diagnostic ordering and source-location behavior.
+  - Current context from Step 8.2: runtime manifest types now live in `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift`, and `RuntimeAutomationLaunchConfiguration`/`RuntimeAutomationSession` carry `nativeCapabilities` with an empty deterministic default. `swift build` passes. `swift test --filter RuntimeHostContractTests` currently stops during test compilation on the intended Step 8.3 red-phase diagnostics failures because `CompatibilityDiagnostic.nativeCapabilityGuidance` and related native guidance value types are not implemented yet.
+  - Next implementation detail: add the diagnostics-side native guidance type surface before attempting analyzer mappings so the full test target compiles, then wire recognized API symbols to guidance while leaving unknown native APIs as structured fail-closed diagnostics.
   - Validation focus: run `swift test --filter DiagnosticsCoreContractTests` and `swift build`.
 - [ ] Step 8.4: Surface capability manifest shapes through the automation SDK contract
   - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/test/emulator.test.ts`, and package-local types only if extraction is warranted.
