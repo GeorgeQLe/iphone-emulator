@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 8 Step 8.6 by adding green-phase regression coverage for native capability manifests and diagnostics. Runtime tests now lock canonical capability IDs, permission states, artifact output kinds, explicit permission lookup behavior, and unsupported defaults. Diagnostics tests now cover the full current native API guidance mapping table plus fail-closed unsupported biometric guidance. Automation SDK tests now protect typed taxonomy literals, manifest launch/session inspection parity, clone isolation, unsupported symbol records, and artifact output kinds.
+- Validation: `swift test --filter RuntimeHostContractTests` passed with 22 tests, `swift test --filter DiagnosticsCoreContractTests` passed with 13 tests, `npm --prefix packages/automation-sdk test` passed with 5 tests, and `npm --prefix packages/automation-sdk run typecheck` passed cleanly with no warnings.
+
 - Completed Phase 8 Step 8.5 by documenting the native capability registry and mock-fidelity boundary. Added `docs/native-capabilities.md` with the capability taxonomy, manifest fields, permission states, supported-capability requirements, diagnostics guidance mappings, and deterministic fixture constraints. Updated the root README and strict-mode baseline example docs to link the registry and show native capability manifests as launch/session fixture data rather than live native behavior.
 - Validation: docs-only diff and whitespace review; no Swift or TypeScript validation was required because no source files changed.
 

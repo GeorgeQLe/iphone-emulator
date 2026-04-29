@@ -84,8 +84,8 @@
   - Validation focus: run the relevant Swift and TypeScript validation touched by docs examples if snippets compile; otherwise no code validation is required for docs-only edits.
 
 ### Green
-- [ ] Step 8.6: Add regression coverage for manifest defaults and native diagnostics
-  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, and `packages/automation-sdk/test/emulator.test.ts`.
+- [x] Step 8.6: Add regression coverage for manifest defaults and native diagnostics
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `Tests/DiagnosticsCoreContractTests/DiagnosticsCoreContractTests.swift`, and `packages/automation-sdk/src/index.test.ts`.
   - Cover deterministic default manifests, explicit configured mocks, permission states, unsupported symbol records, diagnostics guidance for recognized native APIs, and automation SDK launch/inspection parity.
   - Implementation plan: add focused regression tests that protect the newly implemented value contracts and source-analysis mappings without introducing end-to-end native service behavior reserved for Phase 9.
   - Current context from Step 8.5: `docs/native-capabilities.md` now documents the capability taxonomy, manifest fields, permission states, supported-capability contract, diagnostics `nativeCapabilityGuidance` mappings, and mock-fidelity boundary. `README.md` links that registry and shows `nativeCapabilities` as deterministic launch fixture data. `examples/strict-mode-baseline/README.md` points to the runtime manifest type and documents that the example carries native capability manifests without executing native services.
@@ -94,6 +94,8 @@
 - [ ] Step 8.7: Run full validation across Swift, browser renderer, and automation SDK
   - Files: no intended source edits unless validation exposes missing package or TypeScript wiring.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build`.
+  - Current context from Step 8.6: runtime regressions now lock native capability raw values, permission states, artifact output kinds, explicit `permissionState(for:)` lookups, and unsupported defaults. Diagnostics regressions cover the full current native API guidance mapping table for application environment, camera, location, photos, network, clipboard, notifications, files, share sheet, sensors, haptics, device environment, and fail-closed unsupported biometrics. Automation SDK regressions cover typed taxonomy literals, manifest launch/session inspection parity, clone isolation, empty defaults, unsupported symbol records, and artifact output kinds in `packages/automation-sdk/src/index.test.ts`.
+  - Validation already completed for Step 8.6: `swift test --filter RuntimeHostContractTests` passed with 22 tests, `swift test --filter DiagnosticsCoreContractTests` passed with 13 tests, `npm --prefix packages/automation-sdk test` passed with 5 tests, and `npm --prefix packages/automation-sdk run typecheck` passed. Step 8.7 should still run the full validation matrix listed above, including browser renderer checks and package builds.
 - [ ] Step 8.8: Refactor native capability boundaries if needed while keeping validation green
   - Files: modify runtime native capability types, diagnostics capability mapping, automation SDK types, and docs only as needed.
   - Keep native capability manifest data separate from concrete native service mock implementations so Phase 9 can add services without rewriting contracts.
