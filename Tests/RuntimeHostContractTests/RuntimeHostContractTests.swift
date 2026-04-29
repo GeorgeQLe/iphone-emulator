@@ -1288,6 +1288,148 @@ struct RuntimeHostContractTests {
         #expect(session.snapshot.tree.scene.rootNode?.metadata["native.notification.trip-reminder"] == "scheduled")
     }
 
+    @Test("runtime native mocks model permission prompts fixture outputs and location state deterministically")
+    func runtimeNativeMocksModelPermissionsFixturesAndLocationState() throws {
+        let manifest = RuntimeNativeCapabilityManifest(
+            requiredCapabilities: [
+                RuntimeNativeCapabilityRequirement(
+                    id: .camera,
+                    permissionState: .prompt,
+                    strictModeAlternative: "Use a fixture-backed camera capture instead of host camera access."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .photos,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use fixture-backed photo picker selections."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .location,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use launch-time location mocks and scripted location updates."
+                ),
+                RuntimeNativeCapabilityRequirement(
+                    id: .files,
+                    permissionState: .granted,
+                    strictModeAlternative: "Use configured document picker fixtures."
+                ),
+            ],
+            configuredMocks: [
+                RuntimeNativeCapabilityMock(
+                    capability: .camera,
+                    identifier: "front-camera-still",
+                    payload: [
+                        "fixtureName": "profile-photo",
+                        "mediaType": "image",
+                        "outputPath": "Fixtures/profile-photo.heic",
+                        "result": "granted",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .photos,
+                    identifier: "recent-library-pick",
+                    payload: [
+                        "fixtureName": "gallery-selection",
+                        "assetIdentifiers": "profile-photo,receipt-photo",
+                        "mediaTypes": "image",
+                    ]
+                ),
+                RuntimeNativeCapabilityMock(
+                    capability: .location,
+                    identifier: "home-base",
+                    payload: [
+                        "latitude": "40.7128",
+                        "longitude": "-74.0060",
+                        "accuracyMeters": "12",
+                    ]
+                ),
+            ],
+            scriptedEvents: [
+                RuntimeNativeCapabilityEvent(
+                    capability: .location,
+                    name: "location-update",
+                    atRevision: 2,
+                    payload: [
+                        "latitude": "40.7130",
+                        "longitude": "-74.0058",
+                        "accuracyMeters": "10",
+                    ]
+                ),
+                RuntimeNativeCapabilityEvent(
+                    capability: .location,
+                    name: "location-update",
+                    atRevision: 4,
+                    payload: [
+                        "latitude": "40.7134",
+                        "longitude": "-74.0054",
+                        "accuracyMeters": "8",
+                    ]
+                ),
+            ]
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-step-9-3",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        nativeCapabilities: manifest
+                    )
+                )
+            )
+        )
+
+        guard case let .launched(session) = launch.result else {
+            Issue.record("expected launch result")
+            return
+        }
+
+        let cameraPermission = session.nativeCapabilityState.permissions.first { $0.capability == .camera }
+        #expect(cameraPermission?.state == .prompt)
+        #expect(cameraPermission?.promptResult == .granted)
+        #expect(cameraPermission?.resolvedState == .granted)
+        #expect(session.nativeCapabilityState.permissionPrompts.first?.finalState == .granted)
+        #expect(session.nativeCapabilityState.cameraCaptures.first?.fixtureName == "profile-photo")
+        #expect(session.nativeCapabilityState.cameraCaptures.first?.outputPath == "Fixtures/profile-photo.heic")
+        #expect(session.nativeCapabilityState.photoSelections.first?.assetIdentifiers == ["profile-photo", "receipt-photo"])
+        #expect(session.nativeCapabilityState.location?.currentCoordinate?.latitude == 40.7134)
+        #expect(session.nativeCapabilityState.location?.scriptedUpdates.map(\.atRevision) == [2, 4])
+        #expect(session.logs.map(\.message).contains("native.permission.camera.prompt.granted"))
+        #expect(session.logs.map(\.message).contains("native.camera.capture.front-camera-still"))
+        #expect(session.logs.map(\.message).contains("native.photos.selection.recent-library-pick"))
+        #expect(session.logs.map(\.message).contains("native.location.update.location-update.4"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("camera-capture-front-camera-still"))
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("photos-selection-recent-library-pick"))
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.permission.camera.state"] == "granted")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.photos.selection.recent-library-pick"] == "profile-photo,receipt-photo")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.location.latitude"] == "40.7134")
+
+        let missingFixtureState = RuntimeNativeCapabilityState(
+            manifest: RuntimeNativeCapabilityManifest(
+                requiredCapabilities: [
+                    RuntimeNativeCapabilityRequirement(
+                        id: .camera,
+                        permissionState: .granted,
+                        strictModeAlternative: "Configure a deterministic camera fixture."
+                    ),
+                ],
+                unsupportedSymbols: [
+                    RuntimeNativeUnsupportedSymbol(
+                        symbolName: "AVCaptureSession.startRunning",
+                        capability: .camera,
+                        suggestedAdaptation: "Replace live capture with a camera fixture in the native capability manifest."
+                    ),
+                ]
+            )
+        )
+
+        #expect(missingFixtureState.diagnosticRecords.map(\.code).contains("missingFixture"))
+        #expect(missingFixtureState.diagnosticRecords.map(\.code).contains("unsupportedSymbol"))
+        #expect(missingFixtureState.artifactRecords.map(\.kind).contains(.diagnostic))
+        #expect(missingFixtureState.logMessages.contains("native.diagnostic.camera.missingFixture"))
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)
