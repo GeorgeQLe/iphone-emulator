@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 8 milestone defines the native capability registry and manifest contract on top of the strict-mode semantic tree, deterministic browser preview surface, agent-facing artifacts, fixture-backed automation SDK, compatibility diagnostics, and browser IDE demo.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 9 milestone adds the first deterministic native mock services on top of the strict-mode semantic tree, deterministic browser preview surface, agent-facing artifacts, fixture-backed automation SDK, compatibility diagnostics, browser IDE demo, and native capability registry.
 
 ## Goals
 
@@ -40,10 +40,11 @@ The workspace currently provides:
 - `RuntimeHost` value types for semantic UI tree snapshots, fixture loading, lifecycle metadata, and retained tree inspection.
 - `RuntimeHost` automation protocol types and an in-memory fixture coordinator that can launch the strict baseline fixture, resolve semantic queries, apply deterministic `tap` and `fill` updates, and expose artifact bundles with screenshot placeholders, semantic snapshots, logs, device metadata, and HAR-like network records.
 - `DiagnosticsCore` compatibility contracts, a lightweight source analyzer, a documented v1 compatibility matrix, and a narrow supported-subset lowering path that emits the shared runtime tree when analysis succeeds without unsupported diagnostics.
-- Native capability manifest contracts through `RuntimeNativeCapabilityManifest`, `RuntimeNativeCapabilityID`, `RuntimeNativePermissionState`, `RuntimeNativeCapabilityRequirement`, `RuntimeNativeCapabilityMock`, `RuntimeNativeCapabilityEvent`, `RuntimeNativeUnsupportedSymbol`, and `RuntimeNativeCapabilityArtifactOutput`.
+- Native capability manifest and mock service contracts through `RuntimeNativeCapabilityManifest`, `RuntimeNativeCapabilityID`, `RuntimeNativePermissionState`, `RuntimeNativeCapabilityRequirement`, `RuntimeNativeCapabilityMock`, `RuntimeNativeCapabilityEvent`, `RuntimeNativeUnsupportedSymbol`, `RuntimeNativeCapabilityArtifactOutput`, `RuntimeNativeCapabilityState`, and native capability event/artifact records.
+- Deterministic mock state for permission prompts/results, fixture-backed camera captures, photo picker selections, scripted location updates, clipboard read/write records, keyboard/input traits, file picker selections, share sheet records, and local notification scheduling/delivery records.
 - Diagnostics-side `nativeCapabilityGuidance` for recognized native API requests, with deterministic manifest-field suggestions and fail-closed handling for APIs with no capability contract.
-- `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell and can derive stable DOM render metadata for captures.
-- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, native capability manifest launch options, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, and artifact bundle retrieval through an in-memory fixture client.
+- `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell, can derive stable DOM render metadata for captures, and renders browser-only native mock preview cards from illustrative strict-mode declarations.
+- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, native capability manifest launch options, native mock state/event inspection, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, and artifact bundle retrieval through an in-memory fixture client.
 - SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface before later phases add transport or live session coordination.
 
 ## Workspace Layout
@@ -115,27 +116,128 @@ const app = await Emulator.launch({
     requiredCapabilities: [
       {
         id: "camera",
-        permissionState: "granted",
+        permissionState: "prompt",
         strictModeAlternative:
           "Use a deterministic camera fixture instead of live capture.",
+      },
+      {
+        id: "photos",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Use photo picker fixtures instead of reading the host photo library.",
+      },
+      {
+        id: "location",
+        permissionState: "granted",
+        strictModeAlternative:
+          "Script deterministic coordinates instead of using CoreLocation.",
+      },
+      {
+        id: "notifications",
+        permissionState: "prompt",
+        strictModeAlternative:
+          "Record notification schedules instead of using a platform notification center.",
       },
     ],
     configuredMocks: [
       {
         capability: "camera",
-        identifier: "profile-photo",
-        payload: { fixtureName: "profile-photo" },
+        identifier: "front-camera-still",
+        payload: {
+          result: "granted",
+          fixtureName: "profile-photo",
+          mediaType: "image",
+          outputPath: "Fixtures/profile-photo.heic",
+        },
       },
-    ],
-    scriptedEvents: [],
-    unsupportedSymbols: [],
-    artifactOutputs: [
       {
-        capability: "camera",
-        name: "profile-photo",
-        kind: "fixtureReference",
+        capability: "photos",
+        identifier: "recent-library-pick",
+        payload: {
+          fixtureName: "recent-library",
+          assetIdentifiers: "profile-photo,receipt-photo",
+          mediaTypes: "image",
+        },
+      },
+      {
+        capability: "location",
+        identifier: "initial-location",
+        payload: {
+          latitude: "40.7128",
+          longitude: "-74.0060",
+          accuracyMeters: "25",
+        },
+      },
+      {
+        capability: "clipboard",
+        identifier: "clipboard",
+        payload: { initialText: "Draft profile notes" },
+      },
+      {
+        capability: "keyboardInput",
+        identifier: "name-entry",
+        payload: {
+          focusedElementID: "name-field",
+          keyboardType: "default",
+          returnKey: "done",
+          isVisible: "true",
+        },
+      },
+      {
+        capability: "files",
+        identifier: "document-picker",
+        payload: {
+          selectedFiles: "Fixtures/profile.pdf,Fixtures/receipt.pdf",
+          contentTypes: "com.adobe.pdf,public.image",
+          allowsMultipleSelection: "true",
+        },
+      },
+      {
+        capability: "shareSheet",
+        identifier: "share-receipt",
+        payload: {
+          activityType: "com.apple.UIKit.activity.Mail",
+          items: "Fixtures/profile.pdf,Summary",
+          completionState: "completed",
+        },
+      },
+      {
+        capability: "notifications",
+        identifier: "notification-permission",
+        payload: { result: "granted" },
       },
     ],
+    scriptedEvents: [
+      {
+        capability: "location",
+        name: "location-update",
+        atRevision: 2,
+        payload: {
+          latitude: "40.7134",
+          longitude: "-74.0059",
+          accuracyMeters: "18",
+        },
+      },
+      {
+        capability: "clipboard",
+        name: "clipboard-write",
+        atRevision: 3,
+        payload: { text: "Updated profile notes" },
+      },
+      {
+        capability: "notifications",
+        name: "notification-scheduled",
+        atRevision: 4,
+        payload: {
+          identifier: "profile-reminder",
+          title: "Profile Reminder",
+          body: "Review the saved profile.",
+          trigger: "2026-04-28T12:15:00Z",
+        },
+      },
+    ],
+    unsupportedSymbols: [],
+    artifactOutputs: [],
   },
 });
 
@@ -155,9 +257,16 @@ const tree = await app.semanticTree();
 const logs = await app.logs();
 const screenshot = await app.screenshot("baseline-after-save");
 const artifacts = await app.artifacts();
+const session = await app.session();
+const nativeEvents = await app.nativeCapabilityEvents();
 
 console.log(field.value, tree.scene.alertPayload?.title, logs);
 console.log(request.response.status, screenshot.viewport, artifacts.networkRecords.length);
+console.log(
+  session.nativeCapabilityState.permissions.camera.resolvedState,
+  nativeEvents.map((event) => event.name),
+  artifacts.nativeCapabilityRecords.length
+);
 
 await app.close();
 ```
@@ -173,4 +282,6 @@ await app.close();
 - Network fixtures are deterministic in-memory route records. They do not perform live HTTP calls.
 - Device settings are reflected as launch/session metadata and artifact viewport metadata. They do not emulate OS simulator behavior.
 - Compatibility mode is scanner-based rather than compiler-integrated. It only lowers the first documented SwiftUI-inspired subset and otherwise returns diagnostics instead of attempting broad SwiftUI or UIKit emulation.
-- Native capability manifests are deterministic fixture data. They do not access live host permissions, live device state, native framework behavior, or live network resources by default.
+- Native capability manifests drive deterministic mock records for the supported Phase 9 services. They do not access live host permissions, live device state, native framework behavior, host files, host clipboard, camera hardware, photo libraries, notification delivery, or live network resources by default.
+- The browser native preview is illustrative source lowering only. It renders deterministic native mock cards from the demo project; it is not live Swift execution or host native behavior.
+- The automation SDK exposes native mock state/events through session and artifact inspection. A high-level `app.native.*` control API is intentionally deferred.
