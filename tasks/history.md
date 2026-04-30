@@ -1,5 +1,8 @@
 # History
 
+- Created `research/devtool-positioning.md` for the devtool research queue. The positioning memo frames the project as an open-source iPhone-like app harness for deterministic agent testing, compares it against iOS Simulator, device clouds, Playwright/browser-only testing, XCTest, SwiftUI previews, homegrown harnesses, and React Native paths, and records trust claims plus language to avoid simulator-fidelity overpromising.
+- Validation: documentation-only research update; no Swift or TypeScript validation was required.
+
 - Created `research/devtool-adoption.md` for the devtool research queue. The adoption plan maps agent fixture, CI regression, migration diagnostics, contributor expansion, and demo/preview loops; it recommends first-green-run docs, CI fixture proof artifacts, strict-mode/native templates, troubleshooting, contributor guidance, and delaying broad outreach until live transport and transport-backed SDK adoption gates are clearer.
 - Validation: documentation-only research update; no Swift or TypeScript validation was required.
 
