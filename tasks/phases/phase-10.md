@@ -4,15 +4,6 @@
 > Source roadmap: `tasks/roadmap.md`
 > Test strategy: tdd
 
-## Priority Documentation Todo
-
-- [ ] `$devtool-integration-map` - create `research/devtool-integration-map.md` because the enabled devtool pack expects this research output and it is missing.
-- [ ] `$devtool-dx-journey` - create `research/devtool-dx-journey.md` because the enabled devtool pack expects this research output and it is missing.
-- [ ] `$devtool-adoption` - create `research/devtool-adoption.md` because the enabled devtool pack expects this research output and it is missing.
-- [ ] `$devtool-positioning` - create `research/devtool-positioning.md` because the enabled devtool pack expects this research output and it is missing.
-- [ ] `$devtool-monetization` - create `research/devtool-monetization.md` because the enabled devtool pack expects this research output and it is missing.
-- [ ] `$spec-drift fix all` - reconcile `specs/open-source-iphone-emulator.md` because the latest implementation commit is newer than the spec (`2026-04-30 10:33:56 -0400` vs `2026-04-28 15:43:06 -0400`).
-
 ## Phase 10: M9 Native Capability Automation and Agent Flows
 
 **Status:** complete on 2026-04-30.

@@ -448,7 +448,7 @@
 - Ready for next phase: yes
 
 ## Phase 10: M9 Native Capability Automation and Agent Flows
-**Status:** planned.
+**Status:** complete on 2026-04-30.
 
 **Goal:** Make native capability simulation useful to agents through high-level automation APIs and end-to-end examples.
 

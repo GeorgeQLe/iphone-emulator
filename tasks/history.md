@@ -1,5 +1,10 @@
 # History
 
+- Completed Phase 10 Step 10.9 as an intentional no-op native automation boundary review. Re-read the Swift runtime native automation value records, TypeScript SDK `app.native.*` namespace, browser native preview/source-lowering helpers, native capability docs, README, and strict-mode example together; no concrete duplication, type drift, hidden live-host behavior, or unclear API ownership justified a source refactor.
+- Validation: no source validation rerun was needed because Step 10.9 changed no runtime, SDK, renderer, docs, or example source files. Reused the Step 10.8 full green validation surface.
+- Archived the completed Phase 10 plan to `tasks/phases/phase-10.md` and marked Phase 10 complete in `tasks/roadmap.md`. No further implementation phase is currently queued.
+- Ran the research-roadmap queue refresh after Phase 10 completion. Added six priority documentation items to `tasks/todo.md`: five missing devtool research outputs and one spec-drift reconciliation item because the latest implementation commit is newer than `specs/open-source-iphone-emulator.md`.
+
 - Completed Phase 10 Step 10.8 by running the full Swift, browser renderer, automation SDK, and strict-mode example validation matrix without needing source, package, or validation wiring changes.
 - Validation: `swift test` passed with 48 Swift tests, `swift build` passed, `npm --prefix packages/browser-renderer run typecheck` passed, `npm --prefix packages/browser-renderer test` passed with 13 tests, `npm --prefix packages/browser-renderer run build` passed, `npm --prefix packages/automation-sdk run typecheck` passed, `npm --prefix packages/automation-sdk test` passed with 12 tests, `npm --prefix packages/automation-sdk run build` passed, and `npx tsx examples/strict-mode-baseline/automation-example.ts` passed with 20 native capability artifact records. The renderer build emitted Vite's existing large-chunk warning for Monaco/editor assets; accepted as unchanged bundling behavior for this validation-only step.
 
