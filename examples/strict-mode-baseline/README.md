@@ -26,7 +26,7 @@ This example shows the current strict-mode fixture path from Swift declarations 
 4. The browser renderer currently previews a checked-in `SemanticUITree` fixture that mirrors the same contract shape used by the runtime host.
 5. The renderer mounts that fixture into an inspectable browser surface with stable semantic roles, identifiers, and state metadata.
 6. Artifact APIs expose deterministic screenshot placeholder metadata, semantic snapshots, logs, network request records, native capability records, and launch-time device settings for agent workflows.
-7. Native capability manifests derive deterministic permission, camera/photo, location, clipboard, keyboard/input, file, share sheet, and notification mock records for inspection. They do not execute live native services.
+7. Native capability manifests derive deterministic permission, camera/photo, location, clipboard, keyboard/input, file, share sheet, and notification mock records for inspection. High-level `app.native.*` controls let agents mutate those records in memory. They do not execute live native services.
 
 ## Automation Walkthrough
 
@@ -150,6 +150,16 @@ await app.route("https://example.test/profile", {
 await app.getByText("Save").tap();
 await app.getByRole("textField", { text: "Name" }).fill("Jordan");
 
+await app.native.permissions.request("camera");
+await app.native.camera.capture("front-camera-still");
+await app.native.photos.select("recent-library-pick");
+await app.native.permissions.set("location", "denied");
+const deniedLocation = await app.native.location.current();
+await app.native.clipboard.write("Copied by agent");
+const clipboardRead = await app.native.clipboard.read();
+await app.native.notifications.requestAuthorization();
+await app.native.notifications.schedule("profile-reminder");
+
 const request = await app.request("https://example.test/profile");
 const field = await app.getByTestId("name-field").inspect();
 const tree = await app.semanticTree();
@@ -157,7 +167,7 @@ const logs = await app.logs();
 const screenshot = await app.screenshot("baseline-after-save");
 const artifacts = await app.artifacts();
 const session = await app.session();
-const nativeEvents = await app.nativeCapabilityEvents();
+const nativeEvents = await app.native.events();
 
 console.log(field.value);
 console.log(tree.scene.alertPayload?.title);
@@ -166,6 +176,8 @@ console.log(request.response.status);
 console.log(screenshot.viewport);
 console.log(artifacts.networkRecords.length);
 console.log(session.nativeCapabilityState.permissions.camera.resolvedState);
+console.log(deniedLocation.diagnostic?.code);
+console.log(clipboardRead.text);
 console.log(nativeEvents.map((event) => event.name));
 console.log(artifacts.nativeCapabilityRecords.length);
 
@@ -181,8 +193,9 @@ What this flow currently guarantees:
 - `route()` installs deterministic in-memory response fixtures and `request()` records HAR-like request/response metadata without live network traffic.
 - Launch `device` settings are retained on the session and reflected in screenshot placeholder viewport metadata.
 - Launch `nativeCapabilities` settings are retained, cloned, and used to derive deterministic native mock state, event records, logs, semantic metadata, diagnostics, and artifact records.
+- `app.native.*` controls mutate deterministic native mock state for agent flows, including permission request/set, camera/photo fixture access, location denial diagnostics, clipboard read/write, notification authorization and scheduling, and native event/artifact inspection.
 - `semanticTree()`, `inspect()`, `logs()`, `screenshot()`, and `artifacts()` expose the same fixture-backed session state without requiring a transport layer.
-- `session.nativeCapabilityState`, `session.nativeCapabilityEvents`, `app.nativeCapabilityEvents()`, and `artifacts.nativeCapabilityRecords` expose native mock inspection data without adding the future Phase 10 `app.native.*` control API.
+- `session.nativeCapabilityState`, `session.nativeCapabilityEvents`, `app.native.events()`, `app.native.artifacts()`, and `artifacts.nativeCapabilityRecords` expose cloned native mock inspection data.
 
 This example is intentionally limited:
 
@@ -216,5 +229,4 @@ npm --prefix packages/automation-sdk run build
 - The automation SDK runs entirely in memory against a deterministic fixture; it does not yet connect to a live Swift runtime or browser session.
 - Screenshot support is limited to placeholder metadata rather than real image capture.
 - Network fixtures are route records in the in-memory SDK/runtime contract; they do not issue real HTTP requests.
-- Native capability mocks are deterministic records only. They are inspectable through session, log, semantic tree, and artifact surfaces, but they do not execute live native services or provide iOS simulator fidelity.
-- The high-level `app.native.*` automation API is not part of this phase.
+- Native capability mocks and `app.native.*` controls are deterministic records only. They are inspectable through session, log, semantic tree, and artifact surfaces, but they do not execute live native services or provide iOS simulator fidelity.

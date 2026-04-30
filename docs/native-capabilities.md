@@ -66,7 +66,7 @@ These states are manifest data. They must not trigger host permission prompts, r
 
 ## Supported Deterministic Mock Services
 
-The supported Phase 9 mock services are records derived from `RuntimeNativeCapabilityManifest`. They do not call native frameworks. Launch-time manifests are the only source of truth.
+The supported mock services are deterministic records derived from `RuntimeNativeCapabilityManifest` and high-level `app.native.*` automation controls. They do not call native frameworks. Launch-time manifests provide fixtures and defaults; automation controls mutate the in-memory session state and append inspectable events/artifacts.
 
 | Capability | Manifest inputs | Deterministic records |
 | --- | --- | --- |
@@ -108,9 +108,24 @@ Native mock state is exposed through existing launch, session, log, semantic tre
 - `RuntimeArtifactBundle.nativeCapabilityRecords` includes fixture, event, diagnostic, and semantic snapshot records.
 - Runtime logs include deterministic messages such as `native.permission.camera.prompt.granted`, `native.camera.capture.front-camera-still`, `native.location.update.location-update.4`, `native.clipboard.write.clipboard-write.3`, `native.files.selection.document-picker`, and `native.notifications.delivered.trip-reminder`.
 - Semantic root metadata mirrors inspectable values such as `native.camera.fixture`, `native.photos.selection.<identifier>`, `native.location.latitude`, `native.clipboard.currentText`, `native.keyboard.focusedElementID`, `native.files.selection.<identifier>`, `native.shareSheet.<identifier>.completionState`, and `native.notification.<identifier>`.
-- The TypeScript SDK accepts the same `nativeCapabilities` launch manifest, exposes `session.nativeCapabilityState`, `session.nativeCapabilityEvents`, `artifactBundle.nativeCapabilityRecords`, and provides `app.nativeCapabilityEvents()` for cloned event inspection.
+- The TypeScript SDK accepts the same `nativeCapabilities` launch manifest, exposes `session.nativeCapabilityState`, `session.nativeCapabilityEvents`, `artifactBundle.nativeCapabilityRecords`, and provides `app.native.events()` plus `app.nativeCapabilityEvents()` for cloned event inspection.
+- `app.native.*` provides high-level deterministic controls for permissions, camera, photos, location, clipboard, files, share sheets, notifications, device snapshots, native event inspection, and native artifact inspection.
 
-Phase 9 intentionally does not add a high-level `app.native.*` automation API namespace. That control surface remains future work.
+Example agent flow:
+
+```ts
+await app.native.permissions.request("camera");
+await app.native.camera.capture("front-camera-still");
+await app.native.photos.select("recent-library-pick");
+await app.native.permissions.set("location", "denied");
+const location = await app.native.location.current();
+await app.native.clipboard.write("Copied by agent");
+await app.native.notifications.schedule("profile-reminder");
+const nativeEvents = await app.native.events();
+const nativeArtifacts = await app.native.artifacts();
+```
+
+These APIs are deterministic SDK controls today. They mutate the in-memory automation session and records; they do not connect to a live Swift host, browser transport, or host native service.
 
 ## Browser Preview
 
@@ -125,6 +140,18 @@ The browser renderer demo can parse illustrative strict-mode declarations into `
 - `FilePickerFixture("document-picker", selectedFiles: ["Fixtures/itinerary.pdf"])`
 - `ShareSheetFixture("share-itinerary", activityType: .copy, items: ["Fixtures/itinerary.pdf"])`
 - `NotificationFixture("trip-reminder", title: "Trip Reminder", state: .scheduled)`
+- `NativePermissionRequest(.camera)`
+- `NativePermissionSet(.location, .denied)`
+- `NativeCameraCapture("front-camera-still")`
+- `NativePhotoSelection("recent-library-pick")`
+- `NativeLocationRead(expectPermission: .denied)`
+- `NativeClipboardWrite("Copied by agent")`
+- `NativeFileSelection("document-picker")`
+- `NativeShareCompletion("share-itinerary", state: .completed)`
+- `NativeNotificationSchedule("trip-reminder")`
+- `NativeNotificationDelivery("trip-reminder")`
+- `NativeDeviceEnvironmentSnapshot()`
+- `UnsupportedNativeControl(.biometrics)`
 
 This preview is browser-only source lowering. It is useful for deterministic UI inspection, but it is not live Swift execution and it does not claim native framework fidelity.
 

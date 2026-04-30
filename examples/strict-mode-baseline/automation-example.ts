@@ -191,6 +191,22 @@ async function main(): Promise<void> {
   await app.getByText("Save").tap();
   await app.getByRole("textField", { text: "Name" }).fill("Jordan");
 
+  await app.native.permissions.request("camera");
+  await app.native.camera.capture("front-camera-still");
+  await app.native.photos.select("recent-library-pick");
+  await app.native.permissions.set("location", "denied");
+  const deniedLocation = await app.native.location.current();
+  await app.native.clipboard.write("Copied by agent");
+  const clipboardRead = await app.native.clipboard.read();
+  const fileSelection = await app.native.files.select("document-picker");
+  await app.native.shareSheet.complete("share-receipt", {
+    completionState: "completed",
+  });
+  await app.native.notifications.requestAuthorization();
+  await app.native.notifications.schedule("profile-reminder");
+  await app.native.notifications.deliver("profile-reminder");
+  const deviceSnapshot = await app.native.device.snapshot();
+
   const request = await app.request("https://example.test/profile");
   const field = await app.getByTestId("name-field").inspect();
   const tree = await app.semanticTree();
@@ -198,7 +214,8 @@ async function main(): Promise<void> {
   const screenshot = await app.screenshot("baseline-after-save");
   const artifacts = await app.artifacts();
   const session = await app.session();
-  const nativeEvents = await app.nativeCapabilityEvents();
+  const nativeEvents = await app.native.events();
+  const nativeArtifacts = await app.native.artifacts();
 
   console.log("Field value:", field.value);
   console.log("Alert title:", tree.scene.alertPayload?.title);
@@ -214,8 +231,12 @@ async function main(): Promise<void> {
   });
   console.log("Session device:", session.device);
   console.log("Native camera permission:", session.nativeCapabilityState.permissions.camera);
-  console.log("Native clipboard:", session.nativeCapabilityState.clipboard);
+  console.log("Location denial diagnostic:", deniedLocation.diagnostic?.code);
+  console.log("Native clipboard:", clipboardRead.text, session.nativeCapabilityState.clipboard);
+  console.log("Selected files:", fileSelection.selectedFiles);
+  console.log("Device snapshot:", deviceSnapshot);
   console.log("Native event names:", nativeEvents.map((event) => event.name));
+  console.log("Native artifact names:", nativeArtifacts.map((record) => record.name));
 
   await app.close();
 }
