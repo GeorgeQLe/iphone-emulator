@@ -3,3 +3,6 @@
 node_modules/
 packages/browser-renderer/dist/
 packages/automation-sdk/dist/
+.agents/
+.claude/
+.codex/
