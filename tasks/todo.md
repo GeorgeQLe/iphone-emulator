@@ -4,6 +4,10 @@
 > Source roadmap: `tasks/roadmap.md`
 > Test strategy: tdd
 
+## Priority Task Queue
+
+- [ ] `$research-roadmap` - scan documentation health and refresh the research/spec task queue because all roadmap phases are complete (`tasks/roadmap.md` Phase 1 through Phase 10 are marked complete, latest roadmap mtime `2026-04-30 10:37:12`, and Phase 10 archive exists at `tasks/phases/phase-10.md` with mtime `2026-04-30 10:38:12`).
+
 ## Priority Documentation Todo
 
 - [ ] `$roadmap` - update `tasks/roadmap.md` with the next implementation phase because `specs/open-source-iphone-emulator.md` was updated at `2026-04-30 11:46:12 -0400`, after `tasks/roadmap.md` at `2026-04-30 10:37:12 -0400`, and the current roadmap ends at completed Phase 10 with no M10 live runtime-to-renderer transport and session coordination phase.
