@@ -390,4 +390,139 @@ describe("mountRenderer", () => {
       container.querySelector("[data-native-capability='unsupported']")?.textContent ?? ""
     ).toContain("biometrics, health, speech, sensors, haptics");
   });
+
+  it("renders the representative native agent workflow story across all preview cards", () => {
+    const container = document.createElement("div");
+    const treeWithNativeAgentFlow = {
+      ...baselineFixtureTree,
+      nativePreview: {
+        permissionPrompts: [
+          { capability: "camera", state: "prompt", result: "granted" },
+          { capability: "location", state: "prompt", result: "denied" },
+          { capability: "notifications", state: "prompt", result: "granted" },
+        ],
+        fixtureOutputs: [
+          {
+            capability: "camera",
+            identifier: "front-camera-still",
+            fixtureName: "profile-photo",
+          },
+          {
+            capability: "photos",
+            identifier: "recent-library-pick",
+            fixtureName: "profile-photo,receipt-photo",
+          },
+        ],
+        locationEvents: [
+          { latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18 },
+        ],
+        clipboard: { text: "Copied by end-to-end agent" },
+        filePickerRecords: [
+          {
+            identifier: "document-picker",
+            selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+          },
+        ],
+        shareSheetRecords: [
+          {
+            identifier: "share-receipt",
+            activityType: "mail",
+            items: ["Fixtures/profile.pdf", "Summary"],
+          },
+        ],
+        notificationRecords: [
+          {
+            identifier: "profile-reminder",
+            title: "Profile Reminder",
+            state: "scheduled",
+          },
+          {
+            identifier: "profile-reminder",
+            title: "Profile Reminder",
+            state: "delivered",
+          },
+        ],
+        automationFlow: {
+          steps: [
+            { action: "native.permissions.request", capability: "camera" },
+            { action: "native.permissions.set", capability: "location" },
+            {
+              action: "native.camera.capture",
+              capability: "camera",
+              identifier: "front-camera-still",
+            },
+            {
+              action: "native.photos.select",
+              capability: "photos",
+              identifier: "recent-library-pick",
+            },
+            { action: "native.location.current", capability: "location" },
+            { action: "native.clipboard.write", capability: "clipboard" },
+            {
+              action: "native.files.select",
+              capability: "files",
+              identifier: "document-picker",
+            },
+            {
+              action: "native.shareSheet.complete",
+              capability: "shareSheet",
+              identifier: "share-receipt",
+            },
+            {
+              action: "native.notifications.schedule",
+              capability: "notifications",
+              identifier: "profile-reminder",
+            },
+            {
+              action: "native.notifications.deliver",
+              capability: "notifications",
+              identifier: "profile-reminder",
+            },
+            { action: "native.device.snapshot", capability: "deviceEnvironment" },
+          ],
+        },
+        deviceEnvironment: {
+          viewport: "393x852@3x",
+          colorScheme: "dark",
+          locale: "en_US",
+          timeZone: "America/New_York",
+        },
+        unsupportedControls: ["biometrics", "health", "speech", "sensors", "haptics"],
+      },
+    } as SemanticUITree & { nativePreview: NativePreviewState };
+
+    mountRenderer(container, treeWithNativeAgentFlow);
+
+    const flowText = container.querySelector("[data-native-flow]")?.textContent ?? "";
+    expect(flowText).toContain("native.permissions.request");
+    expect(flowText).toContain("native.location.current");
+    expect(flowText).toContain("native.notifications.deliver");
+    expect(container.querySelector("[data-native-capability='camera']")?.textContent ?? "").toContain(
+      "front-camera-still"
+    );
+    expect(container.querySelector("[data-native-capability='photos']")?.textContent ?? "").toContain(
+      "profile-photo,receipt-photo"
+    );
+    expect(container.querySelector("[data-native-capability='location']")?.textContent ?? "").toContain(
+      "40.7134"
+    );
+    expect(container.querySelector("[data-native-capability='clipboard']")?.textContent ?? "").toContain(
+      "Copied by end-to-end agent"
+    );
+    expect(container.querySelector("[data-native-capability='files']")?.textContent ?? "").toContain(
+      "Fixtures/profile.pdf, Fixtures/receipt.pdf"
+    );
+    expect(container.querySelector("[data-native-capability='shareSheet']")?.textContent ?? "").toContain(
+      "share-receipt"
+    );
+    expect(
+      container.querySelector("[data-native-capability='notifications']")?.textContent ?? ""
+    ).toContain("delivered");
+    expect(
+      container.querySelector("[data-native-capability='deviceEnvironment']")?.textContent ?? ""
+    ).toContain("393x852@3x");
+    expect(
+      container.querySelector("[data-native-capability='unsupported']")?.textContent ?? ""
+    ).toContain("biometrics, health, speech, sensors, haptics");
+  });
 });

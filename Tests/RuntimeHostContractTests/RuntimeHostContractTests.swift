@@ -1802,6 +1802,166 @@ struct RuntimeHostContractTests {
         #expect(metadata["native.deviceEnvironment.viewportWidth"] == "393")
     }
 
+    @Test("runtime native agent workflow coexists with UI network and artifact state")
+    func runtimeNativeAgentWorkflowCoexistsWithSessionArtifacts() throws {
+        let device = RuntimeDeviceSettings(
+            viewport: RuntimeDeviceViewport(width: 393, height: 852, scale: 3),
+            colorScheme: .dark,
+            locale: "en_US",
+            clock: RuntimeDeviceClock(frozenAtISO8601: "2026-04-30T15:30:00Z", timeZone: "America/New_York"),
+            geolocation: RuntimeDeviceGeolocation(latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18),
+            network: RuntimeDeviceNetworkState(isOnline: true, latencyMilliseconds: 20, downloadKbps: 2_500)
+        )
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-agent-workflow",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        device: device,
+                        networkFixtures: [
+                            RuntimeNetworkFixture(
+                                id: "profile-success",
+                                method: "POST",
+                                url: "https://example.test/profile",
+                                response: RuntimeNetworkResponse(
+                                    status: 201,
+                                    headers: ["content-type": "application/json"],
+                                    bodyByteCount: 14
+                                )
+                            )
+                        ],
+                        nativeCapabilities: representativeNativeMockManifest()
+                    )
+                )
+            )
+        )
+
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-network-native-agent-workflow",
+                command: .recordNetworkRequest(
+                    RuntimeNetworkRequest(
+                        method: "POST",
+                        url: "https://example.test/profile",
+                        headers: ["content-type": "application/json"],
+                        bodyByteCount: 16
+                    )
+                )
+            )
+        )
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-tap-native-agent-workflow",
+                command: .tap(RuntimeAutomationSemanticQuery(identifier: "save-button"))
+            )
+        )
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-fill-native-agent-workflow",
+                command: .fill(RuntimeAutomationSemanticQuery(identifier: "name-field"), text: "Avery")
+            )
+        )
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-screenshot-native-agent-workflow",
+                command: .screenshot(name: "native-agent-flow")
+            )
+        )
+
+        let actions: [RuntimeNativeAutomationAction] = [
+            .requestPermission(capability: .camera),
+            .setPermission(capability: .location, state: .denied),
+            .captureCamera(identifier: "front-camera-still"),
+            .selectPhoto(identifier: "recent-library-pick"),
+            .readClipboard(identifier: "automation"),
+            .writeClipboard(identifier: "automation", text: "Copied by end-to-end agent"),
+            .selectFiles(
+                identifier: "document-picker",
+                selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+                contentTypes: ["com.adobe.pdf", "public.image"],
+                allowsMultipleSelection: true
+            ),
+            .completeShareSheet(
+                identifier: "share-receipt",
+                activityType: "com.apple.UIKit.activity.Mail",
+                items: ["Fixtures/profile.pdf", "Summary"],
+                completionState: "completed"
+            ),
+            .scheduleNotification(
+                identifier: "profile-reminder",
+                title: "Profile Reminder",
+                body: "Review the saved profile.",
+                trigger: "2026-04-30T16:00:00Z"
+            ),
+            .deliverNotification(
+                identifier: "profile-reminder",
+                title: "Profile Reminder",
+                body: "Review the saved profile."
+            ),
+            .snapshotDeviceEnvironment,
+        ]
+
+        for (index, action) in actions.enumerated() {
+            _ = try coordinator.handle(
+                RuntimeAutomationRequest(
+                    id: "req-native-agent-workflow-\(index)",
+                    command: .nativeAutomation(action)
+                )
+            )
+        }
+
+        guard let session = coordinator.session else {
+            Issue.record("expected active session")
+            return
+        }
+
+        let eventNames = session.nativeCapabilityEvents.map(\.name)
+        let artifactNames = session.artifactBundle.nativeCapabilityRecords.map(\.name)
+        let rootMetadata = session.snapshot.tree.scene.rootNode?.metadata ?? [:]
+
+        #expect(session.snapshot.tree.scene.alertPayload?.message == "Saved")
+        #expect(session.snapshot.tree.scene.rootNode?.children.first?.children.first?.children[1].children.first?.value == "Avery")
+        #expect(session.artifactBundle.networkRecords.first?.source == .fixture("profile-success"))
+        #expect(session.artifactBundle.networkRecords.first?.response.status == 201)
+        #expect(session.artifactBundle.renderArtifacts.last?.name == "native-agent-flow")
+        #expect(session.artifactBundle.renderArtifacts.last?.viewport == device.viewport)
+        #expect(session.nativeCapabilityState.permissions.first { $0.capability == .camera }?.resolvedState == .granted)
+        #expect(session.nativeCapabilityState.permissions.first { $0.capability == .location }?.resolvedState == .denied)
+        #expect(session.nativeCapabilityState.cameraCaptures.last?.fixtureName == "profile-photo")
+        #expect(session.nativeCapabilityState.photoSelections.last?.identifier == "recent-library-pick")
+        #expect(session.nativeCapabilityState.clipboard?.currentText == "Copied by end-to-end agent")
+        #expect(session.nativeCapabilityState.fileSelections.last?.selectedFiles == ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"])
+        #expect(session.nativeCapabilityState.shareSheetRecords.last?.completionState == "completed")
+        #expect(session.nativeCapabilityState.notificationRecords.suffix(2).map(\.state) == ["scheduled", "delivered"])
+        #expect(eventNames.contains("native.permission.camera.request"))
+        #expect(eventNames.contains("native.permission.location.set"))
+        #expect(eventNames.contains("native.camera.capture.front-camera-still"))
+        #expect(eventNames.contains("native.photos.selection.recent-library-pick"))
+        #expect(eventNames.contains("native.clipboard.write.automation"))
+        #expect(eventNames.contains("native.files.selection.document-picker"))
+        #expect(eventNames.contains("native.shareSheet.complete.share-receipt"))
+        #expect(eventNames.contains("native.notifications.schedule.profile-reminder"))
+        #expect(eventNames.contains("native.notifications.deliver.profile-reminder"))
+        #expect(eventNames.contains("native.deviceEnvironment.snapshot"))
+        #expect(artifactNames.contains("camera-capture-front-camera-still"))
+        #expect(artifactNames.contains("photos-selection-recent-library-pick"))
+        #expect(artifactNames.contains("clipboard-records"))
+        #expect(artifactNames.contains("files-selection-document-picker"))
+        #expect(artifactNames.contains("share-sheet-share-receipt"))
+        #expect(artifactNames.contains("notification-scheduled-profile-reminder"))
+        #expect(artifactNames.contains("notification-delivered-profile-reminder"))
+        #expect(artifactNames.contains("device-environment-snapshot"))
+        #expect(rootMetadata["native.camera.fixture"] == "profile-photo")
+        #expect(rootMetadata["native.clipboard.currentText"] == "Copied by end-to-end agent")
+        #expect(rootMetadata["native.files.selection.document-picker"] == "Fixtures/profile.pdf,Fixtures/receipt.pdf")
+        #expect(rootMetadata["native.shareSheet.share-receipt.activityType"] == "com.apple.UIKit.activity.Mail")
+        #expect(rootMetadata["native.notification.profile-reminder"] == "delivered")
+        #expect(rootMetadata["native.deviceEnvironment.locale"] == "en_US")
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

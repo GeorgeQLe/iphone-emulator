@@ -1627,6 +1627,167 @@ describe("Emulator", () => {
     expect(nativeEventsAgain[0].payload.result).toBe("granted");
     expect(artifactsAgain.nativeCapabilityRecords[0].payload.fixtureName).toBe("profile-photo");
   });
+
+  it("regresses a strict-mode agent workflow across UI network native state and artifacts", async () => {
+    const app = (await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      device: {
+        viewport: { width: 393, height: 852, scale: 3 },
+        colorScheme: "dark",
+        locale: "en_US",
+        clock: {
+          frozenAtISO8601: "2026-04-30T15:30:00Z",
+          timeZone: "America/New_York",
+        },
+        geolocation: { latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18 },
+        network: { isOnline: true, latencyMilliseconds: 20, downloadKbps: 2_500 },
+      },
+      nativeCapabilities: representativeNativeMockManifest(),
+    })) as NativeAutomationApp;
+
+    await app.route("https://example.test/profile", {
+      id: "profile-success",
+      method: "POST",
+      status: 201,
+      headers: { "content-type": "application/json" },
+      body: { saved: true },
+    });
+    const networkRecord = await app.request("https://example.test/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { name: "Avery" },
+    });
+    await app.getByText("Save").tap();
+    await app.getByRole("textField", { text: "Name" }).fill("Avery");
+    await app.screenshot("native-agent-flow");
+
+    await app.native.permissions.request("camera");
+    await app.native.permissions.set("location", "denied");
+    await app.native.camera.capture("front-camera-still");
+    await app.native.photos.select("recent-library-pick");
+    await app.native.location.current();
+    await app.native.clipboard.write("Copied by end-to-end agent");
+    await app.native.files.select("document-picker");
+    await app.native.shareSheet.complete("share-receipt", { completionState: "completed" });
+    await app.native.notifications.requestAuthorization();
+    await app.native.notifications.schedule("profile-reminder");
+    await app.native.notifications.deliver("profile-reminder");
+    await app.native.device.snapshot();
+
+    const semanticTree = await app.semanticTree();
+    const session = await app.session();
+    const artifacts = await app.artifacts();
+    const nativeEvents = await app.native.events();
+    const unsupportedControls = app.native as unknown as Record<string, unknown>;
+
+    expect(networkRecord).toMatchObject({
+      source: { fixtureId: "profile-success" },
+      response: { status: 201 },
+    });
+    expect(semanticTree.scene.alertPayload).toMatchObject({
+      title: "Done",
+      message: "Saved",
+    });
+    await expect(app.getByTestId("name-field").inspect()).resolves.toMatchObject({
+      value: "Avery",
+    });
+    expect(session.logs.map((log) => log.message)).toEqual(
+      expect.arrayContaining([
+        "Tapped save-button",
+        "Filled name-field with Avery",
+      ])
+    );
+    expect(artifacts.networkRecords).toEqual([
+      expect.objectContaining({
+        id: "request-1",
+        source: { fixtureId: "profile-success" },
+      }),
+    ]);
+    expect(artifacts.renderArtifacts.at(-1)).toMatchObject({
+      name: "native-agent-flow",
+      viewport: { width: 393, height: 852, scale: 3 },
+    });
+    expect(session.nativeCapabilityState).toMatchObject({
+      permissions: {
+        camera: { state: "granted", resolvedState: "granted" },
+        location: { state: "denied", resolvedState: "denied" },
+        notifications: { state: "granted", resolvedState: "granted" },
+      },
+      clipboard: {
+        currentText: "Copied by end-to-end agent",
+      },
+      shareSheetRecords: expect.arrayContaining([
+        expect.objectContaining({
+          identifier: "share-receipt",
+          completionState: "completed",
+        }),
+      ]),
+      notificationRecords: expect.arrayContaining([
+        expect.objectContaining({
+          identifier: "profile-reminder",
+          state: "scheduled",
+          authorizationState: "granted",
+        }),
+        expect.objectContaining({
+          identifier: "profile-reminder",
+          state: "delivered",
+          authorizationState: "granted",
+        }),
+      ]),
+      diagnosticRecords: expect.arrayContaining([
+        expect.objectContaining({
+          capability: "location",
+          code: "permissionDenied",
+        }),
+      ]),
+    });
+    expect(nativeEvents.map((event) => event.name)).toEqual(
+      expect.arrayContaining([
+        "native.permission.camera.request",
+        "native.permission.location.set",
+        "native.camera.capture.front-camera-still",
+        "native.photos.selection.recent-library-pick",
+        "native.diagnostic.location.permissionDenied",
+        "native.clipboard.write.automation",
+        "native.files.selection.document-picker",
+        "native.shareSheet.complete.share-receipt",
+        "native.notifications.authorization.request",
+        "native.notifications.schedule.profile-reminder",
+        "native.notifications.deliver.profile-reminder",
+        "native.deviceEnvironment.snapshot",
+      ])
+    );
+    expect(artifacts.nativeCapabilityRecords.map((record) => record.name)).toEqual(
+      expect.arrayContaining([
+        "native.camera.capture.front-camera-still",
+        "native.photos.selection.recent-library-pick",
+        "native.clipboard.write.automation",
+        "native.files.selection.document-picker",
+        "native.shareSheet.complete.share-receipt",
+        "native.notifications.schedule.profile-reminder",
+        "native.notifications.deliver.profile-reminder",
+        "native.deviceEnvironment.snapshot",
+      ])
+    );
+    expect(unsupportedControls.biometrics).toBeUndefined();
+    expect(unsupportedControls.health).toBeUndefined();
+    expect(unsupportedControls.speech).toBeUndefined();
+    expect(unsupportedControls.sensors).toBeUndefined();
+    expect(unsupportedControls.haptics).toBeUndefined();
+
+    session.nativeCapabilityState.clipboard!.currentText = "mutated";
+    artifacts.nativeCapabilityRecords.at(-1)!.payload.locale = "mutated";
+    nativeEvents.at(-1)!.payload.locale = "mutated";
+
+    expect((await app.session()).nativeCapabilityState.clipboard?.currentText).toBe(
+      "Copied by end-to-end agent"
+    );
+    expect((await app.artifacts()).nativeCapabilityRecords.at(-1)?.payload.locale).toBe(
+      "en_US"
+    );
+    expect((await app.native.events()).at(-1)?.payload.locale).toBe("en_US");
+  });
 });
 
 function representativeNativeMockManifest(): RuntimeNativeCapabilityManifest {

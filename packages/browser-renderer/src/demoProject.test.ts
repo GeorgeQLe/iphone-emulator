@@ -334,4 +334,102 @@ struct NativeAgentFlowPreviewDemo {
       },
     });
   });
+
+  it("keeps the bundled demo aligned with the native SDK agent flow story", () => {
+    const swiftSource = demoProjectFiles.find((file) =>
+      file.path.endsWith("TravelPlannerApp.swift")
+    )?.value;
+
+    expect(swiftSource).toBeDefined();
+
+    const result = compileDemoProject(swiftSource ?? "");
+
+    expect(result.tree.appIdentifier).toBe("TravelPlannerApp");
+    expect(result.nativePreview).toMatchObject({
+      permissionPrompts: [
+        { capability: "camera", result: "granted" },
+        { capability: "location", result: "denied" },
+        { capability: "notifications", result: "granted" },
+      ],
+      fixtureOutputs: [
+        {
+          capability: "camera",
+          identifier: "front-camera-still",
+          fixtureName: "profile-photo",
+        },
+        {
+          capability: "photos",
+          identifier: "recent-library-pick",
+          fixtureName: "profile-photo,receipt-photo",
+        },
+      ],
+      clipboard: {
+        text: "Copied by agent",
+      },
+      filePickerRecords: [
+        {
+          identifier: "document-picker",
+          selectedFiles: ["Fixtures/itinerary.pdf"],
+        },
+      ],
+      shareSheetRecords: [
+        {
+          identifier: "share-itinerary",
+          activityType: "copy",
+          items: ["Fixtures/itinerary.pdf"],
+        },
+      ],
+      notificationRecords: [
+        {
+          identifier: "trip-reminder",
+          title: "Trip Reminder",
+          state: "scheduled",
+        },
+      ],
+      automationFlow: {
+        steps: [
+          { action: "native.permissions.request", capability: "camera" },
+          { action: "native.permissions.set", capability: "location" },
+          {
+            action: "native.camera.capture",
+            capability: "camera",
+            identifier: "front-camera-still",
+          },
+          {
+            action: "native.photos.select",
+            capability: "photos",
+            identifier: "recent-library-pick",
+          },
+          { action: "native.location.current", capability: "location" },
+          { action: "native.clipboard.write", capability: "clipboard" },
+          {
+            action: "native.files.select",
+            capability: "files",
+            identifier: "document-picker",
+          },
+          {
+            action: "native.shareSheet.complete",
+            capability: "shareSheet",
+            identifier: "share-itinerary",
+          },
+          {
+            action: "native.notifications.schedule",
+            capability: "notifications",
+            identifier: "trip-reminder",
+          },
+          {
+            action: "native.notifications.deliver",
+            capability: "notifications",
+            identifier: "trip-reminder",
+          },
+          { action: "native.device.snapshot", capability: "deviceEnvironment" },
+        ],
+      },
+      unsupportedControls: ["biometrics", "health", "speech", "sensors", "haptics"],
+      deviceEnvironment: {
+        colorScheme: "light",
+        locale: "en_US",
+      },
+    });
+  });
 });
