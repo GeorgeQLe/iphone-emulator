@@ -1,5 +1,8 @@
 # History
 
+- Completed the post-Phase 10 documentation cleanup by adding README first-green-run commands, current local package boundaries, and a dedicated CI fixture recipe with artifact retention guidance. Linked the recipe from native capability docs and the strict-mode baseline example, and marked the remaining priority documentation todos complete.
+- Validation: `swift test` passed with 48 Swift tests, `npm --prefix packages/automation-sdk test` passed with 12 tests, `npm --prefix packages/browser-renderer test` passed with 13 tests, and `npx tsx examples/strict-mode-baseline/automation-example.ts` passed with 20 native capability artifact records.
+
 - Created `research/devtool-positioning.md` for the devtool research queue. The positioning memo frames the project as an open-source iPhone-like app harness for deterministic agent testing, compares it against iOS Simulator, device clouds, Playwright/browser-only testing, XCTest, SwiftUI previews, homegrown harnesses, and React Native paths, and records trust claims plus language to avoid simulator-fidelity overpromising.
 - Validation: documentation-only research update; no Swift or TypeScript validation was required.
 

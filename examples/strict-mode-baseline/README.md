@@ -2,6 +2,17 @@
 
 This example shows the current strict-mode fixture path from Swift declarations to semantic snapshots, deterministic browser preview metadata, native mock service records, and the in-memory automation SDK artifact workflow.
 
+For the shortest first-green-run path from the repository root:
+
+```sh
+swift test
+npm --prefix packages/automation-sdk test
+npm --prefix packages/browser-renderer test
+npx tsx examples/strict-mode-baseline/automation-example.ts
+```
+
+For a CI job that preserves reviewable fixture artifacts, see [`../../docs/ci-fixture-recipe.md`](../../docs/ci-fixture-recipe.md).
+
 ## Files In This Example
 
 - `BaselineExampleApp.swift` shows the intended strict-mode declaration shape for an app and a small catalog of currently supported primitives.
@@ -220,6 +231,7 @@ npm --prefix packages/browser-renderer run build
 npm --prefix packages/automation-sdk run typecheck
 npm --prefix packages/automation-sdk test
 npm --prefix packages/automation-sdk run build
+npx tsx examples/strict-mode-baseline/automation-example.ts
 ```
 
 ## Current Limitations

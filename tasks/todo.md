@@ -12,8 +12,8 @@
 - [x] `$devtool-positioning` - created `research/devtool-positioning.md` because the enabled devtool pack expected this research output and it was missing.
 - [x] `$devtool-monetization` - created `research/devtool-monetization.md` because the enabled devtool pack expected this research output and it was missing.
 - [x] `$spec-drift fix all` - reconciled `specs/open-source-iphone-emulator.md` because the latest implementation commit was newer than the spec (`2026-04-30 10:33:56 -0400` vs `2026-04-28 15:43:06 -0400`).
-- [ ] Add README first-green-run and current-packaging language so the free local harness value is obvious and bounded.
-- [ ] Add a CI fixture recipe with artifact retention guidance as the first team-conversion proof.
+- [x] Add README first-green-run and current-packaging language so the free local harness value is obvious and bounded.
+- [x] Add a CI fixture recipe with artifact retention guidance as the first team-conversion proof.
 
 ## Phase 10: M9 Native Capability Automation and Agent Flows
 

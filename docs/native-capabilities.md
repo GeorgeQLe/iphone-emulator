@@ -4,6 +4,8 @@ The native capability registry is a deterministic contract layer for source that
 
 The registry lets the runtime, diagnostics layer, browser preview, and automation SDK agree on the same capability names, manifest fields, deterministic mock outputs, and fail-closed behavior. The first supported mock services are fixture-backed records for permissions, camera/photos, location, clipboard, keyboard/input traits, files, share sheets, and notifications.
 
+For CI retention of native capability records alongside semantic trees, logs, route fixtures, screenshot metadata, and session state, see [`ci-fixture-recipe.md`](ci-fixture-recipe.md).
+
 ## Capability IDs
 
 `RuntimeNativeCapabilityID` defines the current taxonomy:
@@ -110,6 +112,8 @@ Native mock state is exposed through existing launch, session, log, semantic tre
 - Semantic root metadata mirrors inspectable values such as `native.camera.fixture`, `native.photos.selection.<identifier>`, `native.location.latitude`, `native.clipboard.currentText`, `native.keyboard.focusedElementID`, `native.files.selection.<identifier>`, `native.shareSheet.<identifier>.completionState`, and `native.notification.<identifier>`.
 - The TypeScript SDK accepts the same `nativeCapabilities` launch manifest, exposes `session.nativeCapabilityState`, `session.nativeCapabilityEvents`, `artifactBundle.nativeCapabilityRecords`, and provides `app.native.events()` plus `app.nativeCapabilityEvents()` for cloned event inspection.
 - `app.native.*` provides high-level deterministic controls for permissions, camera, photos, location, clipboard, files, share sheets, notifications, device snapshots, native event inspection, and native artifact inspection.
+
+In CI, preserve `artifactBundle.nativeCapabilityRecords`, `session.nativeCapabilityState`, and `app.native.events()` output as JSON artifacts. Those files are the current native mock review surface because screenshots are metadata-only and native services are deterministic records.
 
 Example agent flow:
 
