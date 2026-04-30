@@ -1,5 +1,8 @@
 # History
 
+- Created `research/devtool-adoption.md` for the devtool research queue. The adoption plan maps agent fixture, CI regression, migration diagnostics, contributor expansion, and demo/preview loops; it recommends first-green-run docs, CI fixture proof artifacts, strict-mode/native templates, troubleshooting, contributor guidance, and delaying broad outreach until live transport and transport-backed SDK adoption gates are clearer.
+- Validation: documentation-only research update; no Swift or TypeScript validation was required.
+
 - Created `research/devtool-dx-journey.md` for the devtool research queue. The journey maps discovery, install, quickstart, first success, error recovery, production adoption, team rollout, and retention for the current local-first SwiftPM/npm harness; it recommends a first-green-run quickstart, setup smoke check, troubleshooting docs, CI fixture recipe, contributor guide, and keeping live transport as the next adoption gate.
 - Validation: documentation-only research update; no Swift or TypeScript validation was required.
 
