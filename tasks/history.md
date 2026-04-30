@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 10 Step 10.3 by adding the high-level TypeScript automation SDK `app.native.*` namespace. `EmulatorApp.native` now exposes deterministic in-memory controls for permissions, camera, photos, location, clipboard, files, share sheet, notifications, device snapshots, native event inspection, and native artifact inspection, with exported controller/result types and clone-safe return values. The SDK mirrors the runtime native vocabulary without adding Swift transport coupling or live host native behavior.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
+
 - Completed Phase 10 Step 10.2 by adding deterministic runtime native automation command and event values. `RuntimeNativeAutomationAction` now covers permission request/set, camera capture, photo selection, location update, clipboard read/write, file selection, share sheet completion, notification schedule/delivery, and device environment snapshots; `RuntimeAutomationCommand.nativeAutomation` and `RuntimeAutomationResponse.Result.nativeCapabilityEvents` now carry those values through the runtime coordinator. Native automation actions update session native state, canonical events, logs, artifact records, semantic metadata, snapshots, and the retained bridge without invoking host native frameworks.
 - Validation: `swift test --filter RuntimeHostContractTests` passed with 28 runtime host contract tests, and `swift build` passed cleanly with no warnings.
 
