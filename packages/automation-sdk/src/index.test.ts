@@ -1219,6 +1219,251 @@ describe("Emulator", () => {
     });
   });
 
+  it("hardens clipboard files share sheet notifications and device controls", async () => {
+    const app = (await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      device: {
+        viewport: { width: 393, height: 852, scale: 3 },
+        colorScheme: "dark",
+        locale: "en_US",
+        clock: {
+          frozenAtISO8601: "2026-04-28T12:00:00Z",
+          timeZone: "America/New_York",
+        },
+        geolocation: { latitude: 40.7134, longitude: -74.0059, accuracyMeters: 18 },
+        network: { isOnline: true, latencyMilliseconds: 20, downloadKbps: 2_500 },
+      },
+      nativeCapabilities: representativeNativeMockManifest(),
+    })) as NativeAutomationApp;
+
+    const initialRead = await app.native.clipboard.read();
+    expect(initialRead).toMatchObject({
+      text: "Updated profile notes",
+      record: {
+        capability: "clipboard",
+        name: "native.clipboard.read.automation",
+        payload: {
+          identifier: "clipboard",
+          text: "Updated profile notes",
+        },
+      },
+    });
+    initialRead.record.payload.text = "mutated clipboard";
+
+    await expect(app.native.clipboard.write("Agent copied receipt")).resolves.toMatchObject({
+      capability: "clipboard",
+      name: "native.clipboard.write.automation",
+      payload: {
+        identifier: "clipboard",
+        text: "Agent copied receipt",
+      },
+    });
+    await expect(app.native.clipboard.read()).resolves.toMatchObject({
+      text: "Agent copied receipt",
+    });
+
+    const fileSelection = await app.native.files.select("document-picker");
+    expect(fileSelection).toMatchObject({
+      selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+      record: {
+        capability: "files",
+        name: "native.files.selection.document-picker",
+        payload: {
+          selectedFiles: "Fixtures/profile.pdf,Fixtures/receipt.pdf",
+          contentTypes: "com.adobe.pdf,public.image",
+          allowsMultipleSelection: "true",
+        },
+      },
+    });
+    fileSelection.selectedFiles[0] = "mutated.pdf";
+
+    await expect(app.native.files.select("missing-document")).rejects.toThrow(
+      "no file picker fixture named missing-document"
+    );
+    await expect(
+      app.native.shareSheet.complete("missing-share", { completionState: "completed" })
+    ).rejects.toThrow("no share sheet fixture named missing-share");
+
+    await expect(
+      app.native.shareSheet.complete("share-receipt", { completionState: "cancelled" })
+    ).resolves.toMatchObject({
+      capability: "shareSheet",
+      name: "native.shareSheet.complete.share-receipt",
+      payload: {
+        identifier: "share-receipt",
+        completionState: "cancelled",
+      },
+    });
+
+    await expect(app.native.notifications.requestAuthorization()).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.authorization.request",
+      payload: {
+        initialState: "prompt",
+        state: "granted",
+        result: "granted",
+        resolvedState: "granted",
+      },
+    });
+    await expect(app.native.permissions.snapshot()).resolves.toMatchObject({
+      notifications: {
+        state: "granted",
+        resolvedState: "granted",
+        prompt: {
+          presented: false,
+        },
+      },
+    });
+    await expect(app.native.notifications.schedule("profile-reminder")).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.schedule.profile-reminder",
+      payload: {
+        state: "scheduled",
+        authorizationState: "granted",
+      },
+    });
+    await expect(app.native.notifications.deliver("profile-reminder")).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.deliver.profile-reminder",
+      payload: {
+        state: "delivered",
+        authorizationState: "granted",
+      },
+    });
+
+    const deviceSnapshot = await app.native.device.snapshot();
+    expect(deviceSnapshot).toMatchObject({
+      viewport: { width: 393, height: 852, scale: 3 },
+      colorScheme: "dark",
+      locale: "en_US",
+      clock: {
+        frozenAtISO8601: "2026-04-28T12:00:00Z",
+        timeZone: "America/New_York",
+      },
+      network: {
+        isOnline: true,
+        latencyMilliseconds: 20,
+        downloadKbps: 2_500,
+      },
+    });
+    deviceSnapshot.viewport.width = 0;
+
+    const inspected = await app.session();
+    expect(inspected.nativeCapabilityState).toMatchObject({
+      clipboard: {
+        currentText: "Agent copied receipt",
+        readRecords: expect.arrayContaining([
+          expect.objectContaining({
+            name: "automation-read",
+            text: "Updated profile notes",
+          }),
+          expect.objectContaining({
+            name: "automation-read",
+            text: "Agent copied receipt",
+          }),
+        ]),
+        writeRecords: expect.arrayContaining([
+          expect.objectContaining({
+            name: "automation-write",
+            text: "Agent copied receipt",
+          }),
+        ]),
+      },
+      filePickerRecords: [
+        {
+          identifier: "document-picker",
+          selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+          contentTypes: ["com.adobe.pdf", "public.image"],
+          allowsMultipleSelection: true,
+          payload: expect.any(Object),
+        },
+      ],
+      shareSheetRecords: [
+        {
+          identifier: "share-receipt",
+          completionState: "cancelled",
+          items: ["Fixtures/profile.pdf", "Summary"],
+          excludedActivityTypes: ["com.apple.UIKit.activity.PostToTwitter"],
+          payload: expect.any(Object),
+        },
+      ],
+      notificationRecords: expect.arrayContaining([
+        expect.objectContaining({
+          identifier: "profile-reminder",
+          state: "scheduled",
+          authorizationState: "granted",
+        }),
+        expect.objectContaining({
+          identifier: "profile-reminder",
+          state: "delivered",
+          authorizationState: "granted",
+        }),
+      ]),
+      diagnosticRecords: expect.arrayContaining([
+        expect.objectContaining({
+          capability: "files",
+          code: "missingFixture",
+          payload: expect.objectContaining({ identifier: "missing-document" }),
+        }),
+        expect.objectContaining({
+          capability: "shareSheet",
+          code: "missingFixture",
+          payload: expect.objectContaining({ identifier: "missing-share" }),
+        }),
+      ]),
+    });
+    inspected.nativeCapabilityState.clipboard!.currentText = "mutated clipboard";
+    inspected.nativeCapabilityState.shareSheetRecords[0].completionState = "mutated";
+
+    await expect(app.session()).resolves.toMatchObject({
+      device: {
+        viewport: { width: 393 },
+      },
+      nativeCapabilityState: {
+        clipboard: {
+          currentText: "Agent copied receipt",
+        },
+        shareSheetRecords: [
+          {
+            completionState: "cancelled",
+          },
+        ],
+      },
+    });
+    expect((await app.native.events()).map((event) => event.name)).toEqual(
+      expect.arrayContaining([
+        "native.clipboard.read.automation",
+        "native.clipboard.write.automation",
+        "native.files.selection.document-picker",
+        "native.diagnostic.files.missingFixture",
+        "native.diagnostic.shareSheet.missingFixture",
+        "native.shareSheet.complete.share-receipt",
+        "native.notifications.authorization.request",
+        "native.notifications.schedule.profile-reminder",
+        "native.notifications.deliver.profile-reminder",
+        "native.deviceEnvironment.snapshot",
+      ])
+    );
+    expect((await app.native.artifacts()).map((record) => record.name)).toEqual(
+      expect.arrayContaining([
+        "native.diagnostic.files.missingFixture",
+        "native.diagnostic.shareSheet.missingFixture",
+        "native.deviceEnvironment.snapshot",
+      ])
+    );
+    await expect(app.native.device.snapshot()).resolves.toMatchObject({
+      viewport: { width: 393 },
+    });
+
+    const unsupportedControls = app.native as unknown as Record<string, unknown>;
+    expect(unsupportedControls.biometrics).toBeUndefined();
+    expect(unsupportedControls.health).toBeUndefined();
+    expect(unsupportedControls.speech).toBeUndefined();
+    expect(unsupportedControls.sensors).toBeUndefined();
+    expect(unsupportedControls.haptics).toBeUndefined();
+  });
+
   it("covers representative Phase 9 native mock flows through SDK inspection", async () => {
     const nativeCapabilities = representativeNativeMockManifest();
     const app = await Emulator.launch({
@@ -1499,6 +1744,7 @@ function representativeNativeMockManifest(): RuntimeNativeCapabilityManifest {
           activityType: "com.apple.UIKit.activity.Mail",
           items: "Fixtures/profile.pdf,Summary",
           completionState: "completed",
+          excludedActivityTypes: "com.apple.UIKit.activity.PostToTwitter",
         },
       },
       {

@@ -469,6 +469,13 @@ class InMemoryEmulatorApp implements EmulatorApp {
       (candidate) => candidate.identifier === fixtureIdentifier
     );
     if (!record) {
+      this.appendNativeDiagnostic({
+        capability: "files",
+        code: "missingFixture",
+        message: `No file picker fixture named ${fixtureIdentifier} is configured for deterministic native automation.`,
+        suggestedAdaptation: `Add a files mock with identifier ${fixtureIdentifier} to nativeCapabilities.configuredMocks.`,
+        payload: { identifier: fixtureIdentifier },
+      });
       throw new Error(`no file picker fixture named ${fixtureIdentifier}`);
     }
 
@@ -494,6 +501,13 @@ class InMemoryEmulatorApp implements EmulatorApp {
       (candidate) => candidate.identifier === identifier
     );
     if (!record) {
+      this.appendNativeDiagnostic({
+        capability: "shareSheet",
+        code: "missingFixture",
+        message: `No share sheet fixture named ${identifier} is configured for deterministic native automation.`,
+        suggestedAdaptation: `Add a shareSheet mock with identifier ${identifier} to nativeCapabilities.configuredMocks.`,
+        payload: { identifier },
+      });
       throw new Error(`no share sheet fixture named ${identifier}`);
     }
 
@@ -512,17 +526,24 @@ class InMemoryEmulatorApp implements EmulatorApp {
 
   private nativeNotificationAuthorizationRequest(): RuntimeNativeCapabilityRecord {
     const permission = this.ensureNativePermission("notifications");
-    permission.resolvedState = resolveNativePermissionState(
-      permission.state,
-      permission.prompt.result
-    );
+    const initialState = permission.state;
+    const result = permission.prompt.result;
+    const requestedState = result ?? permission.resolvedState;
+
+    permission.state = requestedState;
+    permission.resolvedState = requestedState;
+    permission.prompt = {
+      presented: requestedState === "prompt",
+      result: requestedState === "prompt" ? result : undefined,
+    };
 
     const record = this.makeNativeRecord(
       "notifications",
       "native.notifications.authorization.request",
       {
+        initialState,
         state: permission.state,
-        result: permission.prompt.result,
+        result,
         resolvedState: permission.resolvedState,
       }
     );
