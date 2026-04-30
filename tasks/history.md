@@ -1,5 +1,8 @@
 # History
 
+- Created `research/devtool-integration-map.md` for the devtool research queue. The map documents current SwiftPM, npm workspace, browser renderer, automation SDK, native capability, diagnostics, and docs/example integration surfaces; it identifies live runtime-to-renderer transport, transport-backed automation SDK, MCP/agent server, CI recipes, package publishing, templates, and spec reconciliation as the main future integration work.
+- Validation: documentation-only research update; no Swift or TypeScript validation was required.
+
 - Completed Phase 10 Step 10.9 as an intentional no-op native automation boundary review. Re-read the Swift runtime native automation value records, TypeScript SDK `app.native.*` namespace, browser native preview/source-lowering helpers, native capability docs, README, and strict-mode example together; no concrete duplication, type drift, hidden live-host behavior, or unclear API ownership justified a source refactor.
 - Validation: no source validation rerun was needed because Step 10.9 changed no runtime, SDK, renderer, docs, or example source files. Reused the Step 10.8 full green validation surface.
 - Archived the completed Phase 10 plan to `tasks/phases/phase-10.md` and marked Phase 10 complete in `tasks/roadmap.md`. No further implementation phase is currently queued.

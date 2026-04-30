@@ -6,7 +6,7 @@
 
 ## Priority Documentation Todo
 
-- [ ] `$devtool-integration-map` - create `research/devtool-integration-map.md` because the enabled devtool pack expects this research output and it is missing.
+- [x] `$devtool-integration-map` - created `research/devtool-integration-map.md` because the enabled devtool pack expected this research output and it was missing.
 - [ ] `$devtool-dx-journey` - create `research/devtool-dx-journey.md` because the enabled devtool pack expects this research output and it is missing.
 - [ ] `$devtool-adoption` - create `research/devtool-adoption.md` because the enabled devtool pack expects this research output and it is missing.
 - [ ] `$devtool-positioning` - create `research/devtool-positioning.md` because the enabled devtool pack expects this research output and it is missing.
