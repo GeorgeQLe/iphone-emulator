@@ -65,6 +65,8 @@ public struct RuntimeAutomationCoordinator {
             result = .logs(try requireSession().logs)
         case let .recordNetworkRequest(request):
             result = try recordNetworkRequest(request)
+        case let .nativeAutomation(action):
+            result = try applyNativeAutomation(action)
         }
 
         return RuntimeAutomationResponse(
@@ -246,6 +248,48 @@ public struct RuntimeAutomationCoordinator {
         session = currentSession
 
         return .networkRecord(record)
+    }
+
+    private mutating func applyNativeAutomation(
+        _ action: RuntimeNativeAutomationAction
+    ) throws -> RuntimeAutomationResponse.Result {
+        var currentSession = try requireSession()
+        let revision = currentSession.snapshot.revision + 1
+        let event = action.eventRecord(
+            revision: revision,
+            device: currentSession.device
+        )
+        currentSession.nativeCapabilityState.apply(
+            action,
+            event: event,
+            device: currentSession.device
+        )
+        currentSession.nativeCapabilityEvents.append(event)
+
+        let logEntry = RuntimeAutomationLogEntry(
+            level: .info,
+            message: event.name
+        )
+        currentSession.logs.append(logEntry)
+        currentSession.artifactBundle.logs = currentSession.logs
+        currentSession.artifactBundle.nativeCapabilityRecords = currentSession.nativeCapabilityState.artifactRecords
+
+        let updatedSnapshot = RuntimeTreeSnapshot(
+            appIdentifier: currentSession.snapshot.appIdentifier,
+            tree: tree(
+                currentSession.snapshot.tree,
+                applying: currentSession.nativeCapabilityState.semanticMetadata
+            ),
+            lifecycleState: currentSession.snapshot.lifecycleState,
+            revision: revision,
+            device: currentSession.device
+        )
+        currentSession.snapshot = updatedSnapshot
+
+        session = currentSession
+        bridge.retain(updatedSnapshot)
+
+        return .nativeCapabilityEvents(currentSession.nativeCapabilityEvents)
     }
 
     private func findMatches(for query: RuntimeAutomationSemanticQuery) throws -> [UITreeNode] {

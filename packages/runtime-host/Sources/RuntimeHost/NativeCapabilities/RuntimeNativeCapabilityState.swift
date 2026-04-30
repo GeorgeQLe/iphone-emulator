@@ -303,7 +303,254 @@ public struct RuntimeNativeCapabilityState: Hashable, Codable, Sendable {
             metadata["native.notification.\(notificationRecord.identifier)"] = notificationRecord.state
         }
 
+        for deviceRecord in artifactRecords where deviceRecord.capability == .deviceEnvironment {
+            for (key, value) in deviceRecord.payload where !value.isEmpty {
+                metadata["native.deviceEnvironment.\(key)"] = value
+            }
+        }
+
         return metadata
+    }
+
+    public mutating func apply(
+        _ action: RuntimeNativeAutomationAction,
+        event: RuntimeNativeCapabilityEventRecord,
+        device: RuntimeDeviceSettings
+    ) {
+        switch action {
+        case let .requestPermission(capability):
+            requestPermission(capability)
+        case let .setPermission(capability, state):
+            setPermission(capability, state: state)
+        case let .captureCamera(identifier, fixtureName, mediaType, outputPath):
+            let resolvedFixtureName = fixtureName
+                ?? fixtureOutputs.first { $0.capability == .camera && $0.identifier == identifier }?.fixtureName
+                ?? cameraCaptures.first { $0.identifier == identifier }?.fixtureName
+                ?? identifier
+            let capture = RuntimeNativeCameraCaptureRecord(
+                identifier: identifier,
+                fixtureName: resolvedFixtureName,
+                mediaType: mediaType,
+                outputPath: outputPath,
+                permissionState: permissionState(for: .camera),
+                payload: event.payload
+            )
+            cameraCaptures.append(capture)
+            upsertArtifact(capture.artifactRecord)
+        case let .selectPhoto(identifier, fixtureName, assetIdentifiers, mediaTypes):
+            let existingSelection = photoSelections.first { $0.identifier == identifier }
+            let selection = RuntimeNativePhotoSelectionRecord(
+                identifier: identifier,
+                fixtureName: fixtureName ?? existingSelection?.fixtureName ?? identifier,
+                assetIdentifiers: assetIdentifiers.isEmpty ? existingSelection?.assetIdentifiers ?? [] : assetIdentifiers,
+                mediaTypes: mediaTypes.isEmpty ? existingSelection?.mediaTypes ?? [] : mediaTypes,
+                permissionState: permissionState(for: .photos),
+                payload: event.payload
+            )
+            photoSelections.append(selection)
+            upsertArtifact(selection.artifactRecord)
+        case let .updateLocation(identifier, latitude, longitude, accuracyMeters):
+            let coordinate = RuntimeNativeLocationCoordinate(
+                latitude: latitude,
+                longitude: longitude,
+                accuracyMeters: accuracyMeters,
+                payload: event.payload
+            )
+            let update = RuntimeNativeLocationUpdateRecord(
+                name: identifier,
+                atRevision: event.atRevision,
+                coordinate: coordinate,
+                payload: event.payload
+            )
+            if location == nil {
+                location = RuntimeNativeLocationState(
+                    permissionState: permissionState(for: .location),
+                    currentCoordinate: coordinate,
+                    scriptedUpdates: [update]
+                )
+            } else {
+                location?.currentCoordinate = coordinate
+                location?.scriptedUpdates.append(update)
+                location?.scriptedUpdates.sort { $0.atRevision < $1.atRevision }
+            }
+            upsertArtifacts(location?.artifactRecords ?? [])
+        case let .readClipboard(identifier):
+            var clipboardState = clipboard ?? RuntimeNativeClipboardState(identifier: identifier)
+            let read = RuntimeNativeClipboardReadRecord(
+                name: identifier,
+                atRevision: event.atRevision,
+                text: clipboardState.currentText,
+                payload: event.payload
+            )
+            clipboardState.readRecords.append(read)
+            clipboard = clipboardState
+            upsertArtifacts(clipboard?.artifactRecords ?? [])
+        case let .writeClipboard(identifier, text):
+            var clipboardState = clipboard ?? RuntimeNativeClipboardState(identifier: identifier)
+            let write = RuntimeNativeClipboardWriteRecord(
+                name: identifier,
+                atRevision: event.atRevision,
+                text: text,
+                payload: event.payload
+            )
+            clipboardState.writeRecords.append(write)
+            clipboardState.currentText = text
+            clipboardState.text = text
+            clipboard = clipboardState
+            upsertArtifacts(clipboard?.artifactRecords ?? [])
+        case let .selectFiles(identifier, selectedFiles, contentTypes, allowsMultipleSelection):
+            let selection = RuntimeNativeFileSelectionRecord(
+                identifier: identifier,
+                selectedFiles: selectedFiles,
+                contentTypes: contentTypes,
+                allowsMultipleSelection: allowsMultipleSelection,
+                payload: event.payload
+            )
+            fileSelections.append(selection)
+            upsertArtifact(selection.artifactRecord)
+        case let .completeShareSheet(identifier, activityType, items, completionState):
+            let record = RuntimeNativeShareSheetRecord(
+                identifier: identifier,
+                activityType: activityType,
+                items: items,
+                completionState: completionState,
+                payload: event.payload
+            )
+            shareSheetRecords.append(record)
+            upsertArtifact(record.artifactRecord)
+        case let .scheduleNotification(identifier, title, body, trigger):
+            let record = RuntimeNativeNotificationRecord(
+                identifier: identifier,
+                state: "scheduled",
+                authorizationState: permissionState(for: .notifications),
+                title: title,
+                body: body,
+                trigger: trigger,
+                atRevision: event.atRevision,
+                payload: event.payload
+            )
+            notificationRecords.append(record)
+            upsertArtifact(record.artifactRecord)
+        case let .deliverNotification(identifier, title, body):
+            let record = RuntimeNativeNotificationRecord(
+                identifier: identifier,
+                state: "delivered",
+                authorizationState: permissionState(for: .notifications),
+                title: title,
+                body: body,
+                atRevision: event.atRevision,
+                payload: event.payload
+            )
+            notificationRecords.append(record)
+            upsertArtifact(record.artifactRecord)
+        case .snapshotDeviceEnvironment:
+            upsertArtifact(
+                RuntimeNativeCapabilityArtifactRecord(
+                    capability: .deviceEnvironment,
+                    name: "device-environment-snapshot",
+                    kind: .semanticSnapshot,
+                    payload: event.payload
+                )
+            )
+            if device.geolocation != nil {
+                setPermission(.location, state: permissionState(for: .location))
+            }
+        }
+    }
+
+    private mutating func requestPermission(_ capability: RuntimeNativeCapabilityID) {
+        guard let index = permissions.firstIndex(where: { $0.capability == capability }) else {
+            permissions.append(
+                RuntimeNativePermissionRecord(
+                    capability: capability,
+                    state: .notRequested,
+                    strictModeAlternative: Self.defaultStrictModeAlternative(for: capability)
+                )
+            )
+            return
+        }
+
+        let permission = permissions[index]
+        setPermission(
+            capability,
+            state: permission.promptResult ?? permission.resolvedState
+        )
+    }
+
+    private mutating func setPermission(
+        _ capability: RuntimeNativeCapabilityID,
+        state: RuntimeNativePermissionState
+    ) {
+        if let index = permissions.firstIndex(where: { $0.capability == capability }) {
+            var permission = permissions[index]
+            permission.state = state
+            permission.promptResult = nil
+            permission.resolvedState = state
+            permissions[index] = permission
+        } else {
+            permissions.append(
+                RuntimeNativePermissionRecord(
+                    capability: capability,
+                    state: state,
+                    strictModeAlternative: Self.defaultStrictModeAlternative(for: capability)
+                )
+            )
+        }
+        propagatePermissionState(capability, state: state)
+    }
+
+    private mutating func propagatePermissionState(
+        _ capability: RuntimeNativeCapabilityID,
+        state: RuntimeNativePermissionState
+    ) {
+        switch capability {
+        case .camera:
+            for index in cameraCaptures.indices {
+                cameraCaptures[index].permissionState = state
+            }
+        case .photos:
+            for index in photoSelections.indices {
+                photoSelections[index].permissionState = state
+            }
+        case .location:
+            location?.permissionState = state
+        case .notifications:
+            for index in notificationRecords.indices {
+                notificationRecords[index].authorizationState = state
+            }
+        default:
+            break
+        }
+    }
+
+    private func permissionState(
+        for capability: RuntimeNativeCapabilityID
+    ) -> RuntimeNativePermissionState {
+        permissions.first { $0.capability == capability }?.resolvedState ?? .unsupported
+    }
+
+    private mutating func upsertArtifacts(
+        _ records: [RuntimeNativeCapabilityArtifactRecord]
+    ) {
+        records.forEach { upsertArtifact($0) }
+    }
+
+    private mutating func upsertArtifact(
+        _ record: RuntimeNativeCapabilityArtifactRecord
+    ) {
+        if let index = artifactRecords.firstIndex(where: {
+            $0.capability == record.capability && $0.name == record.name
+        }) {
+            artifactRecords[index] = record
+        } else {
+            artifactRecords.append(record)
+        }
+    }
+
+    private static func defaultStrictModeAlternative(
+        for capability: RuntimeNativeCapabilityID
+    ) -> String {
+        "Use deterministic \(capability.rawValue) native automation records instead of host framework calls."
     }
 
     private static func resolvedState(

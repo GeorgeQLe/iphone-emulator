@@ -1725,6 +1725,83 @@ struct RuntimeHostContractTests {
         #expect(response != RuntimeAutomationResponse.Result.closed)
     }
 
+    @Test("runtime coordinator applies native automation actions to session state")
+    func runtimeCoordinatorAppliesNativeAutomationActionsToSessionState() throws {
+        var coordinator = RuntimeAutomationCoordinator()
+        _ = try coordinator.handle(
+            RuntimeAutomationRequest(
+                id: "req-launch-native-automation",
+                command: .launch(
+                    RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        nativeCapabilities: representativeNativeMockManifest()
+                    )
+                )
+            )
+        )
+
+        let actions: [RuntimeNativeAutomationAction] = [
+            .setPermission(capability: .location, state: .denied),
+            .captureCamera(identifier: "front-camera-still"),
+            .updateLocation(identifier: "automation", latitude: 34.0522, longitude: -118.2437, accuracyMeters: 10),
+            .writeClipboard(identifier: "automation", text: "Copied profile"),
+            .scheduleNotification(
+                identifier: "profile-reminder",
+                title: "Profile Reminder",
+                body: "Review the copied profile.",
+                trigger: "2026-04-29T12:15:00Z"
+            ),
+            .snapshotDeviceEnvironment,
+        ]
+
+        var finalEvents: [RuntimeNativeCapabilityEventRecord] = []
+        for (index, action) in actions.enumerated() {
+            let response = try coordinator.handle(
+                RuntimeAutomationRequest(
+                    id: "req-native-action-\(index)",
+                    command: .nativeAutomation(action)
+                )
+            )
+            guard case let .nativeCapabilityEvents(events) = response.result else {
+                Issue.record("expected native capability events")
+                return
+            }
+            finalEvents = events
+        }
+
+        let metadata = coordinator.session?.snapshot.tree.scene.rootNode?.metadata ?? [:]
+        let artifactNames = coordinator.session?.artifactBundle.nativeCapabilityRecords.map(\.name) ?? []
+        let logMessages = coordinator.session?.logs.map(\.message) ?? []
+
+        #expect(finalEvents.suffix(actions.count).map(\.name) == [
+            "native.permission.location.set",
+            "native.camera.capture.front-camera-still",
+            "native.location.update.automation",
+            "native.clipboard.write.automation",
+            "native.notifications.schedule.profile-reminder",
+            "native.deviceEnvironment.snapshot",
+        ])
+        #expect(coordinator.session?.snapshot.revision == 7)
+        #expect(coordinator.session?.nativeCapabilityState.permissions.first { $0.capability == .location }?.resolvedState == .denied)
+        #expect(coordinator.session?.nativeCapabilityState.location?.permissionState == .denied)
+        #expect(coordinator.session?.nativeCapabilityState.cameraCaptures.last?.fixtureName == "profile-photo")
+        #expect(coordinator.session?.nativeCapabilityState.location?.currentCoordinate?.latitude == 34.0522)
+        #expect(coordinator.session?.nativeCapabilityState.clipboard?.currentText == "Copied profile")
+        #expect(coordinator.session?.nativeCapabilityState.notificationRecords.last?.state == "scheduled")
+        #expect(logMessages.contains("native.deviceEnvironment.snapshot"))
+        #expect(artifactNames.contains("camera-capture-front-camera-still"))
+        #expect(artifactNames.contains("clipboard-records"))
+        #expect(artifactNames.contains("notification-scheduled-profile-reminder"))
+        #expect(artifactNames.contains("device-environment-snapshot"))
+        #expect(metadata["native.permission.location.state"] == "denied")
+        #expect(metadata["native.camera.fixture"] == "profile-photo")
+        #expect(metadata["native.location.latitude"] == "34.0522")
+        #expect(metadata["native.clipboard.currentText"] == "Copied profile")
+        #expect(metadata["native.notification.profile-reminder"] == "scheduled")
+        #expect(metadata["native.deviceEnvironment.viewportWidth"] == "393")
+    }
+
     @Test("runtime app loader retains compatibility-lowered semantic trees")
     func loaderRetainsCompatibilityLoweredTree() throws {
         let analyzer = CompatibilityAnalyzer(matrix: .v1)

@@ -70,6 +70,214 @@ public struct RuntimeAutomationSemanticQuery: Hashable, Codable, Sendable {
     }
 }
 
+public enum RuntimeNativeAutomationAction: Hashable, Codable, Sendable {
+    case requestPermission(capability: RuntimeNativeCapabilityID)
+    case setPermission(capability: RuntimeNativeCapabilityID, state: RuntimeNativePermissionState)
+    case captureCamera(identifier: String = "front-camera-still", fixtureName: String? = nil, mediaType: String = "image", outputPath: String? = nil)
+    case selectPhoto(identifier: String = "recent-library-pick", fixtureName: String? = nil, assetIdentifiers: [String] = [], mediaTypes: [String] = [])
+    case updateLocation(identifier: String = "automation", latitude: Double, longitude: Double, accuracyMeters: Int = 0)
+    case readClipboard(identifier: String = "automation")
+    case writeClipboard(identifier: String = "automation", text: String)
+    case selectFiles(identifier: String = "document-picker", selectedFiles: [String] = [], contentTypes: [String] = [], allowsMultipleSelection: Bool = false)
+    case completeShareSheet(identifier: String = "share-receipt", activityType: String? = nil, items: [String] = [], completionState: String = "completed")
+    case scheduleNotification(identifier: String = "profile-reminder", title: String? = nil, body: String? = nil, trigger: String? = nil)
+    case deliverNotification(identifier: String = "profile-reminder", title: String? = nil, body: String? = nil)
+    case snapshotDeviceEnvironment
+
+    public static let supportedCapabilities: [RuntimeNativeCapabilityID] = [
+        .camera,
+        .location,
+        .photos,
+        .clipboard,
+        .files,
+        .shareSheet,
+        .notifications,
+        .deviceEnvironment,
+    ]
+
+    public static let canonicalEventNames: [String] = [
+        "native.permission.camera.request",
+        "native.permission.location.set",
+        "native.camera.capture.front-camera-still",
+        "native.photos.selection.recent-library-pick",
+        "native.location.update.automation",
+        "native.clipboard.read.automation",
+        "native.clipboard.write.automation",
+        "native.files.selection.document-picker",
+        "native.shareSheet.complete.share-receipt",
+        "native.notifications.schedule.profile-reminder",
+        "native.notifications.deliver.profile-reminder",
+        "native.deviceEnvironment.snapshot",
+    ]
+
+    public func eventRecord(
+        revision: Int,
+        device: RuntimeDeviceSettings? = nil
+    ) -> RuntimeNativeCapabilityEventRecord {
+        RuntimeNativeCapabilityEventRecord(
+            capability: capability,
+            name: eventName,
+            atRevision: revision,
+            payload: payload(device: device)
+        )
+    }
+
+    public var capability: RuntimeNativeCapabilityID {
+        switch self {
+        case let .requestPermission(capability), let .setPermission(capability, _):
+            capability
+        case .captureCamera:
+            .camera
+        case .selectPhoto:
+            .photos
+        case .updateLocation:
+            .location
+        case .readClipboard, .writeClipboard:
+            .clipboard
+        case .selectFiles:
+            .files
+        case .completeShareSheet:
+            .shareSheet
+        case .scheduleNotification, .deliverNotification:
+            .notifications
+        case .snapshotDeviceEnvironment:
+            .deviceEnvironment
+        }
+    }
+
+    public var eventName: String {
+        switch self {
+        case let .requestPermission(capability):
+            "native.permission.\(capability.rawValue).request"
+        case let .setPermission(capability, _):
+            "native.permission.\(capability.rawValue).set"
+        case let .captureCamera(identifier, _, _, _):
+            "native.camera.capture.\(identifier)"
+        case let .selectPhoto(identifier, _, _, _):
+            "native.photos.selection.\(identifier)"
+        case let .updateLocation(identifier, _, _, _):
+            "native.location.update.\(identifier)"
+        case let .readClipboard(identifier):
+            "native.clipboard.read.\(identifier)"
+        case let .writeClipboard(identifier, _):
+            "native.clipboard.write.\(identifier)"
+        case let .selectFiles(identifier, _, _, _):
+            "native.files.selection.\(identifier)"
+        case let .completeShareSheet(identifier, _, _, _):
+            "native.shareSheet.complete.\(identifier)"
+        case let .scheduleNotification(identifier, _, _, _):
+            "native.notifications.schedule.\(identifier)"
+        case let .deliverNotification(identifier, _, _):
+            "native.notifications.deliver.\(identifier)"
+        case .snapshotDeviceEnvironment:
+            "native.deviceEnvironment.snapshot"
+        }
+    }
+
+    private func payload(device: RuntimeDeviceSettings?) -> [String: String] {
+        switch self {
+        case let .requestPermission(capability):
+            return [
+                "capability": capability.rawValue,
+                "action": "request",
+            ]
+        case let .setPermission(capability, state):
+            return [
+                "capability": capability.rawValue,
+                "state": state.rawValue,
+                "action": "set",
+            ]
+        case let .captureCamera(identifier, fixtureName, mediaType, outputPath):
+            return compactStringRecord([
+                "identifier": identifier,
+                "fixtureName": fixtureName,
+                "mediaType": mediaType,
+                "outputPath": outputPath,
+            ])
+        case let .selectPhoto(identifier, fixtureName, assetIdentifiers, mediaTypes):
+            return compactStringRecord([
+                "identifier": identifier,
+                "fixtureName": fixtureName,
+                "assetIdentifiers": assetIdentifiers.joined(separator: ","),
+                "mediaTypes": mediaTypes.joined(separator: ","),
+            ])
+        case let .updateLocation(identifier, latitude, longitude, accuracyMeters):
+            return [
+                "identifier": identifier,
+                "latitude": String(latitude),
+                "longitude": String(longitude),
+                "accuracyMeters": String(accuracyMeters),
+            ]
+        case let .readClipboard(identifier):
+            return [
+                "identifier": identifier,
+                "action": "read",
+            ]
+        case let .writeClipboard(identifier, text):
+            return [
+                "identifier": identifier,
+                "text": text,
+                "action": "write",
+            ]
+        case let .selectFiles(identifier, selectedFiles, contentTypes, allowsMultipleSelection):
+            return [
+                "identifier": identifier,
+                "selectedFiles": selectedFiles.joined(separator: ","),
+                "contentTypes": contentTypes.joined(separator: ","),
+                "allowsMultipleSelection": String(allowsMultipleSelection),
+            ]
+        case let .completeShareSheet(identifier, activityType, items, completionState):
+            return compactStringRecord([
+                "identifier": identifier,
+                "activityType": activityType,
+                "items": items.joined(separator: ","),
+                "completionState": completionState,
+            ])
+        case let .scheduleNotification(identifier, title, body, trigger):
+            return compactStringRecord([
+                "identifier": identifier,
+                "title": title,
+                "body": body,
+                "trigger": trigger,
+                "state": "scheduled",
+            ])
+        case let .deliverNotification(identifier, title, body):
+            return compactStringRecord([
+                "identifier": identifier,
+                "title": title,
+                "body": body,
+                "state": "delivered",
+            ])
+        case .snapshotDeviceEnvironment:
+            return compactStringRecord([
+                "capability": RuntimeNativeCapabilityID.deviceEnvironment.rawValue,
+                "viewportWidth": device.map { String($0.viewport.width) },
+                "viewportHeight": device.map { String($0.viewport.height) },
+                "viewportScale": device.map { String($0.viewport.scale) },
+                "colorScheme": device?.colorScheme.rawValue,
+                "locale": device?.locale,
+                "clockFrozenAtISO8601": device?.clock.frozenAtISO8601,
+                "timeZone": device?.clock.timeZone,
+                "latitude": device?.geolocation.map { String($0.latitude) },
+                "longitude": device?.geolocation.map { String($0.longitude) },
+                "accuracyMeters": device?.geolocation.map { String($0.accuracyMeters) },
+                "isOnline": device.map { String($0.network.isOnline) },
+                "latencyMilliseconds": device.map { String($0.network.latencyMilliseconds) },
+                "downloadKbps": device.map { String($0.network.downloadKbps) },
+            ])
+        }
+    }
+
+    private func compactStringRecord(_ values: [String: String?]) -> [String: String] {
+        values.compactMapValues { value in
+            guard let value, !value.isEmpty else {
+                return nil
+            }
+            return value
+        }
+    }
+}
+
 public enum RuntimeAutomationCommand: Hashable, Codable, Sendable {
     case launch(RuntimeAutomationLaunchConfiguration)
     case close(sessionID: String? = nil)
@@ -83,6 +291,7 @@ public enum RuntimeAutomationCommand: Hashable, Codable, Sendable {
     case screenshot(name: String? = nil)
     case logs(sessionID: String? = nil)
     case recordNetworkRequest(RuntimeNetworkRequest)
+    case nativeAutomation(RuntimeNativeAutomationAction)
 }
 
 public struct RuntimeAutomationRequest: Hashable, Codable, Sendable {
@@ -108,6 +317,7 @@ public struct RuntimeAutomationResponse: Hashable, Codable, Sendable {
         case screenshot(RuntimeAutomationScreenshotMetadata)
         case logs([RuntimeAutomationLogEntry])
         case networkRecord(RuntimeNetworkRequestRecord)
+        case nativeCapabilityEvents([RuntimeNativeCapabilityEventRecord])
     }
 
     public var requestID: String
