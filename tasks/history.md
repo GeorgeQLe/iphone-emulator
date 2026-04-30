@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 10 Step 10.4 by hardening the TypeScript automation SDK's permission, camera/photo, and location native controls. Permission requests now consume deterministic prompt results into permission state, permission sets clear stale prompt results, camera/photo fixture actions include resolved permission state, and missing camera/photo fixtures plus location permission denial append normalized diagnostic native events and artifacts. Added focused coverage for undeclared permission defaults, fixture lookup failures, location-denial diagnostics, location update state, clone isolation, and event naming without changing Swift runtime files.
+- Validation: `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run typecheck`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings. `swift test --filter RuntimeHostContractTests` was not run because no runtime files changed.
+
 - Completed Phase 10 Step 10.3 by adding the high-level TypeScript automation SDK `app.native.*` namespace. `EmulatorApp.native` now exposes deterministic in-memory controls for permissions, camera, photos, location, clipboard, files, share sheet, notifications, device snapshots, native event inspection, and native artifact inspection, with exported controller/result types and clone-safe return values. The SDK mirrors the runtime native vocabulary without adding Swift transport coupling or live host native behavior.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
 
