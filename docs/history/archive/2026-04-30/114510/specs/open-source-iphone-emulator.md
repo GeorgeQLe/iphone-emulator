@@ -112,45 +112,6 @@ The runtime should fail closed. If code asks for a native service that has no de
 - Automation: tap, type, swipe/scroll, wait for element, inspect tree, screenshot, collect logs.
 - Diagnostics: unsupported import/symbol report with file/line where possible.
 
-### Current Implementation Baseline
-
-As of the April 30, 2026 drift audit, the repository implements an early fixture-backed baseline rather than the complete v1 scope above.
-
-Implemented strict-mode SDK primitives:
-
-- `Text`, `Button`, `TextField`, `List`, `VStack`, `HStack`, and `NavigationStack` lower to semantic `UITreeNode` values.
-- `Modal`, `TabView`, and `Alert` lower to semantic `UITreeScene` state.
-- The root Swift package exposes `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore`.
-
-Implemented runtime and automation contracts:
-
-- `RuntimeAppLoader` loads strict-mode or compatibility fixtures into retained `RuntimeTreeSnapshot` values.
-- Runtime automation command and response envelopes cover launch, close, tap, fill, type, wait, query, inspect, semantic snapshot, screenshot metadata, logs, network request records, and native automation actions.
-- The TypeScript automation SDK is currently in-memory and fixture-backed. `Emulator.launch` accepts `RuntimeAutomationLaunchOptions` with `appIdentifier`, `fixtureName`, optional `device`, and optional `nativeCapabilities`; only the `strict-mode-baseline` fixture is launchable through the current SDK.
-- The TypeScript SDK exposes locators by role, text, and test id; artifact/log/session access; network route and request recording; screenshot metadata; semantic tree inspection; and native automation namespaces.
-
-Implemented diagnostics and compatibility contracts:
-
-- `DiagnosticsCore` reports unsupported imports, symbols, modifiers, lifecycle hooks, and platform APIs with source locations and suggested adaptations.
-- `CompatibilityMatrix.v1` marks the initial SwiftUI import as supported, `VStack` lowering as partial, UIKit platform APIs as unsupported, and lifecycle hooks as deferred.
-
-Implemented native capability contracts:
-
-- The runtime manifest records required capabilities, configured mocks, scripted events, unsupported symbols, and artifact outputs.
-- Capability identifiers cover permissions, camera, photos, location, network, clipboard, keyboard input, files, share sheet, notifications, device environment, sensors, haptics, and unsupported APIs.
-- Automation event support currently covers camera capture, photo selection, location update/current state, clipboard read/write, file selection, share sheet completion, notification scheduling/delivery, permission request/set, and device environment snapshot.
-- Sensors and haptics are represented in the manifest taxonomy but do not yet have first-class automation actions.
-
-Not yet implemented from the full v1 scope:
-
-- Compiling arbitrary Swift source packages into runnable harness sessions from the TypeScript SDK.
-- A real JSON-RPC/WebSocket transport or MCP server.
-- Browser/Wasm runtime target.
-- Image view and swipe/scroll automation primitives.
-- Full storage APIs, environment values, observable state/bindings beyond the current semantic fixture model.
-- Real screenshot bytes; screenshots currently produce deterministic metadata records.
-- End-to-end source analyzer integration that automatically derives native capability manifests from arbitrary packages.
-
 ## 7. Native Capability Model
 
 The harness should maintain a native capability manifest for each source package or fixture. The manifest is derived from app declarations, compatibility analysis, and explicit launch configuration.
@@ -159,28 +120,13 @@ Example manifest:
 
 ```json
 {
-  "requiredCapabilities": [
-    {
-      "id": "camera",
-      "permissionState": "granted",
-      "strictModeAlternative": "Use deterministic camera fixture output."
-    },
-    {
-      "id": "location",
-      "permissionState": "denied",
-      "strictModeAlternative": "Use scripted location fixtures."
-    }
-  ],
-  "configuredMocks": [
-    {
-      "capability": "camera",
-      "identifier": "front-camera-still",
-      "payload": {
-        "fixtureName": "fixtures/profile-photo.jpg"
-      }
-    }
-  ],
-  "scriptedEvents": [],
+  "requiredCapabilities": ["camera", "location", "notifications"],
+  "configuredMocks": ["camera.nextCapture", "location.current"],
+  "permissions": {
+    "camera": "granted",
+    "location": "denied",
+    "notifications": "prompt"
+  },
   "unsupportedSymbols": []
 }
 ```
@@ -231,15 +177,16 @@ The main risk is custom native iOS modules. Those would require adapters, mocks,
 ### Swift Strict-Mode App
 
 ```swift
-import StrictModeSDK
+import IPhoneHarness
 
-struct TodoApp: App {
-    var body: some Scene {
-        Modal {
-            NavigationStack {
-                List {
-                    Text("Inbox")
-                    Button("Add")
+@HarnessApp
+struct TodoApp {
+    var body: some HarnessScene {
+        NavigationStack {
+            List {
+                Text("Inbox")
+                Button("Add") {
+                    // mutate app state
                 }
             }
         }
@@ -247,48 +194,14 @@ struct TodoApp: App {
 }
 ```
 
-Future strict-mode syntax may add macros and mutation handlers, but the current contract is semantic-tree lowering through `StrictModeSDK.App`, `Scene`, and `View`.
-
-```swift
-let tree = TodoApp().makeSemanticTree(appIdentifier: "TodoApp")
-```
-
-The older conceptual shape remains the target authoring direction:
-
-```swift
-NavigationStack {
-    List {
-        Text("Inbox")
-        Button("Add") {
-            // mutate app state
-        }
-    }
-}
-```
-
-The current runtime-representable equivalent is:
-
-```swift
-Modal {
-    NavigationStack {
-        List {
-            Text("Inbox")
-            Button("Add")
-        }
-    }
-}
-```
-
-State mutation closures are not yet part of the strict-mode SDK surface.
-
 ### TypeScript Automation
 
 ```ts
 import { Emulator } from "@iphone-emulator/sdk";
 
 const app = await Emulator.launch({
-  appIdentifier: "TodoApp",
-  fixtureName: "strict-mode-baseline",
+  projectPath: "./fixtures/TodoApp",
+  mode: "strict",
 });
 
 await app.getByText("Add").tap();
@@ -301,38 +214,31 @@ await app.close();
 
 ```ts
 const app = await Emulator.launch({
-  appIdentifier: "ProfileApp",
-  fixtureName: "strict-mode-baseline",
-  nativeCapabilities: {
-    requiredCapabilities: [
-      {
-        id: "camera",
-        permissionState: "granted",
-        strictModeAlternative: "Use deterministic camera fixture output.",
+  projectPath: "./fixtures/ProfileApp",
+  mode: "strict",
+  nativeMocks: {
+    permissions: {
+      camera: "granted",
+      location: "denied",
+    },
+    camera: {
+      nextCapture: "fixtures/profile-photo.jpg",
+    },
+    location: {
+      current: {
+        latitude: 40.7128,
+        longitude: -74.006,
+        accuracyMeters: 25,
       },
-      {
-        id: "location",
-        permissionState: "denied",
-        strictModeAlternative: "Use scripted location fixtures.",
-      },
-    ],
-    configuredMocks: [
-      {
-        capability: "camera",
-        identifier: "front-camera-still",
-        payload: {
-          fixtureName: "fixtures/profile-photo.jpg",
-        },
-      },
-    ],
-    scriptedEvents: [],
-    unsupportedSymbols: [],
-    artifactOutputs: [],
+    },
+    notifications: {
+      authorization: "prompt",
+    },
   },
 });
 
 await app.getByText("Take Photo").tap();
-const capture = await app.native.camera.capture("front-camera-still");
+const capture = await app.native.camera.lastCapture();
 const permissions = await app.native.permissions.snapshot();
 ```
 
