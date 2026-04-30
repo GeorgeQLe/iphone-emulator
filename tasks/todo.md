@@ -6,7 +6,7 @@
 
 ## Priority Task Queue
 
-- [ ] `$research-roadmap` - scan documentation health and refresh the research/spec task queue because all roadmap phases are complete (`tasks/roadmap.md` Phase 1 through Phase 10 are marked complete, latest roadmap mtime `2026-04-30 10:37:12`, and Phase 10 archive exists at `tasks/phases/phase-10.md` with mtime `2026-04-30 10:38:12`).
+- [x] Task pipeline has an active documentation queue; all implementation phases are complete, `$research-roadmap` has refreshed `## Priority Documentation Todo`, and the next unresolved item is `$roadmap` because `specs/open-source-iphone-emulator.md` was updated at `2026-04-30 11:46:12 -0400`, after `tasks/roadmap.md` at `2026-04-30 10:37:12 -0400`.
 
 ## Priority Documentation Todo
 
