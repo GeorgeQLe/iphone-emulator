@@ -298,6 +298,17 @@ body {
   overflow-wrap: anywhere;
 }
 
+.native-flow-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: #263442;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 360px) {
   body {
     padding: 16px 8px;

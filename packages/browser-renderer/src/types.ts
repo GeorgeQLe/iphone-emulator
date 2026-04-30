@@ -65,6 +65,9 @@ export interface NativePreviewState {
   filePickerRecords: NativeFilePickerPreview[];
   shareSheetRecords: NativeShareSheetPreview[];
   notificationRecords: NativeNotificationPreview[];
+  automationFlow?: NativeAutomationFlowPreview;
+  deviceEnvironment?: NativeDeviceEnvironmentPreview;
+  unsupportedControls?: string[];
 }
 
 export interface NativePermissionPromptPreview {
@@ -110,6 +113,24 @@ export interface NativeNotificationPreview {
   identifier: string;
   title: string;
   state: string;
+}
+
+export interface NativeAutomationFlowPreview {
+  steps: NativeAutomationFlowStepPreview[];
+}
+
+export interface NativeAutomationFlowStepPreview {
+  action: string;
+  capability: string;
+  identifier?: string;
+  detail?: string;
+}
+
+export interface NativeDeviceEnvironmentPreview {
+  viewport?: string;
+  colorScheme: string;
+  locale: string;
+  timeZone?: string;
 }
 
 export type RendererRenderArtifactKind = "render";

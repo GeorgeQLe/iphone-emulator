@@ -273,11 +273,11 @@ struct NativeAgentFlowPreviewDemo {
       nativePreview: {
         automationFlow: {
           steps: Array<{ action: string; capability: string; identifier?: string }>;
-          unsupportedControls: string[];
-          deviceEnvironment: {
-            colorScheme: string;
-            locale: string;
-          };
+        };
+        unsupportedControls: string[];
+        deviceEnvironment: {
+          colorScheme: string;
+          locale: string;
         };
       };
     };
@@ -326,11 +326,11 @@ struct NativeAgentFlowPreviewDemo {
           },
           { action: "native.device.snapshot", capability: "deviceEnvironment" },
         ],
-        unsupportedControls: ["biometrics", "health", "speech", "sensors", "haptics"],
-        deviceEnvironment: {
-          colorScheme: "light",
-          locale: "en_US",
-        },
+      },
+      unsupportedControls: ["biometrics", "health", "speech", "sensors", "haptics"],
+      deviceEnvironment: {
+        colorScheme: "light",
+        locale: "en_US",
       },
     });
   });

@@ -249,6 +249,33 @@ function renderNativePreview(
     );
   }
 
+  if (nativePreview.automationFlow?.steps.length) {
+    section.append(createNativeAutomationFlowCard(document, nativePreview));
+  }
+
+  if (nativePreview.deviceEnvironment) {
+    section.append(
+      createNativePreviewCard(document, "deviceEnvironment", "Device Environment", [
+        ...(nativePreview.deviceEnvironment.viewport
+          ? [["viewport", nativePreview.deviceEnvironment.viewport] as const]
+          : []),
+        ["scheme", nativePreview.deviceEnvironment.colorScheme],
+        ["locale", nativePreview.deviceEnvironment.locale],
+        ...(nativePreview.deviceEnvironment.timeZone
+          ? [["time zone", nativePreview.deviceEnvironment.timeZone] as const]
+          : []),
+      ])
+    );
+  }
+
+  if (nativePreview.unsupportedControls?.length) {
+    section.append(
+      createNativePreviewCard(document, "unsupported", "Unsupported Controls", [
+        ["controls", nativePreview.unsupportedControls.join(", ")],
+      ])
+    );
+  }
+
   for (const prompt of nativePreview.permissionPrompts.filter(
     (prompt) => !["camera", "photos", "notifications"].includes(prompt.capability)
   )) {
@@ -260,6 +287,36 @@ function renderNativePreview(
   }
 
   return section;
+}
+
+function createNativeAutomationFlowCard(
+  document: Document,
+  nativePreview: NativePreviewState
+): HTMLElement {
+  const card = document.createElement("section");
+  card.className = "native-preview-card";
+  card.dataset.nativeFlow = "true";
+
+  const heading = document.createElement("h3");
+  heading.textContent = "Agent Native Flow";
+  card.append(heading);
+
+  const list = document.createElement("ol");
+  list.className = "native-flow-list";
+  for (const [index, step] of nativePreview.automationFlow?.steps.entries() ?? []) {
+    const item = document.createElement("li");
+    item.textContent = [
+      `${index + 1}. ${step.action}`,
+      step.identifier,
+      step.detail,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(" ");
+    list.append(item);
+  }
+
+  card.append(list);
+  return card;
 }
 
 function createNativePreviewCard(
@@ -317,7 +374,10 @@ function hasNativePreviewRecords(nativePreview: NativePreviewState): boolean {
     nativePreview.keyboard !== undefined ||
     nativePreview.filePickerRecords.length > 0 ||
     nativePreview.shareSheetRecords.length > 0 ||
-    nativePreview.notificationRecords.length > 0
+    nativePreview.notificationRecords.length > 0 ||
+    (nativePreview.automationFlow?.steps.length ?? 0) > 0 ||
+    nativePreview.deviceEnvironment !== undefined ||
+    (nativePreview.unsupportedControls?.length ?? 0) > 0
   );
 }
 

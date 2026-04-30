@@ -60,6 +60,8 @@ struct TravelPlannerApp {
 
   var nativeMocks: some NativeCapabilityMocks {
     PermissionPrompt(.camera, result: .granted)
+    PermissionPrompt(.location, result: .denied)
+    PermissionPrompt(.notifications, result: .granted)
     CameraFixture("front-camera-still", fixtureName: "profile-photo")
     PhotoPickerFixture("recent-library-pick", assets: ["profile-photo", "receipt-photo"])
     LocationEvent(latitude: 35.0116, longitude: 135.7681, accuracyMeters: 18)
@@ -68,6 +70,25 @@ struct TravelPlannerApp {
     FilePickerFixture("document-picker", selectedFiles: ["Fixtures/itinerary.pdf"])
     ShareSheetFixture("share-itinerary", activityType: .copy, items: ["Fixtures/itinerary.pdf"])
     NotificationFixture("trip-reminder", title: "Trip Reminder", state: .scheduled)
+  }
+
+  var nativeAgentFlow: some NativeAutomationFlow {
+    NativePermissionRequest(.camera)
+    NativePermissionSet(.location, .denied)
+    NativeCameraCapture("front-camera-still")
+    NativePhotoSelection("recent-library-pick")
+    NativeLocationRead(expectPermission: .denied)
+    NativeClipboardWrite("Copied by agent")
+    NativeFileSelection("document-picker")
+    NativeShareCompletion("share-itinerary", state: .completed)
+    NativeNotificationSchedule("trip-reminder")
+    NativeNotificationDelivery("trip-reminder")
+    NativeDeviceEnvironmentSnapshot()
+    UnsupportedNativeControl(.biometrics)
+    UnsupportedNativeControl(.health)
+    UnsupportedNativeControl(.speech)
+    UnsupportedNativeControl(.sensors)
+    UnsupportedNativeControl(.haptics)
   }
 }
 `,
@@ -85,13 +106,79 @@ const app = await Emulator.launch({
     colorScheme: "light",
     locale: "en_US",
   },
+  nativeCapabilities: {
+    requiredCapabilities: [
+      {
+        id: "camera",
+        permissionState: "prompt",
+        strictModeAlternative: "Use deterministic camera fixtures.",
+      },
+      {
+        id: "photos",
+        permissionState: "granted",
+        strictModeAlternative: "Use deterministic photo picker fixtures.",
+      },
+      {
+        id: "location",
+        permissionState: "prompt",
+        strictModeAlternative: "Script location state instead of reading CoreLocation.",
+      },
+      {
+        id: "notifications",
+        permissionState: "prompt",
+        strictModeAlternative: "Record notification schedules in memory.",
+      },
+    ],
+    configuredMocks: [
+      {
+        capability: "camera",
+        identifier: "front-camera-still",
+        payload: { result: "granted", fixtureName: "profile-photo" },
+      },
+      {
+        capability: "photos",
+        identifier: "recent-library-pick",
+        payload: { fixtureName: "recent-library", assetIdentifiers: "profile-photo,receipt-photo" },
+      },
+      {
+        capability: "files",
+        identifier: "document-picker",
+        payload: { selectedFiles: "Fixtures/itinerary.pdf" },
+      },
+      {
+        capability: "shareSheet",
+        identifier: "share-itinerary",
+        payload: { activityType: "copy", items: "Fixtures/itinerary.pdf" },
+      },
+      {
+        capability: "notifications",
+        identifier: "notification-permission",
+        payload: { result: "granted" },
+      },
+    ],
+    scriptedEvents: [],
+    unsupportedSymbols: [],
+    artifactOutputs: [],
+  },
 });
 
 await app.getByText("Save Trip").tap();
+await app.native.permissions.request("camera");
+await app.native.permissions.set("location", "denied");
+await app.native.camera.capture("front-camera-still");
+await app.native.photos.select("recent-library-pick");
+await app.native.location.current();
+await app.native.clipboard.write("Copied by agent");
+await app.native.files.select("document-picker");
+await app.native.shareSheet.complete("share-itinerary", { completionState: "completed" });
+await app.native.notifications.schedule("trip-reminder");
+await app.native.device.snapshot();
+
 const traveler = await app.getByTestId("traveler-field").inspect();
 const artifacts = await app.artifacts();
+const nativeEvents = await app.native.events();
 
-console.log(traveler.value, artifacts.semanticSnapshots.length);
+console.log(traveler.value, artifacts.nativeCapabilityRecords.length, nativeEvents.length);
 await app.close();
 `,
   },
@@ -108,7 +195,8 @@ will eventually provide.
 1. Edit strict-mode Swift-like app code.
 2. Lower supported declarations into a semantic UI tree in the browser.
 3. Render the result in an iPhone-like preview.
-4. Let an agent inspect semantic state and artifacts.
+4. Let an agent configure deterministic native mocks, run high-level
+   app.native.* controls, and inspect semantic state plus native artifacts.
 `,
   },
 ];
@@ -453,12 +541,28 @@ function parseNativePreview(source: string): NativePreviewState | undefined {
       state: match[3],
     })
   );
+  const automationFlow = parseNativeAutomationFlow(source);
+  const deviceEnvironment = automationFlow?.steps.some(
+    (step) => step.action === "native.device.snapshot"
+  )
+    ? parseNativeDeviceEnvironment(source)
+    : undefined;
+  const unsupportedControls = Array.from(
+    source.matchAll(/UnsupportedNativeControl\s*\(\s*\.([A-Za-z0-9_]+)\s*\)/gu),
+    (match) => match[1]
+  );
+  const automationClipboardText = lastMatch(
+    source,
+    /NativeClipboardWrite\s*\(\s*"([^"]*)"\s*\)/gu
+  );
 
   const preview: NativePreviewState = {
     permissionPrompts,
     fixtureOutputs: [...cameraFixtures, ...photoPickerFixtures],
     locationEvents,
-    ...(clipboardText !== undefined ? { clipboard: { text: clipboardText } } : {}),
+    ...(automationClipboardText !== undefined || clipboardText !== undefined
+      ? { clipboard: { text: automationClipboardText ?? clipboardText ?? "" } }
+      : {}),
     ...(keyboardMatch
       ? {
           keyboard: {
@@ -471,9 +575,196 @@ function parseNativePreview(source: string): NativePreviewState | undefined {
     filePickerRecords,
     shareSheetRecords,
     notificationRecords,
+    ...(automationFlow ? { automationFlow } : {}),
+    ...(deviceEnvironment ? { deviceEnvironment } : {}),
+    ...(unsupportedControls.length > 0 ? { unsupportedControls } : {}),
   };
 
   return hasNativePreviewRecords(preview) ? preview : undefined;
+}
+
+function parseNativeAutomationFlow(source: string): NativePreviewState["automationFlow"] {
+  type NativeAutomationPreviewStep =
+    NonNullable<NativePreviewState["automationFlow"]>["steps"][number];
+  const steps: Array<NativeAutomationPreviewStep & { order: number }> = [];
+
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativePermissionRequest\s*\(\s*\.([A-Za-z0-9_]+)\s*\)/gu,
+    (match) => ({
+      action: "native.permissions.request",
+      capability: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativePermissionSet\s*\(\s*\.([A-Za-z0-9_]+)\s*,\s*\.([A-Za-z0-9_]+)\s*\)/gu,
+    (match) => ({
+      action: "native.permissions.set",
+      capability: match[1],
+      detail: match[2],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeCameraCapture\s*\(\s*"([^"]+)"\s*\)/gu,
+    (match) => ({
+      action: "native.camera.capture",
+      capability: "camera",
+      identifier: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativePhotoSelection\s*\(\s*"([^"]+)"\s*\)/gu,
+    (match) => ({
+      action: "native.photos.select",
+      capability: "photos",
+      identifier: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeLocationRead\s*\([^)]*\)/gu,
+    () => ({
+      action: "native.location.current",
+      capability: "location",
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeClipboardRead\s*\(\s*\)/gu,
+    () => ({
+      action: "native.clipboard.read",
+      capability: "clipboard",
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeClipboardWrite\s*\(\s*"([^"]*)"\s*\)/gu,
+    (match) => ({
+      action: "native.clipboard.write",
+      capability: "clipboard",
+      detail: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeFileSelection\s*\(\s*"([^"]+)"\s*\)/gu,
+    (match) => ({
+      action: "native.files.select",
+      capability: "files",
+      identifier: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeShareCompletion\s*\(\s*"([^"]+)"\s*,\s*state:\s*\.([A-Za-z0-9_]+)\s*\)/gu,
+    (match) => ({
+      action: "native.shareSheet.complete",
+      capability: "shareSheet",
+      identifier: match[1],
+      detail: match[2],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeNotificationAuthorizationRequest\s*\(\s*\)/gu,
+    () => ({
+      action: "native.notifications.authorization.request",
+      capability: "notifications",
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeNotificationSchedule\s*\(\s*"([^"]+)"\s*\)/gu,
+    (match) => ({
+      action: "native.notifications.schedule",
+      capability: "notifications",
+      identifier: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeNotificationDelivery\s*\(\s*"([^"]+)"\s*\)/gu,
+    (match) => ({
+      action: "native.notifications.deliver",
+      capability: "notifications",
+      identifier: match[1],
+    })
+  );
+  appendAutomationMatches(
+    steps,
+    source,
+    /NativeDeviceEnvironmentSnapshot\s*\(\s*\)/gu,
+    () => ({
+      action: "native.device.snapshot",
+      capability: "deviceEnvironment",
+    })
+  );
+
+  if (steps.length === 0) {
+    return undefined;
+  }
+
+  return {
+    steps: steps
+      .sort((left, right) => left.order - right.order)
+      .map(({ order: _order, ...step }) => step),
+  };
+}
+
+function appendAutomationMatches(
+  steps: Array<
+    NonNullable<NativePreviewState["automationFlow"]>["steps"][number] & { order: number }
+  >,
+  source: string,
+  pattern: RegExp,
+  makeStep: (
+    match: RegExpExecArray
+  ) => NonNullable<NativePreviewState["automationFlow"]>["steps"][number]
+): void {
+  for (const match of source.matchAll(pattern)) {
+    steps.push({
+      ...makeStep(match),
+      order: match.index ?? steps.length,
+    });
+  }
+}
+
+function parseNativeDeviceEnvironment(source: string): NativePreviewState["deviceEnvironment"] {
+  const environmentMatch =
+    /DeviceEnvironmentFixture\s*\(\s*viewport:\s*"([^"]+)"\s*,\s*colorScheme:\s*\.([A-Za-z0-9_]+)\s*,\s*locale:\s*"([^"]+)"\s*,\s*timeZone:\s*"([^"]+)"\s*\)/u.exec(
+      source
+    );
+
+  if (environmentMatch) {
+    return {
+      viewport: environmentMatch[1],
+      colorScheme: environmentMatch[2],
+      locale: environmentMatch[3],
+      timeZone: environmentMatch[4],
+    };
+  }
+
+  return {
+    viewport: "393x852@3x",
+    colorScheme: "light",
+    locale: "en_US",
+    timeZone: "UTC",
+  };
 }
 
 function hasNativePreviewRecords(preview: NativePreviewState): boolean {
@@ -485,7 +776,10 @@ function hasNativePreviewRecords(preview: NativePreviewState): boolean {
     preview.keyboard !== undefined ||
     preview.filePickerRecords.length > 0 ||
     preview.shareSheetRecords.length > 0 ||
-    preview.notificationRecords.length > 0
+    preview.notificationRecords.length > 0 ||
+    (preview.automationFlow?.steps.length ?? 0) > 0 ||
+    preview.deviceEnvironment !== undefined ||
+    (preview.unsupportedControls?.length ?? 0) > 0
   );
 }
 
@@ -522,6 +816,10 @@ function matchFirst(source: string, pattern: RegExp): string | undefined {
 
 function matchAll(source: string, pattern: RegExp): Array<[string, string | undefined]> {
   return Array.from(source.matchAll(pattern), (match) => [match[1], match[2]]);
+}
+
+function lastMatch(source: string, pattern: RegExp): string | undefined {
+  return Array.from(source.matchAll(pattern), (match) => match[1]).at(-1);
 }
 
 function slugify(value: string): string {
