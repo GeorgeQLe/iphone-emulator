@@ -4,16 +4,9 @@
 > Source roadmap: `tasks/roadmap.md`
 > Test strategy: tdd
 
-## Priority Documentation Todo
+## Priority Task Queue
 
-- [x] `$devtool-integration-map` - created `research/devtool-integration-map.md` because the enabled devtool pack expected this research output and it was missing.
-- [x] `$devtool-dx-journey` - created `research/devtool-dx-journey.md` because the enabled devtool pack expected this research output and it was missing.
-- [x] `$devtool-adoption` - created `research/devtool-adoption.md` because the enabled devtool pack expected this research output and it was missing.
-- [x] `$devtool-positioning` - created `research/devtool-positioning.md` because the enabled devtool pack expected this research output and it was missing.
-- [x] `$devtool-monetization` - created `research/devtool-monetization.md` because the enabled devtool pack expected this research output and it was missing.
-- [x] `$spec-drift fix all` - reconciled `specs/open-source-iphone-emulator.md` because the latest implementation commit was newer than the spec (`2026-04-30 10:33:56 -0400` vs `2026-04-28 15:43:06 -0400`).
-- [x] Add README first-green-run and current-packaging language so the free local harness value is obvious and bounded.
-- [x] Add a CI fixture recipe with artifact retention guidance as the first team-conversion proof.
+- [ ] `$research-roadmap` - scan documentation and research health before adding the next implementation phase because all roadmap phases are complete (`tasks/phases/phase-10.md` archived at `2026-04-30 10:38:12 -0400`, `tasks/roadmap.md` Phase 10 is marked complete, and no Phase 11/M10 phase exists yet).
 
 ## Phase 10: M9 Native Capability Automation and Agent Flows
 
