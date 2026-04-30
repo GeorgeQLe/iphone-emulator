@@ -29,6 +29,10 @@ type NativePermissionSnapshot = Record<
   {
     state: RuntimeNativePermissionState;
     resolvedState: RuntimeNativePermissionState;
+    prompt?: {
+      presented: boolean;
+      result?: RuntimeNativePermissionState;
+    };
   }
 >;
 
@@ -50,7 +54,16 @@ interface NativeAutomationNamespace {
   location: {
     current(): Promise<{
       permissionState: RuntimeNativePermissionState;
-      diagnostic?: { code: string };
+      coordinate?: {
+        latitude: number;
+        longitude: number;
+        accuracyMeters: number;
+      };
+      diagnostic?: {
+        capability: RuntimeNativeCapabilityID;
+        code: string;
+        payload: Record<string, string>;
+      };
     }>;
     update(coordinate: {
       latitude: number;
@@ -882,7 +895,18 @@ describe("Emulator", () => {
       capability: "camera",
       name: "native.permission.camera.request",
       payload: {
+        initialState: "prompt",
+        state: "granted",
         resolvedState: "granted",
+      },
+    });
+    await expect(app.native.permissions.snapshot()).resolves.toMatchObject({
+      camera: {
+        state: "granted",
+        resolvedState: "granted",
+        prompt: {
+          presented: false,
+        },
       },
     });
     await expect(app.native.permissions.set("location", "denied")).resolves.toMatchObject({
@@ -897,6 +921,7 @@ describe("Emulator", () => {
       name: "native.camera.capture.front-camera-still",
       payload: {
         fixtureName: "profile-photo",
+        permissionState: "granted",
       },
     });
     await expect(app.native.photos.select("recent-library-pick")).resolves.toMatchObject({
@@ -904,12 +929,16 @@ describe("Emulator", () => {
       name: "native.photos.selection.recent-library-pick",
       payload: {
         assetIdentifiers: "profile-photo,receipt-photo",
+        permissionState: "granted",
       },
     });
     await expect(app.native.location.current()).resolves.toMatchObject({
       permissionState: "denied",
       diagnostic: {
         code: "permissionDenied",
+        payload: {
+          permissionState: "denied",
+        },
       },
     });
     await expect(
@@ -1013,6 +1042,7 @@ describe("Emulator", () => {
       "native.permission.location.set",
       "native.camera.capture.front-camera-still",
       "native.photos.selection.recent-library-pick",
+      "native.diagnostic.location.permissionDenied",
       "native.location.update.automation",
       "native.clipboard.read.automation",
       "native.clipboard.write.automation",
@@ -1031,6 +1061,162 @@ describe("Emulator", () => {
         "native.deviceEnvironment.snapshot",
       ])
     );
+  });
+
+  it("hardens native permission defaults fixture failures and location state isolation", async () => {
+    const defaultApp = (await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+    })) as NativeAutomationApp;
+
+    await expect(defaultApp.native.permissions.snapshot()).resolves.toEqual({});
+    await expect(defaultApp.native.permissions.request("camera")).resolves.toMatchObject({
+      capability: "camera",
+      name: "native.permission.camera.request",
+      payload: {
+        initialState: "notRequested",
+        state: "notRequested",
+        resolvedState: "notRequested",
+      },
+    });
+    await expect(defaultApp.native.permissions.snapshot()).resolves.toMatchObject({
+      camera: {
+        state: "notRequested",
+        resolvedState: "notRequested",
+        prompt: {
+          presented: false,
+        },
+      },
+    });
+
+    const app = (await Emulator.launch({
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities: representativeNativeMockManifest(),
+    })) as NativeAutomationApp;
+
+    await expect(app.native.permissions.request("camera")).resolves.toMatchObject({
+      payload: {
+        initialState: "prompt",
+        state: "granted",
+        result: "granted",
+        resolvedState: "granted",
+      },
+    });
+    await expect(app.native.camera.capture("front-camera-still")).resolves.toMatchObject({
+      payload: {
+        identifier: "front-camera-still",
+        fixtureName: "profile-photo",
+        permissionState: "granted",
+        outputPath: "Fixtures/profile-photo.heic",
+      },
+    });
+    await expect(app.native.photos.select("recent-library-pick")).resolves.toMatchObject({
+      payload: {
+        identifier: "recent-library-pick",
+        fixtureName: "recent-library",
+        permissionState: "granted",
+        assetIdentifiers: "profile-photo,receipt-photo",
+      },
+    });
+
+    await expect(app.native.camera.capture("missing-camera")).rejects.toThrow(
+      "no camera fixture named missing-camera"
+    );
+    await expect(app.native.photos.select("missing-library")).rejects.toThrow(
+      "no photos fixture named missing-library"
+    );
+    await expect(app.native.permissions.set("location", "denied")).resolves.toMatchObject({
+      payload: {
+        state: "denied",
+        resolvedState: "denied",
+      },
+    });
+
+    const deniedLocation = await app.native.location.current();
+    expect(deniedLocation).toMatchObject({
+      permissionState: "denied",
+      diagnostic: {
+        capability: "location",
+        code: "permissionDenied",
+        payload: {
+          permissionState: "denied",
+        },
+      },
+    });
+    deniedLocation.diagnostic!.payload.permissionState = "granted";
+
+    const deniedSession = await app.session();
+    expect(deniedSession.nativeCapabilityState.diagnosticRecords).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          capability: "camera",
+          code: "missingFixture",
+          payload: expect.objectContaining({ identifier: "missing-camera" }),
+        }),
+        expect.objectContaining({
+          capability: "photos",
+          code: "missingFixture",
+          payload: expect.objectContaining({ identifier: "missing-library" }),
+        }),
+        expect.objectContaining({
+          capability: "location",
+          code: "permissionDenied",
+          payload: expect.objectContaining({ permissionState: "denied" }),
+        }),
+      ])
+    );
+    expect((await app.native.events()).map((event) => event.name)).toEqual(
+      expect.arrayContaining([
+        "native.diagnostic.camera.missingFixture",
+        "native.diagnostic.photos.missingFixture",
+        "native.diagnostic.location.permissionDenied",
+      ])
+    );
+
+    await expect(app.native.permissions.set("location", "granted")).resolves.toMatchObject({
+      payload: {
+        state: "granted",
+        resolvedState: "granted",
+      },
+    });
+    await expect(
+      app.native.location.update({
+        latitude: 51.501,
+        longitude: -0.141,
+        accuracyMeters: 7,
+      })
+    ).resolves.toMatchObject({
+      name: "native.location.update.automation",
+      payload: {
+        latitude: "51.501",
+        longitude: "-0.141",
+        accuracyMeters: "7",
+      },
+    });
+
+    const grantedLocation = await app.native.location.current();
+    expect(grantedLocation).toMatchObject({
+      permissionState: "granted",
+      coordinate: {
+        latitude: 51.501,
+        longitude: -0.141,
+        accuracyMeters: 7,
+      },
+    });
+    grantedLocation.coordinate!.latitude = 0;
+    await expect(app.native.location.current()).resolves.toMatchObject({
+      coordinate: {
+        latitude: 51.501,
+      },
+    });
+    expect((await app.session()).nativeCapabilityState.diagnosticRecords.at(-1)).toMatchObject({
+      capability: "location",
+      code: "permissionDenied",
+      payload: {
+        permissionState: "denied",
+      },
+    });
   });
 
   it("covers representative Phase 9 native mock flows through SDK inspection", async () => {

@@ -295,14 +295,21 @@ class InMemoryEmulatorApp implements EmulatorApp {
     capability: NativeAutomationSupportedCapability
   ): RuntimeNativeCapabilityRecord {
     const permission = this.ensureNativePermission(capability);
-    permission.resolvedState = resolveNativePermissionState(
-      permission.state,
-      permission.prompt.result
-    );
+    const initialState = permission.state;
+    const result = permission.prompt.result;
+    const requestedState = result ?? permission.resolvedState;
+
+    permission.state = requestedState;
+    permission.resolvedState = requestedState;
+    permission.prompt = {
+      presented: requestedState === "prompt",
+      result: requestedState === "prompt" ? result : undefined,
+    };
 
     const record = this.makeNativeRecord(capability, `native.permission.${capability}.request`, {
+      initialState,
       state: permission.state,
-      result: permission.prompt.result,
+      result,
       resolvedState: permission.resolvedState,
     });
 
@@ -315,10 +322,10 @@ class InMemoryEmulatorApp implements EmulatorApp {
   ): RuntimeNativeCapabilityRecord {
     const permission = this.ensureNativePermission(capability);
     permission.state = state;
-    permission.resolvedState = resolveNativePermissionState(state, permission.prompt.result);
+    permission.resolvedState = state;
     permission.prompt = {
       presented: state === "prompt",
-      result: state === "prompt" ? permission.prompt.result : undefined,
+      result: undefined,
     };
 
     const record = this.makeNativeRecord(capability, `native.permission.${capability}.set`, {
@@ -335,6 +342,17 @@ class InMemoryEmulatorApp implements EmulatorApp {
     action: "capture" | "selection"
   ): RuntimeNativeCapabilityRecord {
     const fixture = this.findNativeFixtureOutput(capability, fixtureIdentifier);
+    if (!fixture) {
+      this.appendNativeDiagnostic({
+        capability,
+        code: "missingFixture",
+        message: `No ${capability} fixture named ${fixtureIdentifier} is configured for deterministic native automation.`,
+        suggestedAdaptation: `Add a ${capability} mock with identifier ${fixtureIdentifier} to nativeCapabilities.configuredMocks.`,
+        payload: { identifier: fixtureIdentifier },
+      });
+      throw new Error(`no ${capability} fixture named ${fixtureIdentifier}`);
+    }
+
     const record = this.makeNativeRecord(
       capability,
       `native.${capability}.${action}.${fixtureIdentifier}`,
@@ -342,6 +360,7 @@ class InMemoryEmulatorApp implements EmulatorApp {
         identifier: fixture.identifier,
         fixtureName: fixture.fixtureName,
         ...fixture.payload,
+        permissionState: this.nativeResolvedPermissionState(capability),
       }
     );
 
@@ -354,16 +373,18 @@ class InMemoryEmulatorApp implements EmulatorApp {
     const permissionState = permission.resolvedState;
 
     if (permissionState !== "granted") {
+      const diagnostic = this.appendNativeDiagnostic({
+        capability: "location",
+        code: "permissionDenied",
+        message: "Location permission is not granted for the deterministic native mock.",
+        suggestedAdaptation:
+          "Set the location permission to granted or use scripted location denial assertions.",
+        payload: { permissionState },
+      });
+
       return {
         permissionState,
-        diagnostic: {
-          capability: "location",
-          code: "permissionDenied",
-          message: "Location permission is not granted for the deterministic native mock.",
-          suggestedAdaptation:
-            "Set the location permission to granted or use scripted location denial assertions.",
-          payload: { permissionState },
-        },
+        diagnostic,
       };
     }
 
@@ -605,6 +626,15 @@ class InMemoryEmulatorApp implements EmulatorApp {
     return permission;
   }
 
+  private nativeResolvedPermissionState(
+    capability: NativeAutomationSupportedCapability
+  ): RuntimeNativePermissionState {
+    return (
+      this.requireSession().nativeCapabilityState.permissions[capability]?.resolvedState ??
+      "unsupported"
+    );
+  }
+
   private ensureNativeClipboardState(): RuntimeNativeClipboardState {
     const session = this.requireSession();
     if (session.nativeCapabilityState.clipboard) {
@@ -624,16 +654,11 @@ class InMemoryEmulatorApp implements EmulatorApp {
   private findNativeFixtureOutput(
     capability: "camera" | "photos",
     fixtureIdentifier: string
-  ): RuntimeNativeFixtureOutputRecord {
-    const fixture = this.requireSession().nativeCapabilityState.fixtureOutputs.find(
+  ): RuntimeNativeFixtureOutputRecord | undefined {
+    return this.requireSession().nativeCapabilityState.fixtureOutputs.find(
       (candidate) =>
         candidate.capability === capability && candidate.identifier === fixtureIdentifier
     );
-    if (!fixture) {
-      throw new Error(`no ${capability} fixture named ${fixtureIdentifier}`);
-    }
-
-    return fixture;
   }
 
   private makeNativeRecord(
@@ -654,6 +679,28 @@ class InMemoryEmulatorApp implements EmulatorApp {
     session.nativeCapabilityEvents.push(record);
     session.artifactBundle.nativeCapabilityRecords.push(record);
     return cloneNativeCapabilityRecords([record])[0];
+  }
+
+  private appendNativeDiagnostic(
+    diagnostic: RuntimeNativeDiagnosticRecord
+  ): RuntimeNativeDiagnosticRecord {
+    const session = this.requireSession();
+    const storedDiagnostic = cloneNativeDiagnosticRecord(diagnostic);
+    session.nativeCapabilityState.diagnosticRecords.push(storedDiagnostic);
+    this.appendNativeRecord(
+      this.makeNativeRecord(
+        diagnostic.capability,
+        `native.diagnostic.${diagnostic.capability}.${diagnostic.code}`,
+        {
+          code: diagnostic.code,
+          message: diagnostic.message,
+          suggestedAdaptation: diagnostic.suggestedAdaptation,
+          ...diagnostic.payload,
+        }
+      )
+    );
+
+    return cloneNativeDiagnosticRecord(storedDiagnostic);
   }
 
   inspect(query: SemanticQuery): UITreeNode {
@@ -1544,13 +1591,19 @@ function cloneNativeCapabilityState(
       revision: record.revision,
       payload: { ...record.payload },
     })),
-    diagnosticRecords: state.diagnosticRecords.map((record) => ({
-      capability: record.capability,
-      code: record.code,
-      message: record.message,
-      suggestedAdaptation: record.suggestedAdaptation,
-      payload: { ...record.payload },
-    })),
+    diagnosticRecords: state.diagnosticRecords.map(cloneNativeDiagnosticRecord),
+  };
+}
+
+function cloneNativeDiagnosticRecord(
+  record: RuntimeNativeDiagnosticRecord
+): RuntimeNativeDiagnosticRecord {
+  return {
+    capability: record.capability,
+    code: record.code,
+    message: record.message,
+    suggestedAdaptation: record.suggestedAdaptation,
+    payload: { ...record.payload },
   };
 }
 
