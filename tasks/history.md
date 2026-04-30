@@ -1,5 +1,8 @@
 # History
 
+- Created `research/devtool-dx-journey.md` for the devtool research queue. The journey maps discovery, install, quickstart, first success, error recovery, production adoption, team rollout, and retention for the current local-first SwiftPM/npm harness; it recommends a first-green-run quickstart, setup smoke check, troubleshooting docs, CI fixture recipe, contributor guide, and keeping live transport as the next adoption gate.
+- Validation: documentation-only research update; no Swift or TypeScript validation was required.
+
 - Created `research/devtool-integration-map.md` for the devtool research queue. The map documents current SwiftPM, npm workspace, browser renderer, automation SDK, native capability, diagnostics, and docs/example integration surfaces; it identifies live runtime-to-renderer transport, transport-backed automation SDK, MCP/agent server, CI recipes, package publishing, templates, and spec reconciliation as the main future integration work.
 - Validation: documentation-only research update; no Swift or TypeScript validation was required.
 
