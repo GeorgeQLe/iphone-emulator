@@ -10,7 +10,7 @@
 
 ## Priority Documentation Todo
 
-- [ ] `$roadmap` - update `tasks/roadmap.md` with the next implementation phase because `specs/open-source-iphone-emulator.md` was updated at `2026-04-30 11:46:12 -0400`, after `tasks/roadmap.md` at `2026-04-30 10:37:12 -0400`, and the current roadmap ends at completed Phase 10 with no M10 live runtime-to-renderer transport and session coordination phase.
+- [ ] `$roadmap` - update `tasks/roadmap.md` with the next implementation phase because `specs/open-source-iphone-emulator.md` was updated at `2026-04-30 11:46:12 -0400`, after `tasks/roadmap.md` at `2026-04-30 10:37:12 -0400`, and the current roadmap ends at completed Phase 10 with no live runtime-to-renderer transport and session coordination phase queued.
 
 ## Phase 10: M9 Native Capability Automation and Agent Flows
 
