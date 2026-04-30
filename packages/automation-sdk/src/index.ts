@@ -1,4 +1,12 @@
 import type {
+  NativeAutomationNamespace,
+  NativeAutomationSupportedCapability,
+  NativeClipboardReadResult,
+  NativeFileSelectionResult,
+  NativeLocationSnapshot,
+  NativeLocationUpdateInput,
+  NativePermissionSnapshot,
+  NativeShareSheetCompletionInput,
   RoleLocatorOptions,
   RuntimeArtifactBundle,
   RuntimeAutomationLaunchOptions,
@@ -40,6 +48,14 @@ import type {
 } from "./types";
 
 export type {
+  NativeAutomationNamespace,
+  NativeAutomationSupportedCapability,
+  NativeClipboardReadResult,
+  NativeFileSelectionResult,
+  NativeLocationSnapshot,
+  NativeLocationUpdateInput,
+  NativePermissionSnapshot,
+  NativeShareSheetCompletionInput,
   RoleLocatorOptions,
   RuntimeArtifactBundle,
   RuntimeAutomationLaunchOptions,
@@ -93,6 +109,7 @@ export class Emulator {
 }
 
 export interface EmulatorApp {
+  native: NativeAutomationNamespace;
   close(): Promise<void>;
   getByRole(role: UITreeRole, options?: RoleLocatorOptions): Locator;
   getByText(text: string): Locator;
@@ -114,12 +131,16 @@ export interface Locator {
 }
 
 class InMemoryEmulatorApp implements EmulatorApp {
+  readonly native: NativeAutomationNamespace;
   private currentSession: RuntimeAutomationSession | null;
   private readonly networkFixtures = new Map<string, RuntimeNetworkFixture>();
   private requestSequence = 0;
+  private nativeRevision = 0;
 
   constructor(session: RuntimeAutomationSession) {
     this.currentSession = session;
+    this.nativeRevision = maxNativeCapabilityRevision(session);
+    this.native = this.createNativeAutomationNamespace();
   }
 
   async close(): Promise<void> {
@@ -221,6 +242,418 @@ class InMemoryEmulatorApp implements EmulatorApp {
 
   async session(): Promise<RuntimeAutomationSession> {
     return cloneSession(this.requireSession());
+  }
+
+  private createNativeAutomationNamespace(): NativeAutomationNamespace {
+    return {
+      permissions: {
+        snapshot: async () => this.nativePermissionSnapshot(),
+        request: async (capability) => this.nativePermissionRequest(capability),
+        set: async (capability, state) => this.nativePermissionSet(capability, state),
+      },
+      camera: {
+        capture: async (fixtureIdentifier) =>
+          this.nativeFixtureAction("camera", fixtureIdentifier, "capture"),
+      },
+      photos: {
+        select: async (fixtureIdentifier) =>
+          this.nativeFixtureAction("photos", fixtureIdentifier, "selection"),
+      },
+      location: {
+        current: async () => this.nativeLocationCurrent(),
+        update: async (coordinate) => this.nativeLocationUpdate(coordinate),
+      },
+      clipboard: {
+        read: async () => this.nativeClipboardRead(),
+        write: async (text) => this.nativeClipboardWrite(text),
+      },
+      files: {
+        select: async (fixtureIdentifier) => this.nativeFileSelect(fixtureIdentifier),
+      },
+      shareSheet: {
+        complete: async (identifier, result) => this.nativeShareSheetComplete(identifier, result),
+      },
+      notifications: {
+        requestAuthorization: async () => this.nativeNotificationAuthorizationRequest(),
+        schedule: async (identifier) => this.nativeNotificationEvent(identifier, "schedule"),
+        deliver: async (identifier) => this.nativeNotificationEvent(identifier, "deliver"),
+      },
+      device: {
+        snapshot: async () => this.nativeDeviceSnapshot(),
+      },
+      events: async () => cloneNativeCapabilityRecords(this.requireSession().nativeCapabilityEvents),
+      artifacts: async () =>
+        cloneNativeCapabilityRecords(this.requireSession().artifactBundle.nativeCapabilityRecords),
+    };
+  }
+
+  private nativePermissionSnapshot(): NativePermissionSnapshot {
+    return cloneNativePermissionSnapshot(this.requireSession().nativeCapabilityState.permissions);
+  }
+
+  private nativePermissionRequest(
+    capability: NativeAutomationSupportedCapability
+  ): RuntimeNativeCapabilityRecord {
+    const permission = this.ensureNativePermission(capability);
+    permission.resolvedState = resolveNativePermissionState(
+      permission.state,
+      permission.prompt.result
+    );
+
+    const record = this.makeNativeRecord(capability, `native.permission.${capability}.request`, {
+      state: permission.state,
+      result: permission.prompt.result,
+      resolvedState: permission.resolvedState,
+    });
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativePermissionSet(
+    capability: NativeAutomationSupportedCapability,
+    state: RuntimeNativePermissionState
+  ): RuntimeNativeCapabilityRecord {
+    const permission = this.ensureNativePermission(capability);
+    permission.state = state;
+    permission.resolvedState = resolveNativePermissionState(state, permission.prompt.result);
+    permission.prompt = {
+      presented: state === "prompt",
+      result: state === "prompt" ? permission.prompt.result : undefined,
+    };
+
+    const record = this.makeNativeRecord(capability, `native.permission.${capability}.set`, {
+      state,
+      resolvedState: permission.resolvedState,
+    });
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativeFixtureAction(
+    capability: "camera" | "photos",
+    fixtureIdentifier: string,
+    action: "capture" | "selection"
+  ): RuntimeNativeCapabilityRecord {
+    const fixture = this.findNativeFixtureOutput(capability, fixtureIdentifier);
+    const record = this.makeNativeRecord(
+      capability,
+      `native.${capability}.${action}.${fixtureIdentifier}`,
+      {
+        identifier: fixture.identifier,
+        fixtureName: fixture.fixtureName,
+        ...fixture.payload,
+      }
+    );
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativeLocationCurrent(): NativeLocationSnapshot {
+    const session = this.requireSession();
+    const permission = this.ensureNativePermission("location");
+    const permissionState = permission.resolvedState;
+
+    if (permissionState !== "granted") {
+      return {
+        permissionState,
+        diagnostic: {
+          capability: "location",
+          code: "permissionDenied",
+          message: "Location permission is not granted for the deterministic native mock.",
+          suggestedAdaptation:
+            "Set the location permission to granted or use scripted location denial assertions.",
+          payload: { permissionState },
+        },
+      };
+    }
+
+    const latestLocation = session.nativeCapabilityState.locationEvents.at(-1);
+    const coordinate = latestLocation
+      ? {
+          latitude: latestLocation.latitude,
+          longitude: latestLocation.longitude,
+          accuracyMeters: latestLocation.accuracyMeters,
+        }
+      : session.device.geolocation
+        ? { ...session.device.geolocation }
+        : undefined;
+
+    return coordinate ? { permissionState, coordinate } : { permissionState };
+  }
+
+  private nativeLocationUpdate(
+    coordinate: NativeLocationUpdateInput
+  ): RuntimeNativeCapabilityRecord {
+    const session = this.requireSession();
+    const record = this.makeNativeRecord("location", "native.location.update.automation", {
+      latitude: String(coordinate.latitude),
+      longitude: String(coordinate.longitude),
+      accuracyMeters: String(coordinate.accuracyMeters),
+    });
+
+    session.nativeCapabilityState.locationEvents.push({
+      name: "automation",
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
+      accuracyMeters: coordinate.accuracyMeters,
+      revision: record.revision,
+      payload: { ...record.payload },
+    });
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativeClipboardRead(): NativeClipboardReadResult {
+    const clipboard = this.ensureNativeClipboardState();
+    const text = clipboard.currentText ?? clipboard.text ?? clipboard.initialText;
+    const record = this.makeNativeRecord("clipboard", "native.clipboard.read.automation", {
+      identifier: clipboard.identifier,
+      text,
+    });
+
+    clipboard.readRecords.push({
+      name: "automation-read",
+      revision: record.revision,
+      text,
+      payload: { ...record.payload },
+    });
+
+    return {
+      text,
+      record: this.appendNativeRecord(record),
+    };
+  }
+
+  private nativeClipboardWrite(text: string): RuntimeNativeCapabilityRecord {
+    const clipboard = this.ensureNativeClipboardState();
+    const record = this.makeNativeRecord("clipboard", "native.clipboard.write.automation", {
+      identifier: clipboard.identifier,
+      text,
+    });
+
+    clipboard.text = text;
+    clipboard.currentText = text;
+    clipboard.writeRecords.push({
+      name: "automation-write",
+      revision: record.revision,
+      text,
+      payload: { ...record.payload },
+    });
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativeFileSelect(fixtureIdentifier: string): NativeFileSelectionResult {
+    const record = this.requireSession().nativeCapabilityState.filePickerRecords.find(
+      (candidate) => candidate.identifier === fixtureIdentifier
+    );
+    if (!record) {
+      throw new Error(`no file picker fixture named ${fixtureIdentifier}`);
+    }
+
+    const event = this.makeNativeRecord("files", `native.files.selection.${fixtureIdentifier}`, {
+      identifier: record.identifier,
+      selectedFiles: record.selectedFiles.join(","),
+      contentTypes: record.contentTypes.join(","),
+      allowsMultipleSelection: String(record.allowsMultipleSelection),
+      ...record.payload,
+    });
+
+    return {
+      selectedFiles: [...record.selectedFiles],
+      record: this.appendNativeRecord(event),
+    };
+  }
+
+  private nativeShareSheetComplete(
+    identifier: string,
+    result: NativeShareSheetCompletionInput
+  ): RuntimeNativeCapabilityRecord {
+    const record = this.requireSession().nativeCapabilityState.shareSheetRecords.find(
+      (candidate) => candidate.identifier === identifier
+    );
+    if (!record) {
+      throw new Error(`no share sheet fixture named ${identifier}`);
+    }
+
+    record.completionState = result.completionState;
+    const event = this.makeNativeRecord("shareSheet", `native.shareSheet.complete.${identifier}`, {
+      identifier: record.identifier,
+      activityType: record.activityType,
+      items: record.items.join(","),
+      excludedActivityTypes: record.excludedActivityTypes.join(","),
+      ...record.payload,
+      completionState: result.completionState,
+    });
+
+    return this.appendNativeRecord(event);
+  }
+
+  private nativeNotificationAuthorizationRequest(): RuntimeNativeCapabilityRecord {
+    const permission = this.ensureNativePermission("notifications");
+    permission.resolvedState = resolveNativePermissionState(
+      permission.state,
+      permission.prompt.result
+    );
+
+    const record = this.makeNativeRecord(
+      "notifications",
+      "native.notifications.authorization.request",
+      {
+        state: permission.state,
+        result: permission.prompt.result,
+        resolvedState: permission.resolvedState,
+      }
+    );
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativeNotificationEvent(
+    identifier: string,
+    action: "schedule" | "deliver"
+  ): RuntimeNativeCapabilityRecord {
+    const session = this.requireSession();
+    const existing = session.nativeCapabilityState.notificationRecords.find(
+      (candidate) => candidate.identifier === identifier
+    );
+    const state = action === "schedule" ? "scheduled" : "delivered";
+    const permission = this.ensureNativePermission("notifications");
+    const record = this.makeNativeRecord(
+      "notifications",
+      `native.notifications.${action}.${identifier}`,
+      {
+        identifier,
+        title: existing?.title,
+        body: existing?.body,
+        trigger: existing?.trigger,
+        state,
+        authorizationState: permission.resolvedState,
+        ...(existing?.payload ?? {}),
+      }
+    );
+
+    session.nativeCapabilityState.notificationRecords.push({
+      identifier,
+      title: existing?.title,
+      body: existing?.body,
+      trigger: existing?.trigger,
+      state,
+      authorizationState: permission.resolvedState,
+      revision: record.revision,
+      payload: { ...record.payload },
+    });
+
+    return this.appendNativeRecord(record);
+  }
+
+  private nativeDeviceSnapshot(): RuntimeDeviceSettings {
+    const session = this.requireSession();
+    const record = this.makeNativeRecord("deviceEnvironment", "native.deviceEnvironment.snapshot", {
+      viewportWidth: String(session.device.viewport.width),
+      viewportHeight: String(session.device.viewport.height),
+      viewportScale: String(session.device.viewport.scale),
+      colorScheme: session.device.colorScheme,
+      locale: session.device.locale,
+      timeZone: session.device.clock.timeZone,
+      frozenAtISO8601: session.device.clock.frozenAtISO8601,
+      latitude: session.device.geolocation
+        ? String(session.device.geolocation.latitude)
+        : undefined,
+      longitude: session.device.geolocation
+        ? String(session.device.geolocation.longitude)
+        : undefined,
+      accuracyMeters: session.device.geolocation
+        ? String(session.device.geolocation.accuracyMeters)
+        : undefined,
+      isOnline: String(session.device.network.isOnline),
+      latencyMilliseconds: String(session.device.network.latencyMilliseconds),
+      downloadKbps: String(session.device.network.downloadKbps),
+    });
+
+    this.appendNativeRecord(record);
+    return cloneDeviceSettings(session.device);
+  }
+
+  private ensureNativePermission(
+    capability: NativeAutomationSupportedCapability
+  ): RuntimeNativeCapabilityState["permissions"][string] {
+    const session = this.requireSession();
+    const existing = session.nativeCapabilityState.permissions[capability];
+    if (existing) {
+      return existing;
+    }
+
+    const requirement = session.nativeCapabilities.requiredCapabilities.find(
+      (candidate) => candidate.id === capability
+    );
+    const promptResult = nativePromptResult(capability, session.nativeCapabilities.configuredMocks);
+    const state = requirement?.permissionState ?? "notRequested";
+    const permission = {
+      state,
+      resolvedState: resolveNativePermissionState(state, promptResult),
+      strictModeAlternative:
+        requirement?.strictModeAlternative ??
+        `Use deterministic ${capability} mock controls instead of host native APIs.`,
+      prompt: {
+        presented: state === "prompt",
+        result: promptResult,
+      },
+    };
+
+    session.nativeCapabilityState.permissions[capability] = permission;
+    return permission;
+  }
+
+  private ensureNativeClipboardState(): RuntimeNativeClipboardState {
+    const session = this.requireSession();
+    if (session.nativeCapabilityState.clipboard) {
+      return session.nativeCapabilityState.clipboard;
+    }
+
+    const clipboard: RuntimeNativeClipboardState = {
+      identifier: "clipboard",
+      readRecords: [],
+      writeRecords: [],
+      payload: {},
+    };
+    session.nativeCapabilityState.clipboard = clipboard;
+    return clipboard;
+  }
+
+  private findNativeFixtureOutput(
+    capability: "camera" | "photos",
+    fixtureIdentifier: string
+  ): RuntimeNativeFixtureOutputRecord {
+    const fixture = this.requireSession().nativeCapabilityState.fixtureOutputs.find(
+      (candidate) =>
+        candidate.capability === capability && candidate.identifier === fixtureIdentifier
+    );
+    if (!fixture) {
+      throw new Error(`no ${capability} fixture named ${fixtureIdentifier}`);
+    }
+
+    return fixture;
+  }
+
+  private makeNativeRecord(
+    capability: RuntimeNativeCapabilityID,
+    name: string,
+    payload: Record<string, string | undefined>
+  ): RuntimeNativeCapabilityRecord {
+    return {
+      capability,
+      name,
+      revision: ++this.nativeRevision,
+      payload: compactStringRecord(payload),
+    };
+  }
+
+  private appendNativeRecord(record: RuntimeNativeCapabilityRecord): RuntimeNativeCapabilityRecord {
+    const session = this.requireSession();
+    session.nativeCapabilityEvents.push(record);
+    session.artifactBundle.nativeCapabilityRecords.push(record);
+    return cloneNativeCapabilityRecords([record])[0];
   }
 
   inspect(query: SemanticQuery): UITreeNode {
@@ -368,6 +801,15 @@ function createSession(options: RuntimeAutomationLaunchOptions): RuntimeAutomati
     nativeCapabilityState: cloneNativeCapabilityState(native.state),
     nativeCapabilityEvents: cloneNativeCapabilityRecords(native.eventRecords),
   };
+}
+
+function maxNativeCapabilityRevision(session: RuntimeAutomationSession): number {
+  return Math.max(
+    session.snapshot.revision,
+    0,
+    ...session.nativeCapabilityEvents.map((record) => record.revision),
+    ...session.artifactBundle.nativeCapabilityRecords.map((record) => record.revision)
+  );
 }
 
 function defaultNativeCapabilities(): RuntimeNativeCapabilityManifest {
@@ -1110,6 +1552,25 @@ function cloneNativeCapabilityState(
       payload: { ...record.payload },
     })),
   };
+}
+
+function cloneNativePermissionSnapshot(
+  permissions: RuntimeNativeCapabilityState["permissions"]
+): NativePermissionSnapshot {
+  return Object.fromEntries(
+    Object.entries(permissions).map(([capability, permission]) => [
+      capability,
+      {
+        state: permission.state,
+        resolvedState: permission.resolvedState,
+        strictModeAlternative: permission.strictModeAlternative,
+        prompt: {
+          presented: permission.prompt.presented,
+          result: permission.prompt.result,
+        },
+      },
+    ])
+  );
 }
 
 function cloneNativeCapabilityRecords(

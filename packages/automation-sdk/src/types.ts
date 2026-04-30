@@ -399,3 +399,87 @@ export interface RuntimeNativeCapabilityRecord {
   revision: number;
   payload: Record<string, string>;
 }
+
+export type NativeAutomationSupportedCapability =
+  | "camera"
+  | "photos"
+  | "location"
+  | "clipboard"
+  | "files"
+  | "shareSheet"
+  | "notifications"
+  | "deviceEnvironment";
+
+export type NativePermissionSnapshot = Record<string, RuntimeNativePermissionInspection>;
+
+export interface NativeLocationUpdateInput {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+}
+
+export interface NativeLocationSnapshot {
+  permissionState: RuntimeNativePermissionState;
+  coordinate?: NativeLocationUpdateInput;
+  diagnostic?: RuntimeNativeDiagnosticRecord;
+}
+
+export interface NativeClipboardReadResult {
+  text?: string;
+  record: RuntimeNativeCapabilityRecord;
+}
+
+export interface NativeFileSelectionResult {
+  selectedFiles: string[];
+  record: RuntimeNativeCapabilityRecord;
+}
+
+export interface NativeShareSheetCompletionInput {
+  completionState: string;
+}
+
+export interface NativeAutomationNamespace {
+  permissions: {
+    snapshot(): Promise<NativePermissionSnapshot>;
+    request(
+      capability: NativeAutomationSupportedCapability
+    ): Promise<RuntimeNativeCapabilityRecord>;
+    set(
+      capability: NativeAutomationSupportedCapability,
+      state: RuntimeNativePermissionState
+    ): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  camera: {
+    capture(fixtureIdentifier: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  photos: {
+    select(fixtureIdentifier: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  location: {
+    current(): Promise<NativeLocationSnapshot>;
+    update(coordinate: NativeLocationUpdateInput): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  clipboard: {
+    read(): Promise<NativeClipboardReadResult>;
+    write(text: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  files: {
+    select(fixtureIdentifier: string): Promise<NativeFileSelectionResult>;
+  };
+  shareSheet: {
+    complete(
+      identifier: string,
+      result: NativeShareSheetCompletionInput
+    ): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  notifications: {
+    requestAuthorization(): Promise<RuntimeNativeCapabilityRecord>;
+    schedule(identifier: string): Promise<RuntimeNativeCapabilityRecord>;
+    deliver(identifier: string): Promise<RuntimeNativeCapabilityRecord>;
+  };
+  device: {
+    snapshot(): Promise<RuntimeDeviceSettings>;
+  };
+  events(): Promise<RuntimeNativeCapabilityRecord[]>;
+  artifacts(): Promise<RuntimeNativeCapabilityRecord[]>;
+}
