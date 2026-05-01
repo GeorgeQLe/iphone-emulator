@@ -11,7 +11,7 @@
 
 ## Phase 11: M10 Live Runtime-to-Renderer Transport and Session Coordination
 
-**Status:** planned.
+**Status:** complete on 2026-05-01.
 
 **Goal:** Replace the current fixture-only browser and automation loop with a deterministic live session path that connects the Swift runtime host, browser renderer, and TypeScript automation SDK through an explicit transport boundary.
 
