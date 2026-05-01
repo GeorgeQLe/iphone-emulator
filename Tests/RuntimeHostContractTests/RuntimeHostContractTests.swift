@@ -2162,6 +2162,156 @@ struct RuntimeHostContractTests {
         )
     }
 
+    @Test("live runtime transport contract exposes deterministic session lifecycle envelopes")
+    func liveRuntimeTransportLifecycleContract() throws {
+        let exportedSymbols: [Any.Type] = [
+            RuntimeTransportEnvelope.self,
+            RuntimeTransportRequest.self,
+            RuntimeTransportResponse.self,
+            RuntimeTransportEvent.self,
+            RuntimeTransportDiagnostic.self,
+            RuntimeTransportConnection.self,
+            RuntimeTransportSessionCoordinator.self,
+        ]
+
+        let launch = RuntimeTransportRequest.launch(
+            id: "rpc-1",
+            configuration: RuntimeAutomationLaunchConfiguration(
+                appIdentifier: "FixtureApp",
+                fixtureName: "strict-mode-baseline"
+            )
+        )
+        let launched = RuntimeTransportResponse(
+            id: "rpc-1",
+            sessionID: "session-1",
+            result: .launched(
+                RuntimeTransportSessionDescriptor(
+                    id: "session-1",
+                    appIdentifier: "FixtureApp",
+                    lifecycleState: .active,
+                    revision: 1
+                )
+            )
+        )
+        let semanticEvent = RuntimeTransportEvent.semanticTreeUpdated(
+            sessionID: "session-1",
+            snapshot: RuntimeTreeSnapshot(
+                appIdentifier: "FixtureApp",
+                tree: SemanticUITree(
+                    appIdentifier: "FixtureApp",
+                    scene: UITreeScene(
+                        id: "baseline-screen",
+                        kind: .screen,
+                        rootNode: UITreeNode(id: "save-button", role: .button, label: "Save")
+                    )
+                ),
+                lifecycleState: .active,
+                revision: 1
+            )
+        )
+        let close = RuntimeTransportRequest.close(id: "rpc-2", sessionID: "session-1")
+
+        #expect(exportedSymbols.count == 7)
+        #expect(launch.id == "rpc-1")
+        #expect(launched.id == "rpc-1")
+        #expect(launched.sessionID == "session-1")
+        #expect(semanticEvent.sessionID == "session-1")
+        #expect(semanticEvent.revision == 1)
+        #expect(close.id == "rpc-2")
+    }
+
+    @Test("live runtime transport serializes commands and rejects stale revisions")
+    func liveRuntimeTransportSerializesCommandsAndRejectsStaleRevisions() throws {
+        var coordinator = RuntimeTransportSessionCoordinator()
+        let launch = try coordinator.handle(
+            RuntimeTransportRequest.launch(
+                id: "rpc-launch",
+                configuration: RuntimeAutomationLaunchConfiguration(
+                    appIdentifier: "FixtureApp",
+                    fixtureName: "strict-mode-baseline"
+                )
+            )
+        )
+        let tap = try coordinator.handle(
+            RuntimeTransportRequest.command(
+                id: "rpc-tap",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .tap(RuntimeAutomationSemanticQuery(identifier: "save-button"))
+            )
+        )
+        let stale = try coordinator.handle(
+            RuntimeTransportRequest.command(
+                id: "rpc-stale",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .fill(
+                    RuntimeAutomationSemanticQuery(identifier: "name-field"),
+                    text: "Jordan"
+                )
+            )
+        )
+
+        #expect(launch.sessionID == "session-1")
+        #expect(tap.revision == 2)
+        #expect(stale.diagnostic?.code == .staleRevision)
+        #expect(stale.diagnostic?.payload["expectedRevision"] == "2")
+        #expect(coordinator.events.map(\.revision) == [1, 2])
+    }
+
+    @Test("live runtime transport returns structured diagnostics and retained inspection records")
+    func liveRuntimeTransportDiagnosticsAndInspectionContract() throws {
+        var coordinator = RuntimeTransportSessionCoordinator()
+        _ = try coordinator.handle(
+            .launch(
+                id: "rpc-launch",
+                configuration: RuntimeAutomationLaunchConfiguration(
+                    appIdentifier: "FixtureApp",
+                    fixtureName: "strict-mode-baseline",
+                    nativeCapabilities: RuntimeNativeCapabilityManifest(
+                        requiredCapabilities: [
+                            RuntimeNativeCapabilityRequirement(
+                                id: .camera,
+                                permissionState: .granted,
+                                strictModeAlternative: "Use deterministic camera fixtures."
+                            )
+                        ]
+                    )
+                )
+            )
+        )
+
+        let unsupported = try coordinator.handle(
+            .command(
+                id: "rpc-unsupported",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .unsupported("hostSpecificGesture")
+            )
+        )
+        let protocolViolation = try coordinator.handle(
+            .command(
+                id: "rpc-missing-session",
+                sessionID: "missing-session",
+                expectedRevision: 1,
+                command: .semanticSnapshot()
+            )
+        )
+        let inspection = try coordinator.handle(
+            .inspectSession(id: "rpc-inspect", sessionID: "session-1")
+        )
+        let closed = try coordinator.handle(.close(id: "rpc-close", sessionID: "session-1"))
+
+        #expect(unsupported.diagnostic?.code == .unsupportedCommand)
+        #expect(protocolViolation.diagnostic?.code == .protocolViolation)
+        #expect(inspection.sessionInspection?.logs.first?.message == "Launched fixture strict-mode-baseline")
+        #expect(inspection.sessionInspection?.artifactBundle.semanticSnapshots.first?.revision == 1)
+        #expect(inspection.sessionInspection?.device.viewport.width == 390)
+        #expect(inspection.sessionInspection?.nativeCapabilities.requiredCapabilities.isEmpty == false)
+        #expect(closed.result == .closed)
+        #expect(coordinator.events.last == .sessionClosed(sessionID: "session-1"))
+    }
+
     private func reflectedChild(named name: String, in value: Any) -> Any? {
         Mirror(reflecting: value).children.first { $0.label == name }?.value
     }

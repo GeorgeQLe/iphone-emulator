@@ -11,6 +11,7 @@ describe("mountRenderer", () => {
 
     mountRenderer(container, baselineFixtureTree);
 
+    expect(container.dataset.rendererMode).toBe("fixture");
     expect(container.querySelector(".phone-shell")).not.toBeNull();
     expect(container.querySelector("[data-app-id='BaselineFixtureApp']")).not.toBeNull();
     expect(container.querySelector("[data-node-id='headline']")?.textContent).toContain(

@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 11 Step 11.1 by adding red-phase live transport/session coordination contract coverage across the Swift runtime host, TypeScript automation SDK, and browser renderer.
+- Validation: `swift test --filter RuntimeHostContractTests` fails as expected on missing `RuntimeTransportEnvelope`, `RuntimeTransportRequest`, `RuntimeTransportResponse`, `RuntimeTransportEvent`, `RuntimeTransportDiagnostic`, `RuntimeTransportConnection`, `RuntimeTransportSessionCoordinator`, and related descriptor/coordinator APIs. `npm --prefix packages/automation-sdk test` fails as expected because `packages/automation-sdk/src/transport.ts` does not exist yet. `npm --prefix packages/browser-renderer test` fails as expected because `packages/browser-renderer/src/liveSession.ts` does not exist yet and `mountRenderer` does not yet mark fixture mode via `container.dataset.rendererMode`.
+
 - Completed the post-Phase 10 documentation cleanup by adding README first-green-run commands, current local package boundaries, and a dedicated CI fixture recipe with artifact retention guidance. Linked the recipe from native capability docs and the strict-mode baseline example, and marked the remaining priority documentation todos complete.
 - Validation: `swift test` passed with 48 Swift tests, `npm --prefix packages/automation-sdk test` passed with 12 tests, `npm --prefix packages/browser-renderer test` passed with 13 tests, and `npx tsx examples/strict-mode-baseline/automation-example.ts` passed with 20 native capability artifact records.
 

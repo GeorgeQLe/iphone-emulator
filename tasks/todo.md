@@ -56,7 +56,7 @@
   - Deliverable: findings on API compatibility, close/error semantics, timeout behavior, and regression coverage.
 
 ### Tests First
-- [ ] Step 11.1: Write failing live transport and session coordination contracts
+- [x] Step 11.1: Write failing live transport and session coordination contracts
   - Files: modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, create `packages/automation-sdk/src/transport.test.ts`, modify `packages/automation-sdk/src/index.test.ts`, create `packages/browser-renderer/src/liveSession.test.ts`, and modify `packages/browser-renderer/src/renderTree.test.ts` only where needed.
   - Add Swift red-phase assertions for transport launch, command serialization, semantic revision streaming, stale revision rejection, structured protocol errors, deterministic close, and session artifact/log/native/network/device inspection.
   - Add TypeScript SDK red-phase assertions that a transport-backed app exposes the same high-level launch, locator, semantic tree, screenshot metadata, logs, artifacts, network, native, and close concepts as fixture mode while surfacing connection, timeout, unsupported command, and protocol errors as structured diagnostics.
@@ -68,6 +68,8 @@
   - Files: create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, create `packages/automation-sdk/src/transport.ts`, modify `packages/automation-sdk/src/types.ts`, and update `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Define request, response, event, and error envelopes for launch, command, semantic tree update, artifact/log/native/network/device inspection, close, timeout, unsupported command, protocol violation, stale revision, and connection failure cases.
   - Keep the schema value-level and deterministic; do not introduce hosted/session-cloud behavior or host-specific native framework calls.
+  - Start from the Step 11.1 red failures: add the missing Swift `RuntimeTransport*` value types and descriptor/diagnostic enums, add the missing SDK `transport.ts` client/error/type surface, and export shared transport-mode launch option types without implementing live session coordination yet.
+  - Preserve existing fixture-mode behavior while making the new tests compile far enough to fail on unimplemented coordinator/client behavior reserved for Steps 11.3 through 11.5.
 - [ ] Step 11.3: Implement runtime host session coordinator over the transport contract
   - Files: create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeSessionCoordinator.swift`, create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeInMemoryTransport.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, modify `packages/runtime-host/Sources/RuntimeHost/ProtocolBoundaryPlaceholder.swift`, and extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Serialize commands through one coordinator per session, increment and stream revisions deterministically, retain semantic snapshots through `RuntimeTreeBridge`, preserve logs/artifacts/network records/device settings/native capability records, and return structured diagnostics for invalid lifecycle transitions.

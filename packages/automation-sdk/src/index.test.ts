@@ -100,6 +100,18 @@ interface NativeAutomationNamespace {
 }
 
 describe("Emulator", () => {
+  it("keeps fixture launch mode available when transport-backed mode is added", async () => {
+    await expect(
+      Emulator.launch({
+        mode: "fixture",
+        appIdentifier: "FixtureApp",
+        fixtureName: "strict-mode-baseline",
+      })
+    ).resolves.toMatchObject({
+      native: expect.any(Object),
+    });
+  });
+
   it("runs a representative fixture-backed automation flow", async () => {
     const app = await Emulator.launch({
       appIdentifier: "FixtureApp",
