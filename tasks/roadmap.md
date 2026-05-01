@@ -466,3 +466,27 @@
 
 **Parallelization:** implementation-safe
 **Coordination Notes:** SDK APIs, runtime records, and examples can be split by capability area after the shared manifest/event model is implemented.
+
+## Phase 11: M10 Live Runtime-to-Renderer Transport and Session Coordination
+**Status:** planned.
+
+**Goal:** Replace the current fixture-only browser and automation loop with a deterministic live session path that connects the Swift runtime host, browser renderer, and TypeScript automation SDK through an explicit transport boundary.
+
+**Scope:**
+- Define and implement a JSON-RPC/WebSocket transport contract for launching sessions, streaming semantic UI tree updates, sending automation commands, collecting runtime responses, and closing sessions deterministically.
+- Add runtime host session coordination for lifecycle, revision ordering, command serialization, logs, artifacts, network fixture records, device settings, and native capability records.
+- Connect the browser renderer to live runtime session updates while preserving the existing illustrative demo mode as a separate fallback path.
+- Add a transport-backed TypeScript automation SDK mode that can drive a live runtime session while keeping the current in-memory fixture mode available for fast local tests.
+- Add session diagnostics for connection failures, protocol errors, unsupported commands, stale revisions, timeout behavior, and clean shutdown.
+- Update docs and examples to distinguish fixture-backed mode, live local transport mode, and deferred hosted/session-cloud behavior.
+
+**Acceptance Criteria:**
+- A strict-mode baseline app can run through one live local runtime-to-renderer session using the open-source Swift runtime host and browser renderer.
+- The browser renderer receives semantic UI tree updates from the runtime transport and reflects deterministic interaction state without relying on illustrative source lowering.
+- The TypeScript automation SDK can launch, inspect, interact with, and close a transport-backed runtime session using the same high-level automation concepts as fixture mode.
+- Logs, semantic snapshots, screenshot/render metadata, network fixture records, device settings, and native capability records remain inspectable through the transport-backed session.
+- Protocol and session failures produce structured diagnostics instead of hangs, silent state drift, or host-specific behavior.
+- Existing fixture-backed tests and examples continue to pass, with docs clearly explaining which mode each command exercises.
+
+**Parallelization:** implementation-safe
+**Coordination Notes:** The protocol schema and session coordinator are shared chokepoints and should be established first. After the transport contract is stable, runtime host wiring, browser renderer live-session consumption, and automation SDK transport mode can be implemented in separate ownership lanes with integration tests tying the loop together.
