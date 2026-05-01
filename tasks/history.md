@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 11 Step 11.4 by adding a browser renderer live-session adapter that consumes transport semantic snapshots, enforces monotonic revisions, stores accepted live snapshots, renders through the existing semantic tree renderer, surfaces structured live-session diagnostics, and keeps demo fallback mode separate from live transport mode.
+- Validation: `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` passed cleanly with no warnings after the renderer live-session adapter landed. `npm --prefix packages/browser-renderer run build` passed; Vite emitted the existing large-chunk warning for Monaco/editor assets, accepted as unchanged bundling behavior.
+
 - Completed Phase 11 Step 11.3 by promoting the live runtime transport coordinator into dedicated session/transport files, adding an in-memory transport boundary, preserving deterministic command serialization and revision checks, and extending runtime contract coverage for request/response/event envelopes plus retained artifact, network, native, device, and log inspection records.
 - Validation: `swift test --filter RuntimeHostContractTests` passed with 34 runtime host contract tests, and `swift build` passed cleanly with no warnings.
 

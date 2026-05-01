@@ -38,6 +38,7 @@ export interface UITabState {
 export interface UIAlertPayload {
   title: string;
   message?: string;
+  actions?: string[];
 }
 
 export interface UITreeScene {
@@ -152,4 +153,25 @@ export interface RendererRenderArtifactMetadata {
   sceneKind: UITreeScene["kind"];
   rootNodeId?: string;
   nodeCount: number;
+}
+
+export type RuntimeLiveSessionDiagnosticCode =
+  | "connectionFailure"
+  | "protocolViolation"
+  | "staleRevision"
+  | "timeout"
+  | "unsupportedCommand"
+  | "close";
+
+export interface RuntimeLiveSessionDiagnostic {
+  code: RuntimeLiveSessionDiagnosticCode;
+  message: string;
+  payload?: Record<string, string>;
+}
+
+export interface RuntimeLiveSessionSnapshot {
+  sessionID: string;
+  revision: number;
+  tree: SemanticUITree;
+  source: "transport";
 }

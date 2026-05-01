@@ -14,10 +14,12 @@ const STACK_ROLES = new Set<UITreeRole>(["vStack", "screen", "navigationStack"])
 
 export function mountRenderer(
   container: HTMLElement,
-  tree: SemanticUITree
+  tree: SemanticUITree,
+  options: { mode?: "fixture" | "demo" | "live" } = {}
 ): HTMLElement {
   container.replaceChildren();
   container.dataset.rendererRoot = "true";
+  container.dataset.rendererMode = options.mode ?? "fixture";
   appendStyles(container.ownerDocument);
 
   const shell = container.ownerDocument.createElement("section");
