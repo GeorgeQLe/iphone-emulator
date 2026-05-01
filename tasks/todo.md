@@ -92,9 +92,10 @@
   - Completed on 2026-05-01: added `docs/live-runtime-transport.md`, linked it from `README.md`, and updated `docs/ci-fixture-recipe.md` with optional local transport smoke coverage and diagnostic artifact guidance.
 
 ### Green
-- [ ] Step 11.8: Add end-to-end regression coverage for the live local session path
+- [x] Step 11.8: Add end-to-end regression coverage for the live local session path
   - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `packages/automation-sdk/src/transport.test.ts`, `packages/browser-renderer/src/liveSession.test.ts`, and `packages/browser-renderer/src/renderTree.test.ts`.
   - Cover a strict-mode baseline session that launches through the runtime coordinator, streams a semantic tree to the renderer, performs tap/fill/query/screenshot/log/artifact/network/native commands through the SDK transport mode, rejects a stale revision, reports one protocol error, and closes without leaking session state.
+  - Completed on 2026-05-01: added Swift runtime in-memory transport coverage for launch/events/interactions/records/diagnostics/close, SDK transport coverage for one strict-mode local live session plus unsupported/protocol/close diagnostics, renderer live-session coverage for accepted/stale revisions, and render-tree coverage that live mode stays separate from fixture/demo mode.
 - [ ] Step 11.9: Run full validation across Swift, browser renderer, automation SDK, and examples
   - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.

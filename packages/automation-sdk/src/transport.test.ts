@@ -119,4 +119,81 @@ describe("RuntimeTransportClient", () => {
     } satisfies Partial<RuntimeTransportProtocolError>);
     await expect(app.close()).resolves.toBeUndefined();
   });
+
+  it("regresses the strict mode live local transport session from launch to clean close", async () => {
+    const client = new RuntimeTransportClient({
+      transport: createInMemoryRuntimeTransport({ fixtureName: "strict-mode-baseline" }),
+      timeoutMs: 250,
+    });
+    const app = await Emulator.launch({
+      mode: "transport",
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      transport: client,
+    });
+
+    await expect(app.session()).resolves.toMatchObject({
+      id: "session-1",
+      snapshot: {
+        revision: 1,
+        tree: {
+          scene: {
+            rootNode: {
+              id: "root-stack",
+            },
+          },
+        },
+      },
+    });
+
+    await app.getByText("Save").tap();
+    await app.getByRole("textField", { text: "Name" }).fill("Jordan");
+    await expect(app.getByTestId("name-field").inspect()).resolves.toMatchObject({
+      id: "name-field",
+      value: "Jordan",
+    });
+
+    await expect(app.screenshot("live-home")).resolves.toMatchObject({
+      name: "live-home",
+      viewport: { width: 390, height: 844, scale: 1 },
+    });
+    await app.route("https://example.test/profile", {
+      id: "profile-success",
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: '{"ok":true}',
+    });
+    await expect(
+      app.request("https://example.test/profile", {
+        headers: { accept: "application/json" },
+      })
+    ).resolves.toMatchObject({
+      id: "request-1",
+      response: { status: 200 },
+      source: { fixtureId: "profile-success" },
+    });
+    await expect(app.native.device.snapshot()).resolves.toMatchObject({
+      viewport: { width: 390, height: 844, scale: 1 },
+      colorScheme: "light",
+    });
+
+    const artifacts = await app.artifacts();
+    expect(artifacts.semanticSnapshots.map((snapshot) => snapshot.revision)).toEqual([1, 2, 3]);
+    expect(artifacts.renderArtifacts.map((artifact) => artifact.name)).toEqual(["live-home"]);
+    expect(artifacts.networkRecords.map((record) => record.source)).toEqual([
+      { fixtureId: "profile-success" },
+    ]);
+
+    await expect(client.sendUnsupportedCommand("pinch")).rejects.toMatchObject({
+      code: "unsupportedCommand",
+      payload: { command: "pinch" },
+    });
+    await expect(client.inspectSession("missing-session")).rejects.toMatchObject({
+      code: "protocolViolation",
+      payload: { sessionID: "missing-session" },
+    });
+    await expect(app.close()).resolves.toBeUndefined();
+    await expect(client.closed).resolves.toEqual({ sessionID: "session-1" });
+    await expect(app.semanticTree()).rejects.toMatchObject({ code: "close" });
+  });
 });

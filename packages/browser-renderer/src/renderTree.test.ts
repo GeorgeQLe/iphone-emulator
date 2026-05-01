@@ -138,6 +138,56 @@ describe("mountRenderer", () => {
     });
   });
 
+  it("renders transport-backed live mode without demo or fixture mode markers", () => {
+    const container = document.createElement("div");
+    const liveTree: SemanticUITree = {
+      appIdentifier: "FixtureApp",
+      scene: {
+        id: "baseline-screen",
+        kind: "screen",
+        rootNode: {
+          id: "root-stack",
+          role: "vStack",
+          label: "Live profile",
+          children: [
+            {
+              id: "name-field",
+              role: "textField",
+              label: "Name",
+              value: "Jordan",
+              children: [],
+              metadata: { placeholder: "Enter name" },
+            },
+            {
+              id: "save-button",
+              role: "button",
+              label: "Saved",
+              children: [],
+              metadata: { variant: "primary" },
+            },
+          ],
+          metadata: {},
+        },
+        alertPayload: {
+          title: "Done",
+          message: "Saved",
+          actions: ["OK"],
+        },
+      },
+    };
+
+    mountRenderer(container, liveTree, { mode: "live" });
+
+    expect(container.dataset.rendererMode).toBe("live");
+    expect(container.querySelector("[data-app-id='FixtureApp']")).not.toBeNull();
+    expect(container.querySelector("[data-app-id='BaselineFixtureApp']")).toBeNull();
+    expect(container.querySelector("[data-node-id='save-button']")?.textContent).toBe("Saved");
+    expect(
+      container.querySelector<HTMLInputElement>("[data-node-id='name-field'] input")?.value
+    ).toBe("Jordan");
+    expect(container.querySelector("[role='alert']")?.textContent).toContain("Saved");
+  });
+
   it("renders deterministic native capability preview state when semantic state includes mock services", () => {
     const container = document.createElement("div");
     const treeWithNativePreview = {

@@ -2476,6 +2476,225 @@ struct RuntimeHostContractTests {
         })
     }
 
+    @Test("live local transport drives strict mode session end to end")
+    func liveLocalTransportDrivesStrictModeSessionEndToEnd() throws {
+        var transport = RuntimeInMemoryTransport()
+        try transport.send(
+            .request(
+                .launch(
+                    id: "rpc-launch",
+                    configuration: RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline",
+                        networkFixtures: [
+                            RuntimeNetworkFixture(
+                                id: "profile-success",
+                                method: "GET",
+                                url: "https://example.test/profile",
+                                response: RuntimeNetworkResponse(
+                                    status: 200,
+                                    headers: ["content-type": "application/json"],
+                                    bodyByteCount: 18
+                                )
+                            )
+                        ],
+                        nativeCapabilities: RuntimeNativeCapabilityManifest(
+                            requiredCapabilities: [
+                                RuntimeNativeCapabilityRequirement(
+                                    id: .camera,
+                                    permissionState: .granted,
+                                    strictModeAlternative: "Use deterministic camera fixtures."
+                                )
+                            ]
+                        )
+                    )
+                )
+            )
+        )
+
+        guard case let .response(launchResponse) = try transport.receive() else {
+            Issue.record("expected launch response")
+            return
+        }
+        guard case let .event(.sessionOpened(descriptor)) = try transport.receive() else {
+            Issue.record("expected session opened event")
+            return
+        }
+        guard case let .event(.semanticTreeUpdated(_, initialSnapshot)) = try transport.receive() else {
+            Issue.record("expected initial semantic tree event")
+            return
+        }
+
+        #expect(launchResponse.sessionID == "session-1")
+        #expect(descriptor.revision == 1)
+        #expect(initialSnapshot.tree.scene.rootNode?.id == "root-stack")
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-tap",
+                    sessionID: "session-1",
+                    expectedRevision: 1,
+                    command: .tap(RuntimeAutomationSemanticQuery(identifier: "save-button"))
+                )
+            )
+        )
+        guard case let .response(tapResponse) = try transport.receive() else {
+            Issue.record("expected tap response")
+            return
+        }
+        guard case let .event(.semanticTreeUpdated(_, tapSnapshot)) = try transport.receive() else {
+            Issue.record("expected tap semantic event")
+            return
+        }
+        #expect(tapResponse.revision == 2)
+        #expect(tapSnapshot.tree.scene.alertPayload?.message == "Saved")
+        try drainPendingTransportEnvelopes(&transport)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-fill",
+                    sessionID: "session-1",
+                    expectedRevision: 2,
+                    command: .fill(RuntimeAutomationSemanticQuery(identifier: "name-field"), text: "Jordan")
+                )
+            )
+        )
+        guard case let .response(fillResponse) = try transport.receive() else {
+            Issue.record("expected fill response")
+            return
+        }
+        try drainPendingTransportEnvelopes(&transport)
+        #expect(fillResponse.revision == 3)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-query",
+                    sessionID: "session-1",
+                    expectedRevision: 3,
+                    command: .inspect(RuntimeAutomationSemanticQuery(identifier: "name-field"))
+                )
+            )
+        )
+        guard case let .response(queryResponse) = try transport.receive() else {
+            Issue.record("expected query response")
+            return
+        }
+        guard case let .commandCompleted(.queryMatches(matches)) = queryResponse.result else {
+            Issue.record("expected query matches")
+            return
+        }
+        #expect(matches.first?.value == "Jordan")
+        try drainPendingTransportEnvelopes(&transport)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-screenshot",
+                    sessionID: "session-1",
+                    expectedRevision: 3,
+                    command: .screenshot(name: "live-home")
+                )
+            )
+        )
+        try drainPendingTransportEnvelopes(&transport)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-network",
+                    sessionID: "session-1",
+                    expectedRevision: 3,
+                    command: .recordNetworkRequest(
+                        RuntimeNetworkRequest(
+                            method: "GET",
+                            url: "https://example.test/profile",
+                            headers: ["accept": "application/json"]
+                        )
+                    )
+                )
+            )
+        )
+        try drainPendingTransportEnvelopes(&transport)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-native",
+                    sessionID: "session-1",
+                    expectedRevision: 3,
+                    command: .nativeAutomation(.captureCamera())
+                )
+            )
+        )
+        guard case let .response(nativeResponse) = try transport.receive() else {
+            Issue.record("expected native response")
+            return
+        }
+        try drainPendingTransportEnvelopes(&transport)
+        #expect(nativeResponse.revision == 4)
+
+        try transport.send(
+            .request(.inspectSession(id: "rpc-inspect", sessionID: "session-1"))
+        )
+        guard case let .response(inspection) = try transport.receive() else {
+            Issue.record("expected inspection response")
+            return
+        }
+
+        #expect(inspection.sessionInspection?.snapshot.revision == 4)
+        #expect(inspection.sessionInspection?.logs.map(\.message).contains("Tapped save-button") == true)
+        #expect(inspection.sessionInspection?.artifactBundle.renderArtifacts.map(\.name) == ["live-home"])
+        #expect(inspection.sessionInspection?.artifactBundle.networkRecords.first?.source == .fixture("profile-success"))
+        #expect(inspection.sessionInspection?.artifactBundle.nativeCapabilityRecords.isEmpty == false)
+        #expect(inspection.sessionInspection?.device.viewport.width == 390)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-stale",
+                    sessionID: "session-1",
+                    expectedRevision: 2,
+                    command: .tap(RuntimeAutomationSemanticQuery(identifier: "save-button"))
+                )
+            )
+        )
+        guard case let .response(staleResponse) = try transport.receive() else {
+            Issue.record("expected stale response")
+            return
+        }
+        #expect(staleResponse.diagnostic?.code == .staleRevision)
+        #expect(staleResponse.diagnostic?.payload["currentRevision"] == "4")
+
+        try transport.send(
+            .request(.inspectSession(id: "rpc-missing", sessionID: "missing-session"))
+        )
+        guard case let .response(protocolResponse) = try transport.receive() else {
+            Issue.record("expected protocol response")
+            return
+        }
+        #expect(protocolResponse.diagnostic?.code == .protocolViolation)
+        #expect(protocolResponse.diagnostic?.payload["sessionID"] == "missing-session")
+
+        try transport.send(.request(.close(id: "rpc-close", sessionID: "session-1")))
+        guard case let .response(closeResponse) = try transport.receive() else {
+            Issue.record("expected close response")
+            return
+        }
+        guard case let .event(.sessionClosed(closedSessionID)) = try transport.receive() else {
+            Issue.record("expected close event")
+            return
+        }
+        #expect(closeResponse.result == .closed)
+        #expect(closedSessionID == "session-1")
+    }
+
+    private func drainPendingTransportEnvelopes(_ transport: inout RuntimeInMemoryTransport) throws {
+        while try transport.receive() != nil {}
+    }
+
     private func reflectedChild(named name: String, in value: Any) -> Any? {
         Mirror(reflecting: value).children.first { $0.label == name }?.value
     }

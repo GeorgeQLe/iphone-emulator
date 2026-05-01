@@ -191,7 +191,11 @@ export class RuntimeTransportClient implements RuntimeTransportLike {
   }
 
   async sendUnsupportedCommand(command: string): Promise<never> {
-    await this.withTimeout(this.transport.request(command, {}), command);
+    await this.withTimeout(
+      this.transport.request(command, compactPayload({ sessionID: this.currentSessionID })),
+      command,
+      this.currentSessionID
+    );
     throw new RuntimeTransportProtocolError({
       code: "unsupportedCommand",
       message: `${command} is not supported`,

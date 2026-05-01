@@ -122,4 +122,62 @@ describe("RuntimeLiveSessionAdapter", () => {
     );
     expect(() => session.throwIfFailed()).toThrow(RuntimeLiveSessionDiagnosticError);
   });
+
+  it("regresses a strict mode transport snapshot sequence through live rendering and close", async () => {
+    const onDiagnostic = vi.fn();
+    const container = document.createElement("div");
+    const session = createRuntimeLiveSession(container, { onDiagnostic });
+    const savedSnapshot: SemanticUITree = {
+      ...secondSnapshot,
+      scene: {
+        ...secondSnapshot.scene,
+        rootNode: {
+          ...secondSnapshot.scene.rootNode!,
+          children: [
+            secondSnapshot.scene.rootNode!.children[0],
+            {
+              ...secondSnapshot.scene.rootNode!.children[1],
+              value: "Jordan",
+            },
+            {
+              ...secondSnapshot.scene.rootNode!.children[2],
+              label: "Saved",
+            },
+          ],
+        },
+      },
+    };
+
+    await session.connect({
+      sessionID: "session-1",
+      snapshots: [
+        { sessionID: "session-1", revision: 1, tree: firstSnapshot, source: "transport" },
+        { sessionID: "session-1", revision: 2, tree: secondSnapshot, source: "transport" },
+        { sessionID: "session-1", revision: 3, tree: savedSnapshot, source: "transport" },
+        { sessionID: "session-1", revision: 2, tree: firstSnapshot, source: "transport" },
+      ],
+      diagnostics: [
+        { code: "protocolViolation", message: "missing session", payload: { sessionID: "missing-session" } },
+      ],
+    });
+
+    await expect(session.closed).resolves.toEqual({ sessionID: "session-1" });
+    expect(container.dataset.rendererMode).toBe("live");
+    expect(container.dataset.liveSessionId).toBe("session-1");
+    expect(container.dataset.liveRevision).toBe("3");
+    expect(container.querySelector("[data-app-id='FixtureApp']")).not.toBeNull();
+    expect(container.querySelector("[data-node-id='save-button']")?.textContent).toBe("Saved");
+    expect(
+      container.querySelector<HTMLInputElement>("[data-node-id='name-field'] input")?.value
+    ).toBe("Jordan");
+    expect(container.querySelector("[role='alert']")?.textContent).toContain("Saved");
+    expect(session.adapter.snapshots.map((snapshot) => snapshot.revision)).toEqual([1, 2, 3]);
+    expect(onDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "protocolViolation", payload: { sessionID: "missing-session" } })
+    );
+    expect(onDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "staleRevision", payload: { expectedRevision: "4", receivedRevision: "2" } })
+    );
+    expect(() => session.throwIfFailed()).toThrow(RuntimeLiveSessionDiagnosticError);
+  });
 });
