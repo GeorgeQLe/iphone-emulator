@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 11 Step 11.3 by promoting the live runtime transport coordinator into dedicated session/transport files, adding an in-memory transport boundary, preserving deterministic command serialization and revision checks, and extending runtime contract coverage for request/response/event envelopes plus retained artifact, network, native, device, and log inspection records.
+- Validation: `swift test --filter RuntimeHostContractTests` passed with 34 runtime host contract tests, and `swift build` passed cleanly with no warnings.
+
 - Completed Phase 11 Step 11.1 by adding red-phase live transport/session coordination contract coverage across the Swift runtime host, TypeScript automation SDK, and browser renderer.
 - Validation: `swift test --filter RuntimeHostContractTests` fails as expected on missing `RuntimeTransportEnvelope`, `RuntimeTransportRequest`, `RuntimeTransportResponse`, `RuntimeTransportEvent`, `RuntimeTransportDiagnostic`, `RuntimeTransportConnection`, `RuntimeTransportSessionCoordinator`, and related descriptor/coordinator APIs. `npm --prefix packages/automation-sdk test` fails as expected because `packages/automation-sdk/src/transport.ts` does not exist yet. `npm --prefix packages/browser-renderer test` fails as expected because `packages/browser-renderer/src/liveSession.ts` does not exist yet and `mountRenderer` does not yet mark fixture mode via `container.dataset.rendererMode`.
 

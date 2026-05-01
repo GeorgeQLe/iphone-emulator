@@ -1,4 +1,4 @@
-public struct RuntimeTreeBridge {
+public struct RuntimeTreeBridge: Sendable {
     public private(set) var latestSnapshot: RuntimeTreeSnapshot?
 
     public init(snapshot: RuntimeTreeSnapshot? = nil) {

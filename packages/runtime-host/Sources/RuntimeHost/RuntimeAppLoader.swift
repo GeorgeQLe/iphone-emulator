@@ -1,4 +1,4 @@
-public struct RuntimeAppLoader {
+public struct RuntimeAppLoader: Sendable {
     public var defaultLifecycleState: RuntimeAppLifecycle.State
 
     public init(defaultLifecycleState: RuntimeAppLifecycle.State = .active) {

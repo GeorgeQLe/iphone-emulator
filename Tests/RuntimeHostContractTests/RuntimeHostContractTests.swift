@@ -2172,6 +2172,7 @@ struct RuntimeHostContractTests {
             RuntimeTransportDiagnostic.self,
             RuntimeTransportConnection.self,
             RuntimeTransportSessionCoordinator.self,
+            RuntimeInMemoryTransport.self,
         ]
 
         let launch = RuntimeTransportRequest.launch(
@@ -2211,7 +2212,7 @@ struct RuntimeHostContractTests {
         )
         let close = RuntimeTransportRequest.close(id: "rpc-2", sessionID: "session-1")
 
-        #expect(exportedSymbols.count == 7)
+        #expect(exportedSymbols.count == 8)
         #expect(launch.id == "rpc-1")
         #expect(launched.id == "rpc-1")
         #expect(launched.sessionID == "session-1")
@@ -2255,8 +2256,15 @@ struct RuntimeHostContractTests {
         #expect(launch.sessionID == "session-1")
         #expect(tap.revision == 2)
         #expect(stale.diagnostic?.code == .staleRevision)
-        #expect(stale.diagnostic?.payload["expectedRevision"] == "2")
-        #expect(coordinator.events.map(\.revision) == [1, 2])
+        #expect(stale.diagnostic?.payload["currentRevision"] == "2")
+        #expect(stale.diagnostic?.payload["expectedRevision"] == "1")
+        let semanticRevisions = coordinator.events.compactMap { event -> Int? in
+            guard case let .semanticTreeUpdated(_, snapshot) = event else {
+                return nil
+            }
+            return snapshot.revision
+        }
+        #expect(semanticRevisions == [1, 2])
     }
 
     @Test("live runtime transport returns structured diagnostics and retained inspection records")
@@ -2310,6 +2318,162 @@ struct RuntimeHostContractTests {
         #expect(inspection.sessionInspection?.nativeCapabilities.requiredCapabilities.isEmpty == false)
         #expect(closed.result == .closed)
         #expect(coordinator.events.last == .sessionClosed(sessionID: "session-1"))
+    }
+
+    @Test("runtime in-memory transport exchanges deterministic request response and event envelopes")
+    func runtimeInMemoryTransportExchangesEnvelopes() throws {
+        var transport = RuntimeInMemoryTransport()
+
+        try transport.send(
+            .request(
+                .launch(
+                    id: "rpc-launch",
+                    configuration: RuntimeAutomationLaunchConfiguration(
+                        appIdentifier: "FixtureApp",
+                        fixtureName: "strict-mode-baseline"
+                    )
+                )
+            )
+        )
+
+        guard case let .response(launchResponse) = try transport.receive() else {
+            Issue.record("expected launch response envelope")
+            return
+        }
+        guard case let .event(openedEvent) = try transport.receive() else {
+            Issue.record("expected session opened event envelope")
+            return
+        }
+        guard case let .event(treeEvent) = try transport.receive() else {
+            Issue.record("expected semantic tree event envelope")
+            return
+        }
+
+        #expect(launchResponse.sessionID == "session-1")
+        #expect(launchResponse.revision == 1)
+        #expect(openedEvent.sessionID == "session-1")
+        #expect(treeEvent.revision == 1)
+
+        try transport.send(
+            .request(
+                .command(
+                    id: "rpc-fill",
+                    sessionID: "session-1",
+                    expectedRevision: 1,
+                    command: .fill(
+                        RuntimeAutomationSemanticQuery(identifier: "name-field"),
+                        text: "Jordan"
+                    )
+                )
+            )
+        )
+
+        guard case let .response(commandResponse) = try transport.receive() else {
+            Issue.record("expected command response envelope")
+            return
+        }
+        guard case let .event(commandTreeEvent) = try transport.receive() else {
+            Issue.record("expected command semantic event envelope")
+            return
+        }
+        guard case let .event(logsEvent) = try transport.receive() else {
+            Issue.record("expected logs event envelope")
+            return
+        }
+        guard case let .event(artifactsEvent) = try transport.receive() else {
+            Issue.record("expected artifact event envelope")
+            return
+        }
+
+        #expect(commandResponse.revision == 2)
+        #expect(commandTreeEvent.revision == 2)
+        #expect(logsEvent.sessionID == "session-1")
+        #expect(artifactsEvent.sessionID == "session-1")
+
+        try transport.close()
+
+        guard case let .response(closeResponse) = try transport.receive() else {
+            Issue.record("expected close response envelope")
+            return
+        }
+        guard case let .event(closeEvent) = try transport.receive() else {
+            Issue.record("expected close event envelope")
+            return
+        }
+
+        #expect(closeResponse.result == .closed)
+        #expect(closeEvent == .sessionClosed(sessionID: "session-1"))
+        #expect(try transport.receive() == nil)
+    }
+
+    @Test("live runtime transport inspection retains artifact network and native records")
+    func liveRuntimeTransportInspectionRetainsSessionRecords() throws {
+        var coordinator = RuntimeTransportSessionCoordinator()
+        _ = try coordinator.handle(
+            .launch(
+                id: "rpc-launch",
+                configuration: RuntimeAutomationLaunchConfiguration(
+                    appIdentifier: "FixtureApp",
+                    fixtureName: "strict-mode-baseline",
+                    networkFixtures: [
+                        RuntimeNetworkFixture(
+                            id: "profile-success",
+                            method: "GET",
+                            url: "https://example.test/profile",
+                            response: RuntimeNetworkResponse(status: 200)
+                        )
+                    ],
+                    nativeCapabilities: RuntimeNativeCapabilityManifest(
+                        requiredCapabilities: [
+                            RuntimeNativeCapabilityRequirement(
+                                id: .camera,
+                                permissionState: .granted,
+                                strictModeAlternative: "Use deterministic camera fixtures."
+                            )
+                        ]
+                    )
+                )
+            )
+        )
+
+        _ = try coordinator.handle(
+            .command(
+                id: "rpc-screenshot",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .screenshot(name: "baseline-home")
+            )
+        )
+        _ = try coordinator.handle(
+            .command(
+                id: "rpc-network",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .recordNetworkRequest(
+                    RuntimeNetworkRequest(method: "GET", url: "https://example.test/profile")
+                )
+            )
+        )
+        _ = try coordinator.handle(
+            .command(
+                id: "rpc-native",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .nativeAutomation(.captureCamera())
+            )
+        )
+        let inspection = try coordinator.handle(.inspectSession(id: "rpc-inspect", sessionID: "session-1"))
+
+        #expect(inspection.sessionInspection?.artifactBundle.renderArtifacts.map(\.name) == ["baseline-home"])
+        #expect(inspection.sessionInspection?.artifactBundle.networkRecords.map(\.source) == [.fixture("profile-success")])
+        #expect(inspection.sessionInspection?.artifactBundle.nativeCapabilityRecords.isEmpty == false)
+        #expect(inspection.sessionInspection?.nativeCapabilityEvents.last?.name == "native.camera.capture.front-camera-still")
+        #expect(coordinator.events.contains { event in
+            guard case .artifactBundleUpdated = event else {
+                return false
+            }
+            return true
+        })
     }
 
     private func reflectedChild(named name: String, in value: Any) -> Any? {

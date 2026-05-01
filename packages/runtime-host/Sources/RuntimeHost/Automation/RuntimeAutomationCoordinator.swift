@@ -1,4 +1,4 @@
-public struct RuntimeAutomationCoordinator {
+public struct RuntimeAutomationCoordinator: Sendable {
     public private(set) var bridge: RuntimeTreeBridge
     public private(set) var session: RuntimeAutomationSession?
 
