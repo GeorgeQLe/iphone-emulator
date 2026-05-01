@@ -1,6 +1,6 @@
 # CI Fixture Recipe
 
-This recipe shows how to use the current local harness in CI. It is intentionally fixture-backed: it does not start a hosted session, a real iOS simulator, a live Swift-to-browser transport, or host native services.
+This recipe shows how to use the current local harness in CI. It is intentionally fixture-backed: it does not start a hosted session, a real iOS simulator, a production Swift-to-browser WebSocket service, or host native services.
 
 ## When To Use This
 
@@ -60,6 +60,19 @@ jobs:
 
 The root `package.json` has no root `npm test` script. CI should call the package scripts directly.
 
+## Optional Local Transport Smoke
+
+Add this step when the CI job should also validate the local runtime transport boundary:
+
+```yaml
+      - name: Run strict-mode baseline over local transport
+        run: npx tsx examples/strict-mode-baseline/live-transport-example.ts
+```
+
+This smoke uses `RuntimeTransportClient` with `createInMemoryRuntimeTransport`. It exercises launch, locator interaction, semantic inspection, logs, screenshot metadata, artifacts, route fixture records, native device inspection, structured diagnostics, and close through the transport client.
+
+It still does not start a hosted session, production WebSocket runtime service, real device, iOS simulator, UIKit, SwiftUI, WebKit, or host native service. For the transport lifecycle and diagnostic vocabulary, see [`live-runtime-transport.md`](live-runtime-transport.md).
+
 ## Artifact Retention
 
 The checked-in example currently prints artifact counts and native event names. For a team CI workflow, keep the structured data produced by `app.artifacts()`, `app.logs()`, `app.semanticTree()`, `app.native.events()`, and `app.session()` as build artifacts.
@@ -73,6 +86,7 @@ Recommended artifact names:
 | `artifact-bundle.json` | `await app.artifacts()` | Preserves screenshot metadata, semantic snapshots, network request records, logs, and native capability records. |
 | `native-events.json` | `await app.native.events()` | Lists high-level native automation records such as permission requests, captures, selections, clipboard writes, and notification schedules. |
 | `session.json` | `await app.session()` | Captures launch device settings, native capability state, and retained snapshot metadata. |
+| `transport-diagnostic.json` | caught `RuntimeTransportProtocolError` or renderer live-session diagnostic | Captures structured local transport failures such as unsupported command, protocol violation, timeout, stale revision, connection failure, or post-close command. |
 
 Screenshot records are metadata only today. Preserve them because they carry names, formats, byte counts, artifact kinds, and viewports, but do not treat them as captured pixels.
 
@@ -137,8 +151,10 @@ For each failed fixture run, inspect:
 | Route request returns 404 metadata | No matching `app.route(...)` fixture was installed. | Add a route with the same method and URL before `app.request(...)`. |
 | Native `missingFixture` diagnostic | A native control references a fixture identifier absent from `nativeCapabilities.configuredMocks`. | Add a matching mock payload, for example a `camera` mock with `identifier: "front-camera-still"`. |
 | Location read returns a denial diagnostic | The fixture state sets location permission to `denied`, `restricted`, or `unsupported`. | Use the denial as the expected assertion, or set deterministic permission state to `granted` and provide coordinates. |
+| Local transport command fails with `unsupportedCommand` | The command is outside the current transport contract. | Use a supported SDK method or keep the unsupported command as the expected diagnostic assertion. |
+| Local transport command fails with `staleRevision` | The command or renderer snapshot refers to an older semantic revision. | Re-read the session or semantic tree before issuing the next state-changing command. |
+| Local transport command fails with `close` | A command was sent after the session was closed. | Move the command before `app.close()` or assert the post-close diagnostic intentionally. |
 
 ## Current Boundary
 
-This CI path is the first team-conversion proof for the local harness. The next technical unlock is live runtime-to-renderer transport and a transport-backed automation SDK mode. Until then, CI should frame the project as a deterministic strict-mode fixture runner with inspectable semantic, network, native, and metadata artifacts.
-
+This CI path is the first team-conversion proof for the local harness. CI should frame the project as a deterministic strict-mode fixture runner with inspectable semantic, network, native, and metadata artifacts. The optional local transport smoke adds coverage for the transport-backed SDK mode, but it remains local and deterministic rather than hosted/session-cloud behavior.

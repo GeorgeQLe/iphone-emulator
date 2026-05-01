@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 11 Step 11.7 by adding `docs/live-runtime-transport.md` for the local runtime transport lifecycle, JSON-RPC/WebSocket-shaped envelope vocabulary, deterministic revision ordering, structured diagnostics, fixture/live/demo mode boundaries, inspectable session records, deferred hosted/session-cloud behavior, and validation commands. Updated `README.md` to route readers to the transport guide and updated `docs/ci-fixture-recipe.md` with an optional local transport smoke step plus diagnostic artifact guidance.
+- Validation: documentation-only update; `rg -n "live-runtime-transport|transport-diagnostic|RuntimeTransportClient" README.md docs/live-runtime-transport.md docs/ci-fixture-recipe.md` passed as a focused link/content sanity check. No Swift or TypeScript validation was required because no source, package, example, or test files changed.
+
 - Completed Phase 11 Step 11.6 by adding `examples/strict-mode-baseline/live-transport-example.ts` for the deterministic local transport-backed SDK flow and updating the root and strict baseline example docs to distinguish fixture mode from local live transport mode.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts` all passed cleanly with no warnings after fixing the new example to wrap `createInMemoryRuntimeTransport` in `RuntimeTransportClient`.
 

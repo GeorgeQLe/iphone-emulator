@@ -86,9 +86,10 @@
   - Files: modify `examples/strict-mode-baseline/automation-example.ts`, add `examples/strict-mode-baseline/live-transport-example.ts`, modify `examples/strict-mode-baseline/README.md`, and update `README.md`.
   - Demonstrate fixture mode and live local transport mode as separate examples, with the live path driving one strict-mode baseline session from launch through UI interaction, semantic inspection, artifact/log/native/network inspection, and close.
   - Starting point: Step 11.5 now routes `Emulator.launch({ mode: "transport" })` through a dedicated `TransportEmulatorApp` backed by `RuntimeTransportClient` RPC methods instead of mutating a local fixture app. `createInMemoryRuntimeTransport` provides the deterministic local live transport for examples and supports launch, locator inspect/tap/fill, semantic tree, screenshot, logs, artifacts, network route/request, native device snapshot, close diagnostics, and timeout/unsupported/protocol diagnostics. Keep the existing `automation-example.ts` fixture-backed path unchanged and add `live-transport-example.ts` as the separate transport-mode demonstration.
-- [ ] Step 11.7: Add session diagnostics documentation and examples
+- [x] Step 11.7: Add session diagnostics documentation and examples
   - Files: update `README.md`, create or modify `docs/live-runtime-transport.md`, and update `docs/ci-fixture-recipe.md`.
   - Document local-only transport behavior, JSON-RPC/WebSocket terminology, deterministic session lifecycle, structured diagnostics, fixture versus live mode, deferred hosted/session-cloud behavior, and validation commands.
+  - Completed on 2026-05-01: added `docs/live-runtime-transport.md`, linked it from `README.md`, and updated `docs/ci-fixture-recipe.md` with optional local transport smoke coverage and diagnostic artifact guidance.
 
 ### Green
 - [ ] Step 11.8: Add end-to-end regression coverage for the live local session path

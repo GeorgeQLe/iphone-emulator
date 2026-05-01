@@ -49,7 +49,7 @@ The current repository is a local-first developer workspace, not a hosted produc
 
 Current value comes from deterministic fixture execution, deterministic local transport sessions, and inspectable artifacts. The automation SDK keeps fixture-backed mode available and now has a local transport-backed mode; the browser renderer mounts checked-in semantic fixtures and has a live-session adapter; screenshots are metadata records; native capability APIs append deterministic records rather than touching host native services.
 
-For CI usage, start with [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md).
+For CI usage, start with [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md). For the local runtime transport contract, diagnostics vocabulary, and fixture/live mode boundaries, see [`docs/live-runtime-transport.md`](docs/live-runtime-transport.md).
 
 ## Goals
 
@@ -108,7 +108,7 @@ The workspace currently provides:
 
 ## Example
 
-See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path and local live transport example. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility), [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md), and [`docs/strict-mode-migration.md`](docs/strict-mode-migration.md). For native capability manifests and mock-fidelity boundaries, see [`docs/native-capabilities.md`](docs/native-capabilities.md). For CI artifact retention, see [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation samples demonstrate fixture-backed and transport-backed TypeScript SDK flows.
+See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path and local live transport example. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility), [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md), and [`docs/strict-mode-migration.md`](docs/strict-mode-migration.md). For native capability manifests and mock-fidelity boundaries, see [`docs/native-capabilities.md`](docs/native-capabilities.md). For CI artifact retention, see [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md). For live local transport lifecycle, diagnostics, revision ordering, and deferred hosted/session-cloud boundaries, see [`docs/live-runtime-transport.md`](docs/live-runtime-transport.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation samples demonstrate fixture-backed and transport-backed TypeScript SDK flows.
 
 ## Validation
 
@@ -124,6 +124,8 @@ npm --prefix packages/automation-sdk run typecheck
 npm --prefix packages/automation-sdk test
 npm --prefix packages/automation-sdk run build
 ```
+
+Live local transport diagnostics are documented in [`docs/live-runtime-transport.md`](docs/live-runtime-transport.md). The WebSocket-shaped helper is currently a placeholder that raises structured connection diagnostics; the working local path uses `RuntimeTransportClient` with `createInMemoryRuntimeTransport`.
 
 Compatibility-mode validation currently relies on:
 
