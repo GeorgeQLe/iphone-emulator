@@ -88,6 +88,22 @@ export interface RuntimeTransportLaunchOptions {
 export interface RuntimeTransportLike {
   launch(options: RuntimeTransportLaunchRequest): Promise<RuntimeAutomationSession>;
   close(sessionID: string): Promise<{ sessionID: string }>;
+  inspect?(sessionID: string, query: SemanticQuery): Promise<UITreeNode>;
+  tap?(sessionID: string, query: SemanticQuery): Promise<RuntimeAutomationSession>;
+  fill?(sessionID: string, query: SemanticQuery, text: string): Promise<RuntimeAutomationSession>;
+  logs?(sessionID: string): Promise<RuntimeAutomationLogEntry[]>;
+  artifacts?(sessionID: string): Promise<RuntimeArtifactBundle>;
+  request?(
+    sessionID: string,
+    url: string,
+    options?: RuntimeNetworkRequestInput
+  ): Promise<RuntimeNetworkRequestRecord>;
+  route?(sessionID: string, url: string, fixture: RuntimeNetworkFixtureInput): Promise<void>;
+  screenshot?(sessionID: string, name?: string): Promise<RuntimeAutomationScreenshotMetadata>;
+  semanticTree?(sessionID: string): Promise<SemanticUITree>;
+  session?(sessionID: string): Promise<RuntimeAutomationSession>;
+  nativeDeviceSnapshot?(sessionID: string): Promise<RuntimeDeviceSettings>;
+  nativeCapabilityEvents?(sessionID: string): Promise<RuntimeNativeCapabilityRecord[]>;
 }
 
 export interface RuntimeTransportLaunchRequest {

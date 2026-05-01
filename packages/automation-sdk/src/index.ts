@@ -38,6 +38,7 @@ import type {
   RuntimeNetworkRequestRecord,
   RuntimeTreeSnapshot,
   RuntimeTransportLaunchOptions,
+  RuntimeTransportLike,
   SemanticQuery,
   SemanticUITree,
   UIAlertPayload,
@@ -123,9 +124,8 @@ export type {
 export class Emulator {
   static async launch(options: EmulatorLaunchOptions): Promise<EmulatorApp> {
     if (isTransportLaunchOptions(options)) {
-      return new InMemoryEmulatorApp(await options.transport.launch(options), {
-        recordInteractionSnapshots: true,
-      });
+      const session = await options.transport.launch(options);
+      return new TransportEmulatorApp(options.transport, session.id);
     }
 
     if (options.fixtureName !== "strict-mode-baseline") {
@@ -134,6 +134,146 @@ export class Emulator {
 
     return new InMemoryEmulatorApp(createSession(options));
   }
+}
+
+class TransportEmulatorApp implements EmulatorApp {
+  readonly native: NativeAutomationNamespace;
+
+  constructor(
+    private readonly transport: RuntimeTransportLike,
+    private readonly sessionID: string
+  ) {
+    this.native = this.createNativeAutomationNamespace();
+  }
+
+  async close(): Promise<void> {
+    await this.transport.close(this.sessionID);
+  }
+
+  getByRole(role: UITreeRole, options: RoleLocatorOptions = {}): Locator {
+    return new TransportLocator(this, { role, text: options.text, identifier: options.id });
+  }
+
+  getByText(text: string): Locator {
+    return new TransportLocator(this, { text });
+  }
+
+  getByTestId(identifier: string): Locator {
+    return new TransportLocator(this, { identifier });
+  }
+
+  async logs(): Promise<RuntimeAutomationLogEntry[]> {
+    return this.requireTransportMethod("logs")(this.sessionID);
+  }
+
+  async nativeCapabilityEvents(): Promise<RuntimeNativeCapabilityRecord[]> {
+    return this.requireTransportMethod("nativeCapabilityEvents")(this.sessionID);
+  }
+
+  async artifacts(): Promise<RuntimeArtifactBundle> {
+    return this.requireTransportMethod("artifacts")(this.sessionID);
+  }
+
+  async request(
+    url: string,
+    options: RuntimeNetworkRequestInput = {}
+  ): Promise<RuntimeNetworkRequestRecord> {
+    return this.requireTransportMethod("request")(this.sessionID, url, options);
+  }
+
+  async route(url: string, fixture: RuntimeNetworkFixtureInput): Promise<void> {
+    await this.requireTransportMethod("route")(this.sessionID, url, fixture);
+  }
+
+  async screenshot(name?: string): Promise<RuntimeAutomationScreenshotMetadata> {
+    return this.requireTransportMethod("screenshot")(this.sessionID, name);
+  }
+
+  async semanticTree(): Promise<SemanticUITree> {
+    return this.requireTransportMethod("semanticTree")(this.sessionID);
+  }
+
+  async session(): Promise<RuntimeAutomationSession> {
+    return this.requireTransportMethod("session")(this.sessionID);
+  }
+
+  async inspect(query: SemanticQuery): Promise<UITreeNode> {
+    return this.requireTransportMethod("inspect")(this.sessionID, query);
+  }
+
+  async tap(query: SemanticQuery): Promise<void> {
+    await this.requireTransportMethod("tap")(this.sessionID, query);
+  }
+
+  async fill(query: SemanticQuery, text: string): Promise<void> {
+    await this.requireTransportMethod("fill")(this.sessionID, query, text);
+  }
+
+  private createNativeAutomationNamespace(): NativeAutomationNamespace {
+    return {
+      permissions: {
+        snapshot: async () => this.session().then((session) => cloneNativePermissionSnapshot(session.nativeCapabilityState.permissions)),
+        request: async () => unsupportedNativeTransportMethod(),
+        set: async () => unsupportedNativeTransportMethod(),
+      },
+      camera: { capture: async () => unsupportedNativeTransportMethod() },
+      photos: { select: async () => unsupportedNativeTransportMethod() },
+      location: {
+        current: async () => unsupportedNativeTransportMethod(),
+        update: async () => unsupportedNativeTransportMethod(),
+      },
+      clipboard: {
+        read: async () => unsupportedNativeTransportMethod(),
+        write: async () => unsupportedNativeTransportMethod(),
+      },
+      files: { select: async () => unsupportedNativeTransportMethod() },
+      shareSheet: { complete: async () => unsupportedNativeTransportMethod() },
+      notifications: {
+        requestAuthorization: async () => unsupportedNativeTransportMethod(),
+        schedule: async () => unsupportedNativeTransportMethod(),
+        deliver: async () => unsupportedNativeTransportMethod(),
+      },
+      device: {
+        snapshot: async () => this.requireTransportMethod("nativeDeviceSnapshot")(this.sessionID),
+      },
+      events: async () => this.nativeCapabilityEvents(),
+      artifacts: async () => (await this.artifacts()).nativeCapabilityRecords,
+    };
+  }
+
+  private requireTransportMethod<Name extends keyof RuntimeTransportLike>(
+    name: Name
+  ): NonNullable<RuntimeTransportLike[Name]> {
+    const method = this.transport[name];
+    if (typeof method !== "function") {
+      throw new Error(`runtime transport does not implement ${String(name)}`);
+    }
+
+    return method.bind(this.transport) as NonNullable<RuntimeTransportLike[Name]>;
+  }
+}
+
+class TransportLocator implements Locator {
+  constructor(
+    private readonly app: TransportEmulatorApp,
+    private readonly query: SemanticQuery
+  ) {}
+
+  async fill(text: string): Promise<void> {
+    await this.app.fill(this.query, text);
+  }
+
+  async inspect(): Promise<UITreeNode> {
+    return this.app.inspect(this.query);
+  }
+
+  async tap(): Promise<void> {
+    await this.app.tap(this.query);
+  }
+}
+
+function unsupportedNativeTransportMethod(): never {
+  throw new Error("runtime transport native command is not implemented yet");
 }
 
 function isTransportLaunchOptions(

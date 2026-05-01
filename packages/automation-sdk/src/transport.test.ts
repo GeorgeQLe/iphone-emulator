@@ -66,6 +66,10 @@ describe("RuntimeTransportClient", () => {
     });
     await expect(app.close()).resolves.toBeUndefined();
     await expect(client.closed).resolves.toEqual({ sessionID: "session-1" });
+    await expect(app.session()).rejects.toMatchObject({
+      name: "RuntimeTransportProtocolError",
+      code: "close",
+    });
   });
 
   it("surfaces transport connection, timeout, unsupported command, and protocol diagnostics", async () => {
