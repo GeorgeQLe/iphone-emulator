@@ -292,6 +292,7 @@ public enum RuntimeAutomationCommand: Hashable, Codable, Sendable {
     case logs(sessionID: String? = nil)
     case recordNetworkRequest(RuntimeNetworkRequest)
     case nativeAutomation(RuntimeNativeAutomationAction)
+    case unsupported(String)
 }
 
 public struct RuntimeAutomationRequest: Hashable, Codable, Sendable {

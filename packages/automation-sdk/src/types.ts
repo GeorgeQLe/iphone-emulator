@@ -69,11 +69,37 @@ export interface RuntimeTreeSnapshot {
 }
 
 export interface RuntimeAutomationLaunchOptions {
+  mode?: "fixture";
   appIdentifier: string;
   fixtureName: string;
   device?: RuntimeDeviceSettings;
   nativeCapabilities?: RuntimeNativeCapabilityManifest;
 }
+
+export interface RuntimeTransportLaunchOptions {
+  mode: "transport";
+  appIdentifier: string;
+  fixtureName: string;
+  transport: RuntimeTransportLike;
+  device?: RuntimeDeviceSettings;
+  nativeCapabilities?: RuntimeNativeCapabilityManifest;
+}
+
+export interface RuntimeTransportLike {
+  launch(options: RuntimeTransportLaunchRequest): Promise<RuntimeAutomationSession>;
+  close(sessionID: string): Promise<{ sessionID: string }>;
+}
+
+export interface RuntimeTransportLaunchRequest {
+  appIdentifier: string;
+  fixtureName: string;
+  device?: RuntimeDeviceSettings;
+  nativeCapabilities?: RuntimeNativeCapabilityManifest;
+}
+
+export type EmulatorLaunchOptions =
+  | RuntimeAutomationLaunchOptions
+  | RuntimeTransportLaunchOptions;
 
 export interface RuntimeAutomationLogEntry {
   level: "debug" | "info" | "warning" | "error";

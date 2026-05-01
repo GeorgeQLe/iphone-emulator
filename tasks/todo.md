@@ -64,7 +64,7 @@
   - Tests MUST fail at this point because the JSON-RPC/WebSocket transport boundary, live session coordinator, renderer live adapter, and SDK transport client do not exist yet.
 
 ### Implementation
-- [ ] Step 11.2: Define shared transport message and diagnostic contracts
+- [x] Step 11.2: Define shared transport message and diagnostic contracts
   - Files: create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, create `packages/automation-sdk/src/transport.ts`, modify `packages/automation-sdk/src/types.ts`, and update `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Define request, response, event, and error envelopes for launch, command, semantic tree update, artifact/log/native/network/device inspection, close, timeout, unsupported command, protocol violation, stale revision, and connection failure cases.
   - Keep the schema value-level and deterministic; do not introduce hosted/session-cloud behavior or host-specific native framework calls.
@@ -73,6 +73,7 @@
 - [ ] Step 11.3: Implement runtime host session coordinator over the transport contract
   - Files: create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeSessionCoordinator.swift`, create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeInMemoryTransport.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, modify `packages/runtime-host/Sources/RuntimeHost/ProtocolBoundaryPlaceholder.swift`, and extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Serialize commands through one coordinator per session, increment and stream revisions deterministically, retain semantic snapshots through `RuntimeTreeBridge`, preserve logs/artifacts/network records/device settings/native capability records, and return structured diagnostics for invalid lifecycle transitions.
+  - Starting point: `RuntimeTransportTypes.swift` now contains the shared envelope/diagnostic/descriptor contract and a first coordinator façade that delegates to `RuntimeAutomationCoordinator` for the current in-memory live contract tests. Promote this into dedicated `RuntimeSessionCoordinator.swift` and `RuntimeInMemoryTransport.swift` files, then separate protocol I/O from session state without changing the public `RuntimeTransport*` value vocabulary.
 - [ ] Step 11.4: Add a browser renderer live-session adapter while preserving demo mode
   - Files: create `packages/browser-renderer/src/liveSession.ts`, create `packages/browser-renderer/src/liveSession.test.ts`, modify `packages/browser-renderer/src/main.ts`, modify `packages/browser-renderer/src/renderTree.ts`, modify `packages/browser-renderer/src/types.ts`, modify `packages/browser-renderer/src/demoProject.ts`, and modify `packages/browser-renderer/src/demoStyles.ts` only if mode controls or status styles are needed.
   - Add a live session input path that accepts transport semantic tree snapshots and revision/status events, updates the iPhone-like preview deterministically, displays structured session diagnostics, and keeps illustrative source lowering clearly separate from live runtime mode.

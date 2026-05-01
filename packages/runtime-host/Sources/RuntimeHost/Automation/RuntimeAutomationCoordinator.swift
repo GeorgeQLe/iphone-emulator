@@ -67,6 +67,8 @@ public struct RuntimeAutomationCoordinator {
             result = try recordNetworkRequest(request)
         case let .nativeAutomation(action):
             result = try applyNativeAutomation(action)
+        case .unsupported:
+            throw RuntimeAutomationError.unsupportedCommand
         }
 
         return RuntimeAutomationResponse(

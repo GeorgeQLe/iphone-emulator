@@ -7,6 +7,7 @@ import type {
   NativeLocationUpdateInput,
   NativePermissionSnapshot,
   NativeShareSheetCompletionInput,
+  EmulatorLaunchOptions,
   RoleLocatorOptions,
   RuntimeArtifactBundle,
   RuntimeAutomationLaunchOptions,
@@ -36,6 +37,7 @@ import type {
   RuntimeNetworkRequestInput,
   RuntimeNetworkRequestRecord,
   RuntimeTreeSnapshot,
+  RuntimeTransportLaunchOptions,
   SemanticQuery,
   SemanticUITree,
   UIAlertPayload,
@@ -56,6 +58,7 @@ export type {
   NativeLocationUpdateInput,
   NativePermissionSnapshot,
   NativeShareSheetCompletionInput,
+  EmulatorLaunchOptions,
   RoleLocatorOptions,
   RuntimeArtifactBundle,
   RuntimeAutomationLaunchOptions,
@@ -91,6 +94,7 @@ export type {
   RuntimeNetworkRequestRecord,
   RuntimeNetworkResponse,
   RuntimeTreeSnapshot,
+  RuntimeTransportLaunchOptions,
   SemanticQuery,
   SemanticUITree,
   UITreeNode,
@@ -98,14 +102,44 @@ export type {
   UITreeScene,
 } from "./types";
 
+export {
+  RuntimeTransportClient,
+  RuntimeTransportConnectionError,
+  RuntimeTransportError,
+  RuntimeTransportProtocolError,
+  RuntimeTransportTimeoutError,
+  createInMemoryRuntimeTransport,
+  createWebSocketRuntimeTransport,
+} from "./transport";
+
+export type {
+  InMemoryRuntimeTransportOptions,
+  RuntimeTransport,
+  RuntimeTransportClientOptions,
+  RuntimeTransportDiagnostic,
+  RuntimeTransportDiagnosticCode,
+} from "./transport";
+
 export class Emulator {
-  static async launch(options: RuntimeAutomationLaunchOptions): Promise<EmulatorApp> {
+  static async launch(options: EmulatorLaunchOptions): Promise<EmulatorApp> {
+    if (isTransportLaunchOptions(options)) {
+      return new InMemoryEmulatorApp(await options.transport.launch(options), {
+        recordInteractionSnapshots: true,
+      });
+    }
+
     if (options.fixtureName !== "strict-mode-baseline") {
       throw new Error(`unknown fixture ${options.fixtureName}`);
     }
 
     return new InMemoryEmulatorApp(createSession(options));
   }
+}
+
+function isTransportLaunchOptions(
+  options: EmulatorLaunchOptions
+): options is RuntimeTransportLaunchOptions {
+  return options.mode === "transport";
 }
 
 export interface EmulatorApp {
@@ -134,11 +168,16 @@ class InMemoryEmulatorApp implements EmulatorApp {
   readonly native: NativeAutomationNamespace;
   private currentSession: RuntimeAutomationSession | null;
   private readonly networkFixtures = new Map<string, RuntimeNetworkFixture>();
+  private readonly recordInteractionSnapshots: boolean;
   private requestSequence = 0;
   private nativeRevision = 0;
 
-  constructor(session: RuntimeAutomationSession) {
+  constructor(
+    session: RuntimeAutomationSession,
+    options: { recordInteractionSnapshots?: boolean } = {}
+  ) {
     this.currentSession = session;
+    this.recordInteractionSnapshots = options.recordInteractionSnapshots ?? false;
     this.nativeRevision = maxNativeCapabilityRevision(session);
     this.native = this.createNativeAutomationNamespace();
   }
@@ -232,11 +271,14 @@ class InMemoryEmulatorApp implements EmulatorApp {
 
   async semanticTree(): Promise<SemanticUITree> {
     const session = this.requireSession();
-    session.artifactBundle.semanticSnapshots.push({
-      name: "baseline-tree",
-      tree: cloneTree(session.snapshot.tree),
-      revision: session.snapshot.revision,
-    });
+    const lastSnapshot = session.artifactBundle.semanticSnapshots.at(-1);
+    if (lastSnapshot?.revision !== session.snapshot.revision) {
+      session.artifactBundle.semanticSnapshots.push({
+        name: "baseline-tree",
+        tree: cloneTree(session.snapshot.tree),
+        revision: session.snapshot.revision,
+      });
+    }
     return cloneTree(session.snapshot.tree);
   }
 
@@ -801,6 +843,13 @@ class InMemoryEmulatorApp implements EmulatorApp {
         scene,
       },
     };
+    if (this.recordInteractionSnapshots) {
+      session.artifactBundle.semanticSnapshots.push({
+        name: "baseline-tree",
+        tree: cloneTree(session.snapshot.tree),
+        revision: session.snapshot.revision,
+      });
+    }
   }
 }
 
