@@ -1,128 +1,96 @@
 # Spec Drift Report
 
-Date: 2026-04-30
+Date: 2026-05-01
 Mode: fix all
 Canonical spec: `specs/open-source-iphone-emulator.md`
-Archived snapshot: `docs/history/archive/2026-04-30/114510/specs/open-source-iphone-emulator.md`
+Archived snapshots:
+
+- `docs/history/archive/2026-05-01/131848/specs/open-source-iphone-emulator.md`
+- `docs/history/archive/2026-05-01/131848/specs/drift-report.md`
 
 ## Summary
 
 - Errors: 0
-- Warnings resolved by spec clarification: 7
-- Info findings resolved by added baseline coverage: 2
-- Verified claims sampled: 12
+- Warnings resolved by spec clarification: 3
+- Info findings resolved by baseline coverage: 1
+- Verified claims sampled: 14
 
-No code changes were made. The fix updates the canonical spec to distinguish full v1 intent from the current fixture-backed baseline.
+No code changes were made. The fix updates the canonical spec to reflect the Phase 11 local live transport implementation while preserving the distinction between local in-memory transport and deferred production WebSocket/MCP service work.
 
 ## Resolved Warnings
 
-### Complete v1 scope was written as current capability
+### Current implementation baseline omitted live local transport
 
-Spec quote: "UI primitives: text, image, button, text field, list, stack layouts, navigation stack, modal sheet, tab view, alerts."
-
-Code evidence:
-
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:42` implements `Text`.
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:56` implements `Button`.
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:70` implements `TextField`.
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:86` implements `List`.
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:104` implements `VStack`.
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:122` implements `HStack`.
-- `packages/swift-sdk/Sources/StrictModeSDK/View.swift:140` implements `NavigationStack`.
-- `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:7` implements `Modal`.
-- `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:34` implements `TabView`.
-- `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:61` implements `Alert`.
-
-Resolution: Added a "Current Implementation Baseline" section that lists implemented primitives and explicitly calls out missing image support.
-
-### Automation transport was presented as JSON-RPC/WebSocket plus MCP
-
-Spec quote: "Automation Protocol: JSON-RPC over WebSocket, with a Playwright-flavored TypeScript SDK and MCP server."
+Spec quote: "As of the April 30, 2026 drift audit, the repository implements an early fixture-backed baseline rather than the complete v1 scope above."
 
 Code evidence:
 
-- `packages/automation-sdk/src/index.ts:101` implements an in-memory `Emulator.launch`.
-- `packages/automation-sdk/src/index.ts:103` restricts launch to `strict-mode-baseline`.
-- `packages/automation-sdk/src/types.ts:71` defines fixture-backed launch options.
+- `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift:1` defines request, response, and event transport envelopes.
+- `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeSessionCoordinator.swift:14` handles launch, command, inspect, and close requests.
+- `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeInMemoryTransport.swift:1` implements the local in-memory transport connection.
+- `packages/automation-sdk/src/types.ts:79` defines `RuntimeTransportLaunchOptions`.
+- `packages/automation-sdk/src/index.ts:124` routes transport launch options through `TransportEmulatorApp`.
 
-Resolution: Added current baseline language that the TypeScript SDK is in-memory and fixture-backed, with JSON-RPC/WebSocket and MCP still not implemented.
+Resolution: Updated the current baseline to say the repo now has fixture-backed mode plus a deterministic local live transport path.
 
-### TypeScript public API sketch used unsupported launch fields
+### Spec treated all JSON-RPC/WebSocket transport as unimplemented
 
-Spec quote: `projectPath: "./fixtures/TodoApp", mode: "strict"`
-
-Code evidence:
-
-- `packages/automation-sdk/src/types.ts:71` defines `RuntimeAutomationLaunchOptions`.
-- `packages/automation-sdk/src/types.ts:72` requires `appIdentifier`.
-- `packages/automation-sdk/src/types.ts:73` requires `fixtureName`.
-
-Resolution: Updated TypeScript examples to use `appIdentifier`, `fixtureName`, and `nativeCapabilities`.
-
-### Swift public API sketch used unsupported package and macro names
-
-Spec quote: `import IPhoneHarness`, `@HarnessApp`, and `HarnessScene`
+Spec quote: "A real JSON-RPC/WebSocket transport or MCP server."
 
 Code evidence:
 
-- `Package.swift:11` exposes the `StrictModeSDK` library.
-- `packages/swift-sdk/Sources/StrictModeSDK/App.swift:3` defines the current `App` protocol.
-- `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:3` defines the current `Scene` protocol.
+- `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift:7` defines launch, command, inspect-session, and close requests.
+- `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift:68` defines session-opened, semantic-tree, logs, artifact, close, and diagnostic events.
+- `packages/automation-sdk/src/transport.ts:85` implements `RuntimeTransportClient`.
+- `packages/automation-sdk/src/transport.ts:102` launches through the transport client.
 
-Resolution: Updated the Swift example to use `import StrictModeSDK`, `struct TodoApp: App`, and the current semantic-tree lowering pattern.
+Resolution: Clarified that the working transport uses JSON-RPC/WebSocket-shaped envelopes locally and in memory, while production WebSocket service and MCP server remain unimplemented.
 
-### Native manifest example did not match the runtime schema
+### TypeScript public API sketch imported a non-existent package name
 
-Spec quote: `"requiredCapabilities": ["camera", "location", "notifications"]`
-
-Code evidence:
-
-- `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift:1` defines structured manifest fields.
-- `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift:53` defines `RuntimeNativeCapabilityRequirement`.
-- `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift:69` defines `RuntimeNativeCapabilityMock`.
-
-Resolution: Replaced the manifest example with the current structured schema.
-
-### Native capability taxonomy was broader than action support
-
-Spec quote: "Sensors and haptics | Deterministic event records and logs before any visual or physical simulation."
+Spec quote: `import { Emulator } from "@iphone-emulator/sdk";`
 
 Code evidence:
 
-- `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift:39` includes `sensors`.
-- `packages/runtime-host/Sources/RuntimeHost/NativeCapabilities/RuntimeNativeCapabilityManifest.swift:40` includes `haptics`.
-- `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift:73` defines native automation actions.
-- `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift:87` omits sensors and haptics from current supported automation actions.
+- `packages/automation-sdk/package.json:2` names the package `@iphone-emulator/automation-sdk`.
+- `packages/automation-sdk/src/index.ts:106` exports `RuntimeTransportClient`, transport errors, and local transport helpers.
+- `packages/automation-sdk/src/index.ts:124` exports `Emulator`.
 
-Resolution: Added baseline language that sensors and haptics exist in the manifest taxonomy but do not yet have first-class automation actions.
+Resolution: Updated the example import to `@iphone-emulator/automation-sdk` and added a transport-mode example.
 
-### Screenshots were implied to be real image captures
+## Resolved Info
 
-Spec quote: `await app.screenshot({ path: "todo.png" });`
+### Browser renderer live adapter was undocumented in the spec baseline
+
+Spec quote: "Renderer: browser UI that draws an iPhone-like shell and renders the harness UI tree."
 
 Code evidence:
 
-- `packages/automation-sdk/src/index.ts:203` creates screenshot metadata.
-- `packages/automation-sdk/src/index.ts:207` sets `byteCount: 0`.
+- `packages/browser-renderer/src/liveSession.ts:29` defines `RuntimeLiveSessionAdapter`.
+- `packages/browser-renderer/src/liveSession.ts:42` applies live semantic snapshots.
+- `packages/browser-renderer/src/liveSession.ts:46` reports stale revisions without replacing the current tree.
+- `packages/browser-renderer/src/liveSession.ts:59` records live renderer mode and session metadata.
 
-Resolution: Added explicit "not yet implemented" language for real screenshot bytes.
+Resolution: Added current baseline language for the renderer live-session adapter and its demo/live separation.
 
 ## Verified Claims
 
 - Root Swift package exposes `StrictModeSDK`, `RuntimeHost`, and `DiagnosticsCore`: `Package.swift:11`, `Package.swift:15`, `Package.swift:19`.
-- Browser renderer draws an iPhone-like shell and semantic surface: `packages/browser-renderer/src/renderTree.ts:15`, `packages/browser-renderer/src/renderTree.ts:23`, `packages/browser-renderer/src/renderTree.ts:64`.
-- Renderer supports modal and alert overlays from semantic state: `packages/browser-renderer/src/renderTree.ts:99`, `packages/browser-renderer/src/renderTree.ts:103`.
-- Diagnostics report unsupported imports, symbols, modifiers, lifecycle hooks, and platform APIs: `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift:182`.
-- Compatibility matrix has explicit supported, partial, unsupported, and deferred entries: `packages/diagnostics/Sources/DiagnosticsCore/DiagnosticsTypes.swift:171`.
-- Runtime automation commands include tap, fill, type, wait, query, inspect, semantic snapshot, screenshot, logs, network request recording, and native automation: `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift:245`.
+- Strict-mode primitives include text, button, text field, list, stack layouts, navigation stack, modal, tab view, and alert: `packages/swift-sdk/Sources/StrictModeSDK/View.swift:42`, `packages/swift-sdk/Sources/StrictModeSDK/View.swift:56`, `packages/swift-sdk/Sources/StrictModeSDK/View.swift:70`, `packages/swift-sdk/Sources/StrictModeSDK/View.swift:86`, `packages/swift-sdk/Sources/StrictModeSDK/View.swift:104`, `packages/swift-sdk/Sources/StrictModeSDK/View.swift:122`, `packages/swift-sdk/Sources/StrictModeSDK/View.swift:140`, `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:7`, `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:34`, `packages/swift-sdk/Sources/StrictModeSDK/Scene.swift:61`.
+- Runtime transport diagnostics include connection failure, timeout, unsupported command, protocol violation, and stale revision: `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift:102`.
+- TypeScript transport diagnostics use the same code vocabulary: `packages/automation-sdk/src/transport.ts:19`.
+- Screenshot support remains metadata-oriented: `packages/automation-sdk/src/types.ts:156`, `packages/automation-sdk/src/transport.ts:370`.
 
 ## Remaining Work
 
 The unresolved items are product work, not spec contradictions:
 
 - Compile arbitrary Swift source packages into runnable harness sessions from the TypeScript SDK.
-- Add real JSON-RPC/WebSocket transport and MCP server.
+- Add a production WebSocket runtime service and MCP server.
 - Add browser/Wasm runtime target when runtime boundaries are stable.
 - Add image view, swipe/scroll automation, state/bindings, environment values, storage APIs, and real screenshot bytes.
 - Integrate source analysis so native capability manifests can be derived automatically from arbitrary packages.
 
+## Downstream Impact
+
+`README.md` had one stale current-limitation line that still described the renderer as fixture-only; it was updated to mention the live-session adapter. `docs/live-runtime-transport.md` and `tasks/roadmap.md` already describe the local live transport as implemented and production hosted/WebSocket service as deferred. No `$reconcile-research` follow-up is required from this drift fix.

@@ -114,7 +114,7 @@ The runtime should fail closed. If code asks for a native service that has no de
 
 ### Current Implementation Baseline
 
-As of the May 1, 2026 drift audit, the repository implements a fixture-backed baseline plus a deterministic local live transport path rather than the complete v1 scope above.
+As of the April 30, 2026 drift audit, the repository implements an early fixture-backed baseline rather than the complete v1 scope above.
 
 Implemented strict-mode SDK primitives:
 
@@ -126,11 +126,8 @@ Implemented runtime and automation contracts:
 
 - `RuntimeAppLoader` loads strict-mode or compatibility fixtures into retained `RuntimeTreeSnapshot` values.
 - Runtime automation command and response envelopes cover launch, close, tap, fill, type, wait, query, inspect, semantic snapshot, screenshot metadata, logs, network request records, and native automation actions.
-- The Swift runtime transport contract defines request, response, event, session descriptor, and diagnostic envelopes for local live sessions. The checked-in transport implementation is deterministic and in memory.
-- The TypeScript automation SDK supports fixture-backed launch through `RuntimeAutomationLaunchOptions` with `appIdentifier`, `fixtureName`, optional `device`, and optional `nativeCapabilities`; only the `strict-mode-baseline` fixture is launchable through fixture mode.
-- The TypeScript automation SDK also supports transport-backed launch through `RuntimeTransportLaunchOptions` with `mode: "transport"`, `appIdentifier`, `fixtureName`, a `RuntimeTransportLike` implementation, and optional device/native capability configuration.
-- The TypeScript SDK exposes locators by role, text, and test id; artifact/log/session access; network route and request recording; screenshot metadata; semantic tree inspection; native automation namespaces; and exported local transport helpers.
-- The browser renderer has a live-session adapter that applies semantic tree snapshots, tracks live session id/revision metadata, reports stale revisions as diagnostics, and keeps demo fallback mode separate from live mode.
+- The TypeScript automation SDK is currently in-memory and fixture-backed. `Emulator.launch` accepts `RuntimeAutomationLaunchOptions` with `appIdentifier`, `fixtureName`, optional `device`, and optional `nativeCapabilities`; only the `strict-mode-baseline` fixture is launchable through the current SDK.
+- The TypeScript SDK exposes locators by role, text, and test id; artifact/log/session access; network route and request recording; screenshot metadata; semantic tree inspection; and native automation namespaces.
 
 Implemented diagnostics and compatibility contracts:
 
@@ -147,7 +144,7 @@ Implemented native capability contracts:
 Not yet implemented from the full v1 scope:
 
 - Compiling arbitrary Swift source packages into runnable harness sessions from the TypeScript SDK.
-- A production WebSocket transport service or MCP server. The current transport vocabulary uses JSON-RPC/WebSocket-shaped envelopes, but the working implementation is local and in memory.
+- A real JSON-RPC/WebSocket transport or MCP server.
 - Browser/Wasm runtime target.
 - Image view and swipe/scroll automation primitives.
 - Full storage APIs, environment values, observable state/bindings beyond the current semantic fixture model.
@@ -287,7 +284,7 @@ State mutation closures are not yet part of the strict-mode SDK surface.
 ### TypeScript Automation
 
 ```ts
-import { Emulator } from "@iphone-emulator/automation-sdk";
+import { Emulator } from "@iphone-emulator/sdk";
 
 const app = await Emulator.launch({
   appIdentifier: "TodoApp",
@@ -297,33 +294,6 @@ const app = await Emulator.launch({
 await app.getByText("Add").tap();
 await app.getByRole("textbox", { name: "Title" }).fill("Buy milk");
 await app.screenshot({ path: "todo.png" });
-await app.close();
-```
-
-The local live transport path uses the same high-level automation concepts through an explicit transport client:
-
-```ts
-import {
-  Emulator,
-  RuntimeTransportClient,
-  createInMemoryRuntimeTransport,
-} from "@iphone-emulator/automation-sdk";
-
-const transport = new RuntimeTransportClient({
-  transport: createInMemoryRuntimeTransport({
-    fixtureName: "strict-mode-baseline",
-  }),
-});
-
-const app = await Emulator.launch({
-  mode: "transport",
-  appIdentifier: "TodoApp",
-  fixtureName: "strict-mode-baseline",
-  transport,
-});
-
-await app.getByText("Add").tap();
-const tree = await app.semanticTree();
 await app.close();
 ```
 

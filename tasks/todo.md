@@ -7,7 +7,7 @@
 ## Priority Documentation Todo
 
 - [x] `$devtool-docs-audit` - create `research/devtool-docs-audit.md` because the enabled devtool pack expects this research output and it is missing.
-- [ ] `$spec-drift fix all` - update `specs/drift-report.md` and any stale specs because latest implementation commit `3d449e0` at 2026-05-01T11:41:48-04:00 is newer than `specs/open-source-iphone-emulator.md` at 2026-04-30T11:46:12-04:00 and `specs/drift-report.md` at 2026-04-30T11:46:45-04:00.
+- [x] `$spec-drift fix all` - updated `specs/open-source-iphone-emulator.md` and `specs/drift-report.md` on 2026-05-01 to reflect the Phase 11 local live transport implementation.
 
 ## Phase 11: M10 Live Runtime-to-Renderer Transport and Session Coordination
 

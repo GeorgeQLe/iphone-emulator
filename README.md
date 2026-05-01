@@ -336,7 +336,7 @@ await app.close();
 
 ## Current Limitations
 
-- The browser renderer mounts a checked-in fixture tree from `packages/browser-renderer/src/fixtureTree.ts`; it does not yet consume runtime-exported snapshots directly.
+- The browser renderer can mount a checked-in fixture tree from `packages/browser-renderer/src/fixtureTree.ts` and can apply live local transport snapshots through its live-session adapter.
 - The local live transport example uses deterministic in-memory transport. It does not yet speak to a production WebSocket runtime service, hosted session cloud, browser process, or real device.
 - Runtime updates are deterministic and local; broader multi-process coordination is still in progress.
 - Screenshot support is limited to placeholder metadata (`name`, `kind`, `format`, `byteCount`, `viewport`) until a later phase adds a real pixel artifact pipeline.
