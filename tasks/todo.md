@@ -4,6 +4,10 @@
 > Source roadmap: `tasks/roadmap.md`
 > Test strategy: tdd
 
+## Priority Task Queue
+
+- [x] Task pipeline is healthy; all 11 roadmap phases are complete, `tasks/todo.md` has no unchecked implementation or documentation queue items as of 2026-05-01 13:19, git is clean on `main...origin/main`, and the only unchecked record item in `tasks/record-todo.md` remains gated on a future hosted-session design phase or pilot.
+
 ## Priority Documentation Todo
 
 - [x] `$devtool-docs-audit` - create `research/devtool-docs-audit.md` because the enabled devtool pack expects this research output and it is missing.
