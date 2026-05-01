@@ -490,3 +490,90 @@
 
 **Parallelization:** implementation-safe
 **Coordination Notes:** The protocol schema and session coordinator are shared chokepoints and should be established first. After the transport contract is stable, runtime host wiring, browser renderer live-session consumption, and automation SDK transport mode can be implemented in separate ownership lanes with integration tests tying the loop together.
+
+> Test strategy: tdd
+
+### Execution Profile
+**Parallel mode:** research-only
+**Integration owner:** main agent
+**Conflict risk:** high
+**Review gates:** correctness, tests, security, performance, docs/API conformance, UX
+
+**Subagent lanes:**
+- Lane: protocol-contract-review
+  - Agent: explorer
+  - Role: reviewer
+  - Mode: read-only
+  - Scope: review the proposed runtime transport message schema, session lifecycle states, revision ordering, and diagnostic vocabulary against existing runtime automation commands, artifacts, network records, device settings, and native capability records.
+  - Depends on: Step 11.1, Step 11.2
+  - Deliverable: findings on missing protocol cases, ambiguous ordering, or type drift before implementation proceeds past runtime coordination.
+- Lane: renderer-live-session-review
+  - Agent: explorer
+  - Role: reviewer
+  - Mode: read-only
+  - Scope: review browser renderer live-session integration points and identify how to preserve fixture/demo mode while consuming transport snapshots.
+  - Depends on: Step 11.2, Step 11.4
+  - Deliverable: findings on mode separation, UI state risks, and renderer test gaps.
+- Lane: automation-transport-review
+  - Agent: explorer
+  - Role: reviewer
+  - Mode: read-only
+  - Scope: review TypeScript automation SDK transport-backed mode against existing in-memory fixture behavior and high-level automation/native APIs.
+  - Depends on: Step 11.2, Step 11.5
+  - Deliverable: findings on API compatibility, close/error semantics, timeout behavior, and regression coverage.
+
+### Tests First
+- Step 11.1: Write failing live transport and session coordination contracts
+  - Files: modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, create `packages/automation-sdk/src/transport.test.ts`, modify `packages/automation-sdk/src/index.test.ts`, create `packages/browser-renderer/src/liveSession.test.ts`, and modify `packages/browser-renderer/src/renderTree.test.ts` only where needed.
+  - Add Swift red-phase assertions for transport launch, command serialization, semantic revision streaming, stale revision rejection, structured protocol errors, deterministic close, and session artifact/log/native/network/device inspection.
+  - Add TypeScript SDK red-phase assertions that a transport-backed app exposes the same high-level launch, locator, semantic tree, screenshot metadata, logs, artifacts, network, native, and close concepts as fixture mode while surfacing connection, timeout, unsupported command, and protocol errors as structured diagnostics.
+  - Add renderer red-phase assertions that live session snapshots can update the rendered tree independently from illustrative source lowering and that demo mode remains available as a separate fallback path.
+  - Tests MUST fail at this point because the JSON-RPC/WebSocket transport boundary, live session coordinator, renderer live adapter, and SDK transport client do not exist yet.
+
+### Implementation
+- Step 11.2: Define shared transport message and diagnostic contracts
+  - Files: create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift`, create `packages/automation-sdk/src/transport.ts`, modify `packages/automation-sdk/src/types.ts`, and update `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Define request, response, event, and error envelopes for launch, command, semantic tree update, artifact/log/native/network/device inspection, close, timeout, unsupported command, protocol violation, stale revision, and connection failure cases.
+  - Keep the schema value-level and deterministic; do not introduce hosted/session-cloud behavior or host-specific native framework calls.
+- Step 11.3: Implement runtime host session coordinator over the transport contract
+  - Files: create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeSessionCoordinator.swift`, create `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeInMemoryTransport.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationCoordinator.swift`, modify `packages/runtime-host/Sources/RuntimeHost/ProtocolBoundaryPlaceholder.swift`, and extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
+  - Serialize commands through one coordinator per session, increment and stream revisions deterministically, retain semantic snapshots through `RuntimeTreeBridge`, preserve logs/artifacts/network records/device settings/native capability records, and return structured diagnostics for invalid lifecycle transitions.
+- Step 11.4: Add a browser renderer live-session adapter while preserving demo mode
+  - Files: create `packages/browser-renderer/src/liveSession.ts`, create `packages/browser-renderer/src/liveSession.test.ts`, modify `packages/browser-renderer/src/main.ts`, modify `packages/browser-renderer/src/renderTree.ts`, modify `packages/browser-renderer/src/types.ts`, modify `packages/browser-renderer/src/demoProject.ts`, and modify `packages/browser-renderer/src/demoStyles.ts` only if mode controls or status styles are needed.
+  - Add a live session input path that accepts transport semantic tree snapshots and revision/status events, updates the iPhone-like preview deterministically, displays structured session diagnostics, and keeps illustrative source lowering clearly separate from live runtime mode.
+- Step 11.5: Add transport-backed mode to the TypeScript automation SDK
+  - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/src/types.ts`, create `packages/automation-sdk/src/transport.ts`, create `packages/automation-sdk/src/transport.test.ts`, and update `packages/automation-sdk/package.json` only if a test/build entry needs to include the new module.
+  - Keep the existing in-memory fixture mode available. Add a transport client abstraction that can launch a runtime session, send locator/interact/inspect/screenshot/log/artifact/network/native commands, subscribe to semantic revisions, enforce timeouts, and close cleanly.
+- Step 11.6: Add local live-session fixture and integration example
+  - Files: modify `examples/strict-mode-baseline/automation-example.ts`, add `examples/strict-mode-baseline/live-transport-example.ts`, modify `examples/strict-mode-baseline/README.md`, and update `README.md`.
+  - Demonstrate fixture mode and live local transport mode as separate examples, with the live path driving one strict-mode baseline session from launch through UI interaction, semantic inspection, artifact/log/native/network inspection, and close.
+- Step 11.7: Add session diagnostics documentation and examples
+  - Files: update `README.md`, create or modify `docs/live-runtime-transport.md`, and update `docs/ci-fixture-recipe.md`.
+  - Document local-only transport behavior, JSON-RPC/WebSocket terminology, deterministic session lifecycle, structured diagnostics, fixture versus live mode, deferred hosted/session-cloud behavior, and validation commands.
+
+### Green
+- Step 11.8: Add end-to-end regression coverage for the live local session path
+  - Files: extend `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`, `packages/automation-sdk/src/transport.test.ts`, `packages/browser-renderer/src/liveSession.test.ts`, and `packages/browser-renderer/src/renderTree.test.ts`.
+  - Cover a strict-mode baseline session that launches through the runtime coordinator, streams a semantic tree to the renderer, performs tap/fill/query/screenshot/log/artifact/network/native commands through the SDK transport mode, rejects a stale revision, reports one protocol error, and closes without leaking session state.
+- Step 11.9: Run full validation across Swift, browser renderer, automation SDK, and examples
+  - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
+  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
+- Step 11.10: Refactor transport, session, renderer, and SDK boundaries if needed while keeping tests green
+  - Files: modify `packages/runtime-host/Sources/RuntimeHost/Transport/**`, `packages/runtime-host/Sources/RuntimeHost/Automation/**`, `packages/automation-sdk/src/**`, `packages/browser-renderer/src/**`, `README.md`, and `docs/live-runtime-transport.md` only as needed.
+  - Re-read the runtime transport schema, session coordinator, SDK transport client, renderer live adapter, docs, and examples together. Only refactor if there is concrete type drift, duplicated message vocabulary, unclear fixture/live mode ownership, hidden nondeterminism, or diagnostic ambiguity.
+
+### Milestone: M10 Live Runtime-to-Renderer Transport and Session Coordination
+**Acceptance Criteria:**
+- [ ] A strict-mode baseline app can run through one live local runtime-to-renderer session using the open-source Swift runtime host and browser renderer.
+- [ ] The browser renderer receives semantic UI tree updates from the runtime transport and reflects deterministic interaction state without relying on illustrative source lowering.
+- [ ] The TypeScript automation SDK can launch, inspect, interact with, and close a transport-backed runtime session using the same high-level automation concepts as fixture mode.
+- [ ] Logs, semantic snapshots, screenshot/render metadata, network fixture records, device settings, and native capability records remain inspectable through the transport-backed session.
+- [ ] Protocol and session failures produce structured diagnostics instead of hangs, silent state drift, or host-specific behavior.
+- [ ] Existing fixture-backed tests and examples continue to pass, with docs clearly explaining which mode each command exercises.
+- [ ] All phase tests pass.
+- [ ] No regressions in previous phase tests.
+
+**On Completion:**
+- Deviations from plan: none yet
+- Tech debt / follow-ups: none yet
+- Ready for next phase: no
