@@ -68,7 +68,8 @@ describe("RuntimeTransportClient", () => {
     await expect(client.closed).resolves.toEqual({ sessionID: "session-1" });
     await expect(app.session()).rejects.toMatchObject({
       name: "RuntimeTransportProtocolError",
-      code: "close",
+      code: "protocolViolation",
+      payload: { sessionID: "session-1" },
     });
   });
 
@@ -194,6 +195,9 @@ describe("RuntimeTransportClient", () => {
     });
     await expect(app.close()).resolves.toBeUndefined();
     await expect(client.closed).resolves.toEqual({ sessionID: "session-1" });
-    await expect(app.semanticTree()).rejects.toMatchObject({ code: "close" });
+    await expect(app.semanticTree()).rejects.toMatchObject({
+      code: "protocolViolation",
+      payload: { sessionID: "session-1" },
+    });
   });
 });

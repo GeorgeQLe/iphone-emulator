@@ -160,8 +160,7 @@ export type RuntimeLiveSessionDiagnosticCode =
   | "protocolViolation"
   | "staleRevision"
   | "timeout"
-  | "unsupportedCommand"
-  | "close";
+  | "unsupportedCommand";
 
 export interface RuntimeLiveSessionDiagnostic {
   code: RuntimeLiveSessionDiagnosticCode;

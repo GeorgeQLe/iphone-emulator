@@ -21,8 +21,7 @@ export type RuntimeTransportDiagnosticCode =
   | "timeout"
   | "unsupportedCommand"
   | "protocolViolation"
-  | "staleRevision"
-  | "close";
+  | "staleRevision";
 
 export interface RuntimeTransportDiagnostic {
   code: RuntimeTransportDiagnosticCode;
@@ -291,9 +290,9 @@ export function createInMemoryRuntimeTransport(
       }
       if (closed) {
         throw {
-          code: "close",
+          code: "protocolViolation",
           message: "Runtime transport session is closed",
-          payload: {},
+          payload: compactPayload({ sessionID: (params as { sessionID?: string }).sessionID }),
         } satisfies RuntimeTransportDiagnostic;
       }
       const liveSession = requireMatchingSession(session, (params as { sessionID: string }).sessionID);

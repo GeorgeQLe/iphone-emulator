@@ -468,7 +468,7 @@
 **Coordination Notes:** SDK APIs, runtime records, and examples can be split by capability area after the shared manifest/event model is implemented.
 
 ## Phase 11: M10 Live Runtime-to-Renderer Transport and Session Coordination
-**Status:** planned.
+**Status:** complete on 2026-05-01.
 
 **Goal:** Replace the current fixture-only browser and automation loop with a deterministic live session path that connects the Swift runtime host, browser renderer, and TypeScript automation SDK through an explicit transport boundary.
 
@@ -564,16 +564,16 @@
 
 ### Milestone: M10 Live Runtime-to-Renderer Transport and Session Coordination
 **Acceptance Criteria:**
-- [ ] A strict-mode baseline app can run through one live local runtime-to-renderer session using the open-source Swift runtime host and browser renderer.
-- [ ] The browser renderer receives semantic UI tree updates from the runtime transport and reflects deterministic interaction state without relying on illustrative source lowering.
-- [ ] The TypeScript automation SDK can launch, inspect, interact with, and close a transport-backed runtime session using the same high-level automation concepts as fixture mode.
-- [ ] Logs, semantic snapshots, screenshot/render metadata, network fixture records, device settings, and native capability records remain inspectable through the transport-backed session.
-- [ ] Protocol and session failures produce structured diagnostics instead of hangs, silent state drift, or host-specific behavior.
-- [ ] Existing fixture-backed tests and examples continue to pass, with docs clearly explaining which mode each command exercises.
-- [ ] All phase tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] A strict-mode baseline app can run through one live local runtime-to-renderer session using the open-source Swift runtime host and browser renderer.
+- [x] The browser renderer receives semantic UI tree updates from the runtime transport and reflects deterministic interaction state without relying on illustrative source lowering.
+- [x] The TypeScript automation SDK can launch, inspect, interact with, and close a transport-backed runtime session using the same high-level automation concepts as fixture mode.
+- [x] Logs, semantic snapshots, screenshot/render metadata, network fixture records, device settings, and native capability records remain inspectable through the transport-backed session.
+- [x] Protocol and session failures produce structured diagnostics instead of hangs, silent state drift, or host-specific behavior.
+- [x] Existing fixture-backed tests and examples continue to pass, with docs clearly explaining which mode each command exercises.
+- [x] All phase tests pass.
+- [x] No regressions in previous phase tests.
 
 **On Completion:**
-- Deviations from plan: none yet
-- Tech debt / follow-ups: none yet
-- Ready for next phase: no
+- Deviations from plan: no hosted or production WebSocket service was added; the live path remains deterministic local in-memory transport as planned for M10.
+- Tech debt / follow-ups: Vite still emits the existing Monaco/editor large-chunk warning during renderer builds; accepted as unchanged bundling behavior.
+- Ready for next phase: yes

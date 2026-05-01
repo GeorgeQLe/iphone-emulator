@@ -73,9 +73,8 @@ Transport and live-renderer failures are structured records. They are product ou
 | `connectionFailure` | A transport cannot connect or is not connected. | `url`, `method` |
 | `timeout` | A request exceeded the client timeout. | `method`, `sessionID` |
 | `unsupportedCommand` | The command is outside the current local contract. | `command` |
-| `protocolViolation` | The envelope, session, query target, or lifecycle state is invalid. | `sessionID`, `nodeID`, `envelope` |
+| `protocolViolation` | The envelope, session, query target, lifecycle state, invalid close, or post-close command is invalid. | `sessionID`, `nodeID`, `envelope` |
 | `staleRevision` | A command or snapshot arrived for an older semantic revision. | `currentRevision`, `expectedRevision`, `receivedRevision` |
-| `close` | A command was sent after the session closed. | `sessionID` |
 
 The SDK maps diagnostics to typed errors:
 

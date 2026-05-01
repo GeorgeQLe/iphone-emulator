@@ -93,7 +93,7 @@ describe("RuntimeLiveSessionAdapter", () => {
     expect(adapter.snapshots).toEqual([]);
   });
 
-  it("reports structured diagnostics for connection, protocol, stale revision, and close events", async () => {
+  it("reports structured diagnostics for connection, protocol, and stale revision events", async () => {
     const onDiagnostic = vi.fn();
     const container = document.createElement("div");
     const session = createRuntimeLiveSession(container, { onDiagnostic });
@@ -123,7 +123,7 @@ describe("RuntimeLiveSessionAdapter", () => {
     expect(() => session.throwIfFailed()).toThrow(RuntimeLiveSessionDiagnosticError);
   });
 
-  it("regresses a strict mode transport snapshot sequence through live rendering and close", async () => {
+  it("regresses a strict mode transport snapshot sequence through live rendering and deterministic closure", async () => {
     const onDiagnostic = vi.fn();
     const container = document.createElement("div");
     const session = createRuntimeLiveSession(container, { onDiagnostic });
