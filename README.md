@@ -1,6 +1,6 @@
 # iPhone Emulator Workspace
 
-This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 10 milestone adds high-level native automation controls for agent workflows on top of the strict-mode semantic tree, deterministic browser preview surface, agent-facing artifacts, fixture-backed automation SDK, compatibility diagnostics, browser IDE demo, and native capability registry.
+This repository is building an open-source iPhone-like app harness for Swift code. The current Phase 11 milestone is adding a local live runtime-to-renderer transport path on top of the strict-mode semantic tree, deterministic browser preview surface, agent-facing artifacts, fixture-backed automation SDK, compatibility diagnostics, browser IDE demo, and native capability registry.
 
 ## First Green Run
 
@@ -11,12 +11,13 @@ swift test
 npm --prefix packages/automation-sdk test
 npm --prefix packages/browser-renderer test
 npx tsx examples/strict-mode-baseline/automation-example.ts
+npx tsx examples/strict-mode-baseline/live-transport-example.ts
 ```
 
 First success means:
 
 - Swift runtime, diagnostics, and strict-mode contracts pass.
-- The automation SDK launches the `strict-mode-baseline` fixture in memory.
+- The automation SDK launches the `strict-mode-baseline` fixture in memory and can also drive the deterministic local transport-backed session example.
 - The example records semantic state, logs, route fixture records, screenshot metadata, device metadata, and native capability artifacts.
 - The browser renderer can render the checked-in semantic fixture and native preview cards deterministically.
 
@@ -32,6 +33,7 @@ npm --prefix packages/automation-sdk run typecheck
 npm --prefix packages/automation-sdk test
 npm --prefix packages/automation-sdk run build
 npx tsx examples/strict-mode-baseline/automation-example.ts
+npx tsx examples/strict-mode-baseline/live-transport-example.ts
 ```
 
 The root `package.json` does not define a root `npm test` script. Use the package-specific commands above.
@@ -45,7 +47,7 @@ The current repository is a local-first developer workspace, not a hosted produc
 - Example fixture: `examples/strict-mode-baseline`.
 - Public docs: strict-mode migration, compatibility matrix, native capability registry, and CI fixture recipe.
 
-Current value comes from deterministic fixture execution and inspectable artifacts. The automation SDK is in-memory and fixture-backed; the browser renderer mounts checked-in semantic fixtures; screenshots are metadata records; native capability APIs append deterministic records rather than touching host native services.
+Current value comes from deterministic fixture execution, deterministic local transport sessions, and inspectable artifacts. The automation SDK keeps fixture-backed mode available and now has a local transport-backed mode; the browser renderer mounts checked-in semantic fixtures and has a live-session adapter; screenshots are metadata records; native capability APIs append deterministic records rather than touching host native services.
 
 For CI usage, start with [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md).
 
@@ -59,7 +61,7 @@ For CI usage, start with [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md
 
 - This project is not iOS, UIKit, SwiftUI, WebKit, or Xcode Simulator.
 - This project does not aim for binary compatibility with Apple frameworks or simulator fidelity.
-- This project still does not implement iOS fidelity, Apple runtime compatibility, protocol transport, or a live runtime-to-browser session layer.
+- This project still does not implement iOS fidelity, Apple runtime compatibility, hosted sessions, or a production WebSocket runtime service.
 
 ## Modes
 
@@ -91,8 +93,8 @@ The workspace currently provides:
 - Deterministic mock state for permission prompts/results, fixture-backed camera captures, photo picker selections, scripted location updates, clipboard read/write records, keyboard/input traits, file picker selections, share sheet records, and local notification scheduling/delivery records.
 - Diagnostics-side `nativeCapabilityGuidance` for recognized native API requests, with deterministic manifest-field suggestions and fail-closed handling for APIs with no capability contract.
 - `@iphone-emulator/browser-renderer`, a local TypeScript/Vite renderer that mounts a checked-in semantic tree fixture into a deterministic iPhone-like browser shell, can derive stable DOM render metadata for captures, and renders browser-only native mock plus native agent-flow preview cards from illustrative strict-mode declarations.
-- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, native capability manifest launch options, high-level `app.native.*` controls, native mock state/event inspection, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, and artifact bundle retrieval through an in-memory fixture client.
-- SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface before later phases add transport or live session coordination.
+- `@iphone-emulator/automation-sdk`, a local TypeScript package that exposes `Emulator.launch`, native capability manifest launch options, high-level `app.native.*` controls, native mock state/event inspection, locator queries by text/role/test ID, semantic tree inspection, log retrieval, screenshot placeholder metadata, route fixtures, request records, device options, artifact bundle retrieval through an in-memory fixture client, and a transport-backed mode for deterministic local live sessions.
+- SwiftPM and Vitest coverage that locks the current tree-generation, runtime automation, renderer behavior, and SDK surface as the local transport path is connected.
 
 ## Workspace Layout
 
@@ -106,7 +108,7 @@ The workspace currently provides:
 
 ## Example
 
-See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility), [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md), and [`docs/strict-mode-migration.md`](docs/strict-mode-migration.md). For native capability manifests and mock-fidelity boundaries, see [`docs/native-capabilities.md`](docs/native-capabilities.md). For CI artifact retention, see [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation sample demonstrates the current TypeScript SDK flow.
+See [`examples/strict-mode-baseline`](examples/strict-mode-baseline) for the current strict-mode fixture path and local live transport example. For compatibility-mode fixtures and current limitations, see [`Tests/fixtures/compatibility`](Tests/fixtures/compatibility), [`docs/compatibility-matrix.md`](docs/compatibility-matrix.md), and [`docs/strict-mode-migration.md`](docs/strict-mode-migration.md). For native capability manifests and mock-fidelity boundaries, see [`docs/native-capabilities.md`](docs/native-capabilities.md). For CI artifact retention, see [`docs/ci-fixture-recipe.md`](docs/ci-fixture-recipe.md). The Swift example shows the intended declaration shape, the runtime host exposes the semantic tree snapshot and automation surface, the browser renderer mounts the checked-in fixture used for deterministic browser previews, and the automation samples demonstrate fixture-backed and transport-backed TypeScript SDK flows.
 
 ## Validation
 
@@ -132,7 +134,7 @@ swift test --filter RuntimeHostContractTests
 
 ## Automation SDK Example
 
-The current automation SDK mirrors the fixture-backed runtime contract rather than a live browser or device transport. A representative flow looks like:
+The fixture-backed automation SDK mirrors the runtime contract without a browser or device transport. A representative fixture flow looks like:
 
 ```ts
 import { Emulator } from "@iphone-emulator/automation-sdk";
@@ -333,9 +335,8 @@ await app.close();
 ## Current Limitations
 
 - The browser renderer mounts a checked-in fixture tree from `packages/browser-renderer/src/fixtureTree.ts`; it does not yet consume runtime-exported snapshots directly.
-- There is no JSON-RPC or WebSocket transport between Swift and the browser renderer yet.
-- The automation SDK is in-memory only. It mirrors the runtime contract and fixture behavior locally; it does not yet speak to a live Swift host, browser process, or real device.
-- Runtime updates are fixture-scoped and deterministic; live interaction, multi-session coordination, and transport-backed automation hooks are deferred to later phases.
+- The local live transport example uses deterministic in-memory transport. It does not yet speak to a production WebSocket runtime service, hosted session cloud, browser process, or real device.
+- Runtime updates are deterministic and local; broader multi-process coordination is still in progress.
 - Screenshot support is limited to placeholder metadata (`name`, `kind`, `format`, `byteCount`, `viewport`) until a later phase adds a real pixel artifact pipeline.
 - Renderer capture support currently produces deterministic DOM render metadata, not native screenshots or video.
 - Network fixtures are deterministic in-memory route records. They do not perform live HTTP calls.

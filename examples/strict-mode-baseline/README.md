@@ -1,6 +1,9 @@
 # Strict Mode Baseline Example
 
-This example shows the current strict-mode fixture path from Swift declarations to semantic snapshots, deterministic browser preview metadata, native mock service records, and the in-memory automation SDK artifact workflow.
+This example shows two strict-mode paths:
+
+- `automation-example.ts` exercises the fixture-backed in-memory automation SDK.
+- `live-transport-example.ts` exercises the local transport-backed SDK path over the deterministic in-memory runtime transport.
 
 For the shortest first-green-run path from the repository root:
 
@@ -9,6 +12,7 @@ swift test
 npm --prefix packages/automation-sdk test
 npm --prefix packages/browser-renderer test
 npx tsx examples/strict-mode-baseline/automation-example.ts
+npx tsx examples/strict-mode-baseline/live-transport-example.ts
 ```
 
 For a CI job that preserves reviewable fixture artifacts, see [`../../docs/ci-fixture-recipe.md`](../../docs/ci-fixture-recipe.md).
@@ -27,9 +31,10 @@ For a CI job that preserves reviewable fixture artifacts, see [`../../docs/ci-fi
 - `../../packages/browser-renderer/src/fixtureTree.ts` is the checked-in semantic tree fixture currently rendered in the browser.
 - `../../packages/browser-renderer/src/main.ts` mounts that fixture into the deterministic iPhone-like browser shell.
 - `../../packages/browser-renderer/src/renderArtifacts.ts` derives deterministic DOM render metadata for renderer captures.
-- `automation-example.ts` demonstrates the current `@iphone-emulator/automation-sdk` surface against the same strict baseline fixture.
+- `automation-example.ts` demonstrates the fixture-backed `@iphone-emulator/automation-sdk` surface against the same strict baseline fixture.
+- `live-transport-example.ts` demonstrates `Emulator.launch({ mode: "transport" })` with the deterministic local runtime transport, including semantic inspection, locator interaction, network fixture records, screenshot metadata, artifacts, device inspection, structured diagnostics, and clean close.
 
-## Current Flow
+## Fixture Flow
 
 1. A strict-mode app is declared against `StrictModeSDK`, as shown in `BaselineExampleApp.swift`.
 2. The runtime host accepts fixture lowering closures through `RuntimeAppLoader.loadFixture(...)` and stores the result as a `RuntimeTreeSnapshot`.
@@ -39,7 +44,7 @@ For a CI job that preserves reviewable fixture artifacts, see [`../../docs/ci-fi
 6. Artifact APIs expose deterministic screenshot placeholder metadata, semantic snapshots, logs, network request records, native capability records, and launch-time device settings for agent workflows.
 7. Native capability manifests derive deterministic permission, camera/photo, location, clipboard, keyboard/input, file, share sheet, and notification mock records for inspection. High-level `app.native.*` controls let agents mutate those records in memory. They do not execute live native services.
 
-## Automation Walkthrough
+## Fixture Automation Walkthrough
 
 The checked-in automation sample shows the current intended user flow:
 
@@ -218,6 +223,45 @@ This example is intentionally limited:
 - Device settings are metadata reflected by the runtime and SDK; they do not emulate OS simulator fidelity.
 - Native capability mock records are fixture contracts; they do not access live host permissions, device state, host files, host clipboard, camera hardware, photo libraries, native frameworks, notification delivery, or live network resources by default.
 
+## Local Live Transport Flow
+
+`live-transport-example.ts` keeps the same high-level automation concepts as fixture mode while routing calls through a transport client:
+
+```ts
+import {
+  Emulator,
+  RuntimeTransportClient,
+  createInMemoryRuntimeTransport,
+} from "@iphone-emulator/automation-sdk";
+
+const transport = createInMemoryRuntimeTransport({
+  fixtureName: "strict-mode-baseline",
+});
+const transportClient = new RuntimeTransportClient({ transport });
+
+const app = await Emulator.launch({
+  mode: "transport",
+  appIdentifier: "LiveTransportBaselineApp",
+  fixtureName: "strict-mode-baseline",
+  transport: transportClient,
+});
+
+await app.getByRole("textField", { text: "Name" }).fill("Jordan");
+await app.getByText("Save").tap();
+
+const tree = await app.semanticTree();
+const artifacts = await app.artifacts();
+
+await app.close();
+```
+
+The local transport path currently guarantees:
+
+- `Emulator.launch({ mode: "transport", ... })` opens a deterministic local session through `RuntimeTransportClient` and `createInMemoryRuntimeTransport`.
+- Locator commands, semantic tree inspection, logs, screenshot metadata, artifacts, route fixtures, request records, native device snapshots, and close are routed through the transport boundary.
+- Protocol, unsupported command, timeout, stale revision, connection, and close failures use structured transport diagnostics.
+- The path is local-only and deterministic. It is not hosted session-cloud behavior, a real WebSocket runtime service, or an Apple simulator bridge.
+
 ## Local Validation
 
 Run the current renderer and runtime checks with:
@@ -232,13 +276,14 @@ npm --prefix packages/automation-sdk run typecheck
 npm --prefix packages/automation-sdk test
 npm --prefix packages/automation-sdk run build
 npx tsx examples/strict-mode-baseline/automation-example.ts
+npx tsx examples/strict-mode-baseline/live-transport-example.ts
 ```
 
 ## Current Limitations
 
 - The renderer fixture is checked in under `packages/browser-renderer/src/fixtureTree.ts`; it is not yet generated directly from `BaselineExampleApp.swift`.
-- There is no live runtime session, transport layer, or browser-side state sync in this phase.
-- The automation SDK runs entirely in memory against a deterministic fixture; it does not yet connect to a live Swift runtime or browser session.
+- The local live transport example uses the deterministic in-memory transport. It does not yet connect to a real WebSocket service or hosted runtime session.
+- The browser live-session adapter and the SDK transport path share the semantic tree vocabulary, but this example does not launch a browser renderer process.
 - Screenshot support is limited to placeholder metadata rather than real image capture.
 - Network fixtures are route records in the in-memory SDK/runtime contract; they do not issue real HTTP requests.
 - Native capability mocks and `app.native.*` controls are deterministic records only. They are inspectable through session, log, semantic tree, and artifact surfaces, but they do not execute live native services or provide iOS simulator fidelity.

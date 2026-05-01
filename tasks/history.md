@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 11 Step 11.6 by adding `examples/strict-mode-baseline/live-transport-example.ts` for the deterministic local transport-backed SDK flow and updating the root and strict baseline example docs to distinguish fixture mode from local live transport mode.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts` all passed cleanly with no warnings after fixing the new example to wrap `createInMemoryRuntimeTransport` in `RuntimeTransportClient`.
+
 - Completed Phase 11 Step 11.4 by adding a browser renderer live-session adapter that consumes transport semantic snapshots, enforces monotonic revisions, stores accepted live snapshots, renders through the existing semantic tree renderer, surfaces structured live-session diagnostics, and keeps demo fallback mode separate from live transport mode.
 - Validation: `npm --prefix packages/browser-renderer run typecheck` and `npm --prefix packages/browser-renderer test` passed cleanly with no warnings after the renderer live-session adapter landed. `npm --prefix packages/browser-renderer run build` passed; Vite emitted the existing large-chunk warning for Monaco/editor assets, accepted as unchanged bundling behavior.
 
