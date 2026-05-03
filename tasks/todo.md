@@ -87,7 +87,7 @@
   - Confirm native command responses publish inspectable events, logs, artifact records, semantic snapshot metadata, and session native state consistently.
   - Reconcile the TypeScript `RuntimeNativeAutomationAction`/result surface against Swift before adding coverage: current review findings flagged TypeScript-only `currentLocation`/read-result shapes, stale diagnostic payload key drift (`expectedSemanticRevision`/`actualSemanticRevision` vs Swift `expectedRevision`/`currentRevision`), and duplicated native state transition logic between fixture mode and the local transport double.
   - Add direct stale native command coverage at the Swift transport boundary that proves rejected commands do not append native events, logs, artifacts, or mutate retained native state.
-- [ ] Step 12.5: Update examples and documentation for local native parity
+- [x] Step 12.5: Update examples and documentation for local native parity
   - Files: modify `examples/strict-mode-baseline/live-transport-example.ts`, modify `README.md` only if the example command summary needs parity wording, modify `docs/live-runtime-transport.md`, and modify `docs/native-capabilities.md`.
   - Extend the live transport example with representative native calls across permissions, camera/photos fixtures, location, clipboard, files, share sheet, notifications, device snapshot, native events, and native artifacts.
   - Document that transport mode now supports the current deterministic `app.native.*` controls while still using local session records, fixture outputs, logs, artifacts, and semantic metadata.

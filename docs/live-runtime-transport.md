@@ -14,7 +14,9 @@ The transport vocabulary uses JSON-RPC/WebSocket terminology because the public 
 | Renderer live mode | `createRuntimeLiveSession(...)` / `RuntimeLiveSessionAdapter` | Applies semantic snapshots and diagnostics from a live session stream. |
 | Hosted/session-cloud mode | Deferred | Not implemented. Documentation should not imply remote scheduling, multi-tenant retention, or production WebSocket availability. |
 
-Fixture mode and live local transport mode intentionally share semantic tree, locator, artifact, network, device, and native capability concepts. They differ in where commands travel: fixture mode calls the in-memory SDK app directly, while transport mode routes launch, inspect, interaction, artifact, network, native-device, and close operations through `RuntimeTransportClient`.
+Fixture mode and live local transport mode intentionally share semantic tree, locator, artifact, network, device, and native capability concepts. They differ in where commands travel: fixture mode calls the in-memory SDK app directly, while transport mode routes launch, inspect, interaction, artifact, network, native automation, native-device, and close operations through `RuntimeTransportClient`.
+
+Transport native parity means the current deterministic `app.native.*` controls work through the local transport command path and retained session records. It does not add host camera, photo library, clipboard, file picker, notifications, sensors, haptics, production WebSocket, hosted-session, MCP, or platform simulator behavior.
 
 ## Transport Contract
 
@@ -41,6 +43,7 @@ The current method vocabulary includes:
 | `logs` | Returns runtime log entries retained for the session. |
 | `artifacts` | Returns render metadata, semantic snapshots, logs, network request records, and native capability records. |
 | `network.route` / `network.request` | Installs and inspects deterministic route fixtures and HAR-like request records. |
+| `native.automation` | Applies deterministic native automation actions for supported `app.native.*` controls through the serialized session command path. |
 | `native.device.snapshot` | Returns launch-time device settings retained by the session. |
 | `native.events` | Returns deterministic native capability records. |
 | `close` | Closes the current session and rejects later commands with a structured diagnostic. |
@@ -97,6 +100,8 @@ A live local session keeps the same review surfaces as fixture mode:
 
 These records are deterministic JSON-compatible values. Screenshot entries remain metadata placeholders. Native capability entries remain mock records. Network records remain fixture records unless a later phase explicitly adds a live network boundary.
 
+Supported transport native calls cover the current fixture-mode namespace: permissions snapshot/request/set, camera fixture capture, photo fixture selection, location read/update, clipboard read/write, file selection, share-sheet completion, notification authorization/schedule/delivery, device snapshots, native events, and native artifacts. Missing fixtures, unsupported native actions, stale revisions, closed sessions, malformed commands, and invalid sessions still fail closed with structured diagnostics or deterministic native diagnostic records.
+
 ## Examples
 
 Fixture-backed example:
@@ -111,7 +116,7 @@ Live local transport example:
 npx tsx examples/strict-mode-baseline/live-transport-example.ts
 ```
 
-The live example demonstrates launch, locator fill/tap, semantic inspection, screenshot metadata, logs, route fixtures, artifact inspection, device inspection, unsupported-command diagnostics, and clean close through `RuntimeTransportClient` and `createInMemoryRuntimeTransport`.
+The live example demonstrates launch, locator fill/tap, semantic inspection, screenshot metadata, logs, route fixtures, artifact inspection, deterministic native controls, native events/artifacts, device inspection, unsupported-command diagnostics, and clean close through `RuntimeTransportClient` and `createInMemoryRuntimeTransport`.
 
 ## Validation
 
@@ -144,6 +149,7 @@ Use `docs/ci-fixture-recipe.md` for fixture-first CI. Add the live transport exa
 
 - Local-only: no hosted session scheduler or remote runtime pool exists.
 - Deterministic: commands, revisions, logs, artifacts, network fixtures, device settings, and native capability records are retained values.
+- Native parity is local: transport-backed `app.native.*` matches fixture-mode deterministic controls and inspection surfaces, not host native services, production WebSocket transport, hosted sessions, MCP, or new device fidelity.
 - Fail-closed: unsupported commands, protocol mismatches, stale revisions, timeouts, connection failures, and post-close commands surface diagnostics.
 - Renderer-separated: demo/source-lowering mode and live snapshot mode are separate paths.
 - Open-source-only: the transport does not depend on Apple-proprietary simulator internals or native framework behavior.

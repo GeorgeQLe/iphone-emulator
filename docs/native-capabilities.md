@@ -2,6 +2,8 @@
 
 The native capability registry is a deterministic contract layer for source that asks for native functionality. It does not provide iOS, UIKit, SwiftUI, CoreLocation, AVFoundation, Photos, notification, file picker, share sheet, sensor, haptic, clipboard, or host-device fidelity.
 
+Fixture mode and local transport mode now expose the same current `app.native.*` controls and inspection surfaces for supported deterministic services. That parity is local session parity only: native actions are retained records, fixture outputs, logs, artifacts, and semantic metadata. They are not host native access, production WebSocket support, hosted sessions, MCP behavior, or simulator fidelity.
+
 The registry lets the runtime, diagnostics layer, browser preview, and automation SDK agree on the same capability names, manifest fields, deterministic mock outputs, and fail-closed behavior. The first supported mock services are fixture-backed records for permissions, camera/photos, location, clipboard, keyboard/input traits, files, share sheets, and notifications.
 
 For CI retention of native capability records alongside semantic trees, logs, route fixtures, screenshot metadata, and session state, see [`ci-fixture-recipe.md`](ci-fixture-recipe.md).
@@ -112,6 +114,7 @@ Native mock state is exposed through existing launch, session, log, semantic tre
 - Semantic root metadata mirrors inspectable values such as `native.camera.fixture`, `native.photos.selection.<identifier>`, `native.location.latitude`, `native.clipboard.currentText`, `native.keyboard.focusedElementID`, `native.files.selection.<identifier>`, `native.shareSheet.<identifier>.completionState`, and `native.notification.<identifier>`.
 - The TypeScript SDK accepts the same `nativeCapabilities` launch manifest, exposes `session.nativeCapabilityState`, `session.nativeCapabilityEvents`, `artifactBundle.nativeCapabilityRecords`, and provides `app.native.events()` plus `app.nativeCapabilityEvents()` for cloned event inspection.
 - `app.native.*` provides high-level deterministic controls for permissions, camera, photos, location, clipboard, files, share sheets, notifications, device snapshots, native event inspection, and native artifact inspection.
+- In transport mode, supported `app.native.*` mutations route through the generic `native.automation` command boundary and the same semantic revision gate used by other serialized session commands.
 
 In CI, preserve `artifactBundle.nativeCapabilityRecords`, `session.nativeCapabilityState`, and `app.native.events()` output as JSON artifacts. Those files are the current native mock review surface because screenshots are metadata-only and native services are deterministic records.
 
@@ -129,7 +132,7 @@ const nativeEvents = await app.native.events();
 const nativeArtifacts = await app.native.artifacts();
 ```
 
-These APIs are deterministic SDK controls today. They mutate the in-memory automation session and records; they do not connect to a live Swift host, browser transport, or host native service.
+These APIs are deterministic SDK controls today. Fixture mode mutates the in-memory automation session directly; local transport mode sends supported mutations through the transport session command path. Neither mode connects to host camera, photos, clipboard, files, notifications, sensors, haptics, production WebSocket, hosted sessions, MCP, or other host native services.
 
 ## Browser Preview
 
@@ -212,5 +215,6 @@ They do not:
 - Ask the host operating system for permissions.
 - Emulate UIKit, SwiftUI, iOS lifecycle, native framework timing, simulator behavior, or binary compatibility.
 - Perform live network calls by default.
+- Create production WebSocket, hosted-session, MCP, or host-native-service behavior.
 
 When source code needs native behavior, prefer strict-mode fixtures: `configuredMocks.*` for stable mock data, `scriptedEvents.*` for deterministic event delivery, and `unsupportedSymbols` for APIs that should remain blocked until a capability contract exists. Unsupported services still fail closed with diagnostics rather than silently degrading into host behavior.
