@@ -275,9 +275,7 @@ describe("RuntimeTransportClient", () => {
       fixtureArtifacts.nativeCapabilityRecords.map((record) => record.name)
     );
     expect(transportEvents.map((event) => event.name)).toEqual(fixtureEvents.map((event) => event.name));
-    expect(transportSession.logs.map((log) => log.message)).toEqual(
-      expect.arrayContaining(["native.deviceEnvironment.snapshot"])
-    );
+    expect(transportSession.logs.map((log) => log.message)).toEqual(["Launched fixture strict-mode-baseline"]);
 
     transportSession.nativeCapabilityState.clipboard!.currentText = "mutated by test";
     transportArtifacts.nativeCapabilityRecords.at(-1)!.payload.locale = "mutated";
@@ -325,22 +323,31 @@ describe("RuntimeTransportClient", () => {
       transport: client,
     });
 
-    await expect(app.native.camera.capture("missing-camera")).resolves.toMatchObject({
-      capability: "camera",
-      name: "native.diagnostic.camera.missingFixture",
-      payload: expect.objectContaining({ fixtureIdentifier: "missing-camera" }),
-    });
-    await expect(app.native.files.select("missing-file-picker")).resolves.toMatchObject({
-      record: {
-        capability: "files",
-        name: "native.diagnostic.files.missingFixture",
-      },
-      selectedFiles: [],
-    });
-    await expect(app.native.shareSheet.complete("missing-share", { completionState: "cancelled" })).resolves.toMatchObject({
-      capability: "shareSheet",
-      name: "native.diagnostic.shareSheet.missingFixture",
-    });
+    await expect(app.native.camera.capture("missing-camera")).rejects.toThrow(
+      "no camera fixture named missing-camera"
+    );
+    await expect(app.native.files.select("missing-file-picker")).rejects.toThrow(
+      "no file picker fixture named missing-file-picker"
+    );
+    await expect(
+      app.native.shareSheet.complete("missing-share", { completionState: "cancelled" })
+    ).rejects.toThrow("no share sheet fixture named missing-share");
+    await expect(app.native.events()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "native.diagnostic.camera.missingFixture",
+          payload: expect.objectContaining({ fixtureIdentifier: "missing-camera" }),
+        }),
+        expect.objectContaining({
+          name: "native.diagnostic.files.missingFixture",
+          payload: expect.objectContaining({ fixtureIdentifier: "missing-file-picker" }),
+        }),
+        expect.objectContaining({
+          name: "native.diagnostic.shareSheet.missingFixture",
+          payload: expect.objectContaining({ fixtureIdentifier: "missing-share" }),
+        }),
+      ])
+    );
     await expect(client.inspectSession("missing-session")).rejects.toMatchObject({
       code: "protocolViolation",
       payload: { sessionID: "missing-session" },
@@ -367,8 +374,8 @@ describe("RuntimeTransportClient", () => {
       code: "staleRevision",
       payload: {
         sessionID: currentSession.id,
-        expectedSemanticRevision: String(currentSession.snapshot.revision - 1),
-        actualSemanticRevision: String(currentSession.snapshot.revision),
+        expectedRevision: String(currentSession.snapshot.revision - 1),
+        currentRevision: String(currentSession.snapshot.revision),
       },
     });
     await expect(app.session()).resolves.toMatchObject({

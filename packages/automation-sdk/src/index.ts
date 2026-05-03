@@ -232,7 +232,7 @@ class TransportEmulatorApp implements EmulatorApp {
       },
       location: {
         current: async () =>
-          this.nativeAutomationResult<NativeLocationSnapshot>({ type: "currentLocation" }),
+          this.requireTransportMethod("nativeLocationCurrent")(this.sessionID),
         update: async (coordinate) =>
           this.nativeAutomationRecord({
             type: "updateLocation",
@@ -298,11 +298,13 @@ class TransportEmulatorApp implements EmulatorApp {
     action: RuntimeNativeAutomationAction
   ): Promise<T> {
     const session = await this.session();
-    return this.requireTransportMethod("nativeAutomation")(
+    const result = (await this.requireTransportMethod("nativeAutomation")(
       this.sessionID,
       session.snapshot.revision,
       action
-    ) as Promise<T>;
+    )) as T;
+    throwIfMissingNativeFixture(result);
+    return result;
   }
 
   private requireTransportMethod<Name extends keyof RuntimeTransportLike>(
@@ -340,6 +342,28 @@ function isTransportLaunchOptions(
   options: EmulatorLaunchOptions
 ): options is RuntimeTransportLaunchOptions {
   return options.mode === "transport";
+}
+
+function throwIfMissingNativeFixture(result: RuntimeNativeAutomationResult): void {
+  const record =
+    "record" in result
+      ? result.record
+      : "capability" in result && "name" in result
+        ? result
+        : undefined;
+  if (!record?.name.startsWith("native.diagnostic.") || record.payload.code !== "missingFixture") {
+    return;
+  }
+
+  const fixtureIdentifier = record.payload.fixtureIdentifier ?? record.payload.identifier;
+  const capability = record.capability;
+  if (capability === "files") {
+    throw new Error(`no file picker fixture named ${fixtureIdentifier}`);
+  }
+  if (capability === "shareSheet") {
+    throw new Error(`no share sheet fixture named ${fixtureIdentifier}`);
+  }
+  throw new Error(`no ${capability} fixture named ${fixtureIdentifier}`);
 }
 
 export interface EmulatorApp {

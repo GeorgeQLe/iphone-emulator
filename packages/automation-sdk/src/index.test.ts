@@ -153,7 +153,7 @@ describe("Emulator", () => {
       name: "native.location.update.automation",
     });
     await expect(app.native.clipboard.read()).resolves.toMatchObject({
-      text: "Draft profile notes",
+      text: "Updated profile notes",
       record: { capability: "clipboard", name: "native.clipboard.read.automation" },
     });
     await expect(app.native.clipboard.write("Copied in transport mode")).resolves.toMatchObject({

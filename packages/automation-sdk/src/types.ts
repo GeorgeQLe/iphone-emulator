@@ -107,6 +107,7 @@ export interface RuntimeTransportLike {
     expectedSemanticRevision: number,
     action: RuntimeNativeAutomationAction
   ): Promise<RuntimeNativeAutomationResult>;
+  nativeLocationCurrent?(sessionID: string): Promise<NativeLocationSnapshot>;
   nativeDeviceSnapshot?(sessionID: string): Promise<RuntimeDeviceSettings>;
   nativeCapabilityEvents?(sessionID: string): Promise<RuntimeNativeCapabilityRecord[]>;
 }
@@ -487,9 +488,6 @@ export type RuntimeNativeAutomationAction =
       latitude: number;
       longitude: number;
       accuracyMeters?: number;
-    }
-  | {
-      type: "currentLocation";
     }
   | {
       type: "readClipboard";
