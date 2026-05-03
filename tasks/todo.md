@@ -80,7 +80,7 @@
   - Serialize native mutations through the current semantic revision model, increment snapshots for successful mutations where fixture mode records native revisions, and reject stale expected revisions with the existing `staleRevision` diagnostic.
   - Ensure returned sessions, native events, native artifacts, permission snapshots, clipboard reads, file selections, location snapshots, and device snapshots are cloned so caller mutation cannot corrupt retained transport state.
   - Preserve deterministic missing-fixture diagnostics and errors without attempting host native services.
-- [ ] Step 12.4: Align Swift runtime transport native command coverage
+- [x] Step 12.4: Align Swift runtime transport native command coverage
   - Files: modify `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeSessionCoordinator.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift` only if a Codable adapter is needed, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` only if mapping helpers are needed, and modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Verify `RuntimeSessionCoordinator` already routes `.nativeAutomation(RuntimeNativeAutomationAction)` through the same stale revision gate as other commands; add or tighten tests for all current native action cases and diagnostic branches.
   - Avoid a parallel Swift native command taxonomy; use the existing `RuntimeAutomationCommand.nativeAutomation` and `RuntimeNativeAutomationAction` contract as the canonical model.

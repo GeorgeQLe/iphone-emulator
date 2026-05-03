@@ -2292,6 +2292,7 @@ struct RuntimeHostContractTests {
         let eventCount = coordinator.session?.nativeCapabilityEvents.count
         let artifactCount = coordinator.session?.artifactBundle.nativeCapabilityRecords.count
         let logCount = coordinator.session?.logs.count
+        let transportEventCount = coordinator.events.count
         let staleNative = try coordinator.handle(
             RuntimeTransportRequest.command(
                 id: "rpc-stale-native",
@@ -2308,6 +2309,112 @@ struct RuntimeHostContractTests {
         #expect(coordinator.session?.nativeCapabilityEvents.count == eventCount)
         #expect(coordinator.session?.artifactBundle.nativeCapabilityRecords.count == artifactCount)
         #expect(coordinator.session?.logs.count == logCount)
+        #expect(coordinator.events.count == transportEventCount)
+    }
+
+    @Test("live runtime transport covers every native automation action through canonical command boundary")
+    func liveRuntimeTransportCoversNativeAutomationActionsThroughCanonicalBoundary() throws {
+        var coordinator = RuntimeTransportSessionCoordinator()
+        _ = try coordinator.handle(
+            RuntimeTransportRequest.launch(
+                id: "rpc-launch-native-actions",
+                configuration: RuntimeAutomationLaunchConfiguration(
+                    appIdentifier: "FixtureApp",
+                    fixtureName: "strict-mode-baseline",
+                    device: RuntimeDeviceSettings(
+                        viewport: RuntimeDeviceViewport(width: 430, height: 932, scale: 3),
+                        locale: "en_US",
+                        geolocation: RuntimeDeviceGeolocation(latitude: 37.3349, longitude: -122.0090, accuracyMeters: 12)
+                    ),
+                    nativeCapabilities: representativeNativeMockManifest()
+                )
+            )
+        )
+
+        let actions: [RuntimeNativeAutomationAction] = [
+            .requestPermission(capability: .camera),
+            .setPermission(capability: .location, state: .denied),
+            .captureCamera(identifier: "front-camera-still"),
+            .selectPhoto(identifier: "recent-library-pick"),
+            .updateLocation(identifier: "automation", latitude: 37.3350, longitude: -122.0091, accuracyMeters: 9),
+            .readClipboard(identifier: "automation"),
+            .writeClipboard(identifier: "automation", text: "Copied by Swift transport"),
+            .selectFiles(
+                identifier: "document-picker",
+                selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+                contentTypes: ["com.adobe.pdf"],
+                allowsMultipleSelection: true
+            ),
+            .completeShareSheet(
+                identifier: "share-receipt",
+                activityType: "com.apple.UIKit.activity.Mail",
+                items: ["Fixtures/profile.pdf", "Summary"],
+                completionState: "completed"
+            ),
+            .scheduleNotification(
+                identifier: "profile-reminder",
+                title: "Profile Reminder",
+                body: "Review the saved profile.",
+                trigger: "2026-04-28T12:15:00Z"
+            ),
+            .deliverNotification(
+                identifier: "profile-reminder",
+                title: "Profile Reminder",
+                body: "Review the saved profile."
+            ),
+            .snapshotDeviceEnvironment,
+        ]
+
+        for (offset, action) in actions.enumerated() {
+            let expectedRevision = offset + 1
+            let response = try coordinator.handle(
+                RuntimeTransportRequest.command(
+                    id: "rpc-native-action-\(offset)",
+                    sessionID: "session-1",
+                    expectedRevision: expectedRevision,
+                    command: .nativeAutomation(action)
+                )
+            )
+
+            #expect(response.diagnostic == nil)
+            #expect(response.revision == expectedRevision + 1)
+            guard case let .commandCompleted(.nativeCapabilityEvents(events)) = response.result else {
+                Issue.record("expected native capability events response")
+                return
+            }
+            #expect(events.last?.name == action.eventName)
+            #expect(events.last?.atRevision == expectedRevision + 1)
+        }
+
+        let inspection = try coordinator.handle(
+            RuntimeTransportRequest.inspectSession(
+                id: "rpc-inspect-native-actions",
+                sessionID: "session-1"
+            )
+        )
+        guard let session = inspection.sessionInspection else {
+            Issue.record("expected session inspection")
+            return
+        }
+
+        let eventNames = session.nativeCapabilityEvents.map(\.name)
+        RuntimeNativeAutomationAction.canonicalEventNames.forEach { eventName in
+            #expect(eventNames.contains(eventName))
+        }
+        #expect(session.snapshot.revision == 13)
+        #expect(session.nativeCapabilityState.permissions.first { $0.capability == .camera }?.resolvedState == .granted)
+        #expect(session.nativeCapabilityState.permissions.first { $0.capability == .location }?.resolvedState == .denied)
+        #expect(session.nativeCapabilityState.cameraCaptures.last?.fixtureName == "profile-photo")
+        #expect(session.nativeCapabilityState.photoSelections.last?.fixtureName == "recent-library")
+        #expect(session.nativeCapabilityState.location?.currentCoordinate?.latitude == 37.3350)
+        #expect(session.nativeCapabilityState.clipboard?.currentText == "Copied by Swift transport")
+        #expect(session.nativeCapabilityState.fileSelections.last?.allowsMultipleSelection == true)
+        #expect(session.nativeCapabilityState.shareSheetRecords.last?.activityType == "com.apple.UIKit.activity.Mail")
+        #expect(session.nativeCapabilityState.notificationRecords.suffix(2).map(\.state) == ["scheduled", "delivered"])
+        #expect(session.artifactBundle.nativeCapabilityRecords.map(\.name).contains("device-environment-snapshot"))
+        #expect(session.logs.suffix(actions.count).map(\.message) == actions.map(\.eventName))
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.clipboard.currentText"] == "Copied by Swift transport")
+        #expect(session.snapshot.tree.scene.rootNode?.metadata["native.deviceEnvironment.locale"] == "en_US")
     }
 
     @Test("live runtime transport returns structured diagnostics and retained inspection records")

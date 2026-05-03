@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 12 Step 12.4 by tightening Swift runtime transport native command coverage around the canonical `.nativeAutomation(RuntimeNativeAutomationAction)` boundary. Added coverage for every current native action case through `RuntimeTransportSessionCoordinator`, verified retained native events/logs/artifacts/semantic metadata, and strengthened stale native command assertions so rejected commands do not mutate retained state or publish transport events.
+- Validation: `swift test --filter RuntimeHostContractTests/liveRuntimeTransport` passed cleanly with 6 focused live transport tests, and `swift test` passed cleanly with 56 tests across 4 suites. No warnings were emitted.
+
 - Completed Phase 12 Step 12.3 by tightening the local in-memory transport native automation command boundary. The transport double now validates native automation envelopes before dispatch, reports malformed actions as structured `protocolViolation` diagnostics, fails closed on unknown native action types as `unsupportedCommand`, and has focused coverage proving stale native commands reject before appending native events/artifacts or mutating retained clipboard state.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test -- --run src/transport.test.ts`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
 
