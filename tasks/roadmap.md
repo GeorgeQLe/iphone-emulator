@@ -579,7 +579,7 @@
 - Ready for next phase: yes
 
 ## Phase 12: M11 Transport Native Capability Parity
-**Status:** planned.
+**Status:** complete on 2026-05-03.
 
 **Goal:** Make transport-backed automation support the same deterministic native capability controls and inspection surfaces as the current in-memory `app.native.*` namespace.
 
