@@ -114,7 +114,7 @@ The runtime should fail closed. If code asks for a native service that has no de
 
 ### Current Implementation Baseline
 
-As of the May 3, 2026 drift audit, the repository implements a fixture-backed baseline plus a deterministic local live transport path with native automation parity for the current `app.native.*` surface rather than the complete v1 scope above.
+As of the May 1, 2026 drift audit, the repository implements a fixture-backed baseline plus a deterministic local live transport path rather than the complete v1 scope above.
 
 Implemented strict-mode SDK primitives:
 
@@ -130,7 +130,6 @@ Implemented runtime and automation contracts:
 - The TypeScript automation SDK supports fixture-backed launch through `RuntimeAutomationLaunchOptions` with `appIdentifier`, `fixtureName`, optional `device`, and optional `nativeCapabilities`; only the `strict-mode-baseline` fixture is launchable through fixture mode.
 - The TypeScript automation SDK also supports transport-backed launch through `RuntimeTransportLaunchOptions` with `mode: "transport"`, `appIdentifier`, `fixtureName`, a `RuntimeTransportLike` implementation, and optional device/native capability configuration.
 - The TypeScript SDK exposes locators by role, text, and test id; artifact/log/session access; network route and request recording; screenshot metadata; semantic tree inspection; native automation namespaces; and exported local transport helpers.
-- In transport mode, supported native mutation methods route through the generic `native.automation` command boundary with an expected semantic revision; read-only native inspection surfaces such as permission snapshots, current location, device snapshots, native events, and native artifacts inspect retained session state.
 - The browser renderer has a live-session adapter that applies semantic tree snapshots, tracks live session id/revision metadata, reports stale revisions as diagnostics, and keeps demo fallback mode separate from live mode.
 
 Implemented diagnostics and compatibility contracts:
@@ -142,7 +141,7 @@ Implemented native capability contracts:
 
 - The runtime manifest records required capabilities, configured mocks, scripted events, unsupported symbols, and artifact outputs.
 - Capability identifiers cover permissions, camera, photos, location, network, clipboard, keyboard input, files, share sheet, notifications, device environment, sensors, haptics, and unsupported APIs.
-- Automation event support currently covers camera capture, photo selection, location update/current state, clipboard read/write, file selection, share sheet completion, notification scheduling/delivery, permission request/set, and device environment snapshot. Transport-backed native parity now covers the same public SDK namespace while preserving fail-closed diagnostics for missing fixtures, stale revisions, post-close calls, malformed actions, and unsupported native actions.
+- Automation event support currently covers camera capture, photo selection, location update/current state, clipboard read/write, file selection, share sheet completion, notification scheduling/delivery, permission request/set, and device environment snapshot.
 - Sensors and haptics are represented in the manifest taxonomy but do not yet have first-class automation actions.
 
 Not yet implemented from the full v1 scope:

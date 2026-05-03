@@ -130,9 +130,6 @@
 
 ## Research Roadmap Queue
 
-**Status:** active after final planned phase completion.
+**Status:** empty after 2026-05-03 spec drift refresh.
 
-- [ ] Documentation Step R1: Run `$spec-drift` to refresh the implementation-vs-spec drift report after Phase 12.
-  - Reason: source and task docs now include Phase 12 native transport parity changes newer than `specs/drift-report.md` (last modified 2026-05-01 13:19:58).
-  - Files: likely update `specs/drift-report.md`, `tasks/todo.md`, and `tasks/history.md`; source edits should be out of scope unless `$spec-drift` explicitly promotes a verified implementation task.
-  - Validation: documentation-only unless the drift review promotes code work.
+No active documentation queue items remain. All expected devtool research outputs exist, Phase 12 is archived, and `specs/drift-report.md` reflects the completed native transport parity implementation.

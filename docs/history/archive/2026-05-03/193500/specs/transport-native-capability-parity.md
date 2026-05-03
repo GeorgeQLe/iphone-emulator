@@ -6,7 +6,7 @@ Transport-backed automation must support the same deterministic native capabilit
 
 This keeps the harness honest about its boundary. Native capabilities remain deterministic records, fixture outputs, semantic metadata, logs, and artifacts. They do not access host camera, files, clipboard, notifications, sensors, haptics, permissions, iOS frameworks, or real device state.
 
-The existing Swift runtime already models native automation as `RuntimeAutomationCommand.nativeAutomation(RuntimeNativeAutomationAction)`. The TypeScript transport app now routes supported native mutations through a generic `native.automation` command boundary, while read-only native inspection surfaces inspect retained session state. This spec records the implemented parity contract and remains the reference for future native action changes.
+The existing Swift runtime already models native automation as `RuntimeAutomationCommand.nativeAutomation(RuntimeNativeAutomationAction)`. The TypeScript transport app currently exposes native inspection surfaces, but mutation methods such as permission requests, camera capture, location updates, clipboard writes, file selection, share completion, and notification scheduling still fail with `runtime transport native command is not implemented yet`. This spec closes that mode gap.
 
 ## Goals
 
@@ -14,7 +14,7 @@ The existing Swift runtime already models native automation as `RuntimeAutomatio
 - Preserve method-for-method behavioral equivalence with in-memory fixture mode for existing native automation controls.
 - Route TypeScript native commands through a generic native automation transport command that maps to Swift's existing `RuntimeNativeAutomationAction` model.
 - Keep native mutations serialized through the current session command path and semantic revision gate.
-- Ensure native actions update the same inspectable surfaces in both modes: session native state, native events, native artifact records, and semantic metadata. Session logs remain mode-specific runtime logs; native behavior is reviewed through native records rather than transport-only log entries.
+- Ensure native actions update the same surfaces in both modes: session native state, native events, native artifact records, logs, and semantic metadata.
 - Add direct fixture-vs-transport parity tests for representative native flows.
 - Document the local transport parity boundary without implying production WebSocket, hosted session, MCP, or host native service support.
 
@@ -94,7 +94,7 @@ Native mutations must use the existing semantic revision gate rather than a sepa
 Reasoning:
 
 - Native actions can update semantic metadata on the UI tree root.
-- Native actions append native event/artifact records and update retained session state. Runtime logs are not the canonical native review surface for TypeScript fixture/transport parity.
+- Native actions append logs and artifact records.
 - The Swift automation coordinator already increments snapshot revision when native actions are applied.
 - A single revision model is easier for live renderer ordering and stale-command diagnostics.
 
@@ -110,6 +110,7 @@ After a successful native mutation, transport-backed sessions must expose the sa
 - `native.events()`
 - `native.artifacts()`
 - `artifacts().nativeCapabilityRecords`
+- `logs()`
 - semantic tree root metadata
 
 Returned objects must be cloned or otherwise protected from caller mutation, matching fixture-mode behavior.
@@ -126,7 +127,7 @@ Transport native parity must preserve fail-closed behavior:
 
 ### Documentation Updates
 
-Implementation updated `docs/live-runtime-transport.md` and `docs/native-capabilities.md` to state:
+Implementation should update `docs/live-runtime-transport.md` and `docs/native-capabilities.md` only as needed to state:
 
 - transport mode now supports parity for the current deterministic `app.native.*` controls;
 - parity is local transport parity, not production WebSocket or hosted service support;
@@ -154,7 +155,7 @@ TypeScript transport action payloads must be JSON-compatible and must preserve s
 
 ### TypeScript SDK
 
-`TransportEmulatorApp.createNativeAutomationNamespace()` no longer throws `runtime transport native command is not implemented yet` for supported native methods.
+`TransportEmulatorApp.createNativeAutomationNamespace()` must stop throwing `runtime transport native command is not implemented yet` for supported native methods.
 
 `RuntimeTransportLike` should expose one generic native action command method, or the existing command mechanism should be extended so `RuntimeTransportClient` can send native actions without adding one transport method per native operation.
 
@@ -169,7 +170,7 @@ The transport command should carry:
 - native action type
 - action payload
 
-The response should expose a TypeScript SDK-compatible native result while subsequent `session()`, `artifacts()`, native event/artifact inspection, and `semanticTree()` calls expose the retained native state. A future Swift-backed adapter must map Swift native automation responses to this SDK result surface without introducing a parallel action taxonomy.
+The response should expose the same result concept as the Swift runtime: native capability events plus updated inspectable session state through subsequent `session()`, `artifacts()`, `logs()`, and `semanticTree()` calls.
 
 ### Swift Runtime
 
@@ -209,7 +210,7 @@ Native payloads and artifacts should remain JSON-compatible fixture/test data. I
 ## Edge Cases
 
 - A native mutation after `close()` returns a `protocolViolation` diagnostic.
-- A native mutation with a stale semantic revision returns `staleRevision` and does not update native events, artifacts, retained native state, or semantic metadata.
+- A native mutation with a stale semantic revision returns `staleRevision` and does not update native events, logs, artifacts, or semantic metadata.
 - A permission request for a capability without a manifest requirement uses the same deterministic default behavior as fixture mode.
 - A granted camera or photos permission without a configured fixture emits the existing missing-fixture diagnostic behavior.
 - Location update while permission is denied mirrors fixture-mode diagnostics and state behavior.
@@ -271,16 +272,9 @@ npx tsx examples/strict-mode-baseline/live-transport-example.ts
 - Unsupported native capabilities remain fail-closed and absent from the public namespace.
 - Documentation clearly states that parity is deterministic local transport parity, not host native access or production WebSocket support.
 
-## Implementation Notes
-
-- `RuntimeTransportLike.nativeAutomation(...)` carries `sessionID`, expected semantic revision, and a `RuntimeNativeAutomationAction`.
-- `app.native.location.current()` is intentionally read-only transport inspection, not a `RuntimeNativeAutomationAction`, so the TypeScript action taxonomy remains aligned with Swift's mutation/event cases.
-- Missing configured fixtures produce deterministic native diagnostic records and reject through the public SDK namespace like fixture mode.
-- Stale native commands use the existing `staleRevision` diagnostic payload keys `expectedRevision` and `currentRevision`.
-- The local in-memory transport test double derives configured mocks, scripted events, keyboard state, notification state, and artifact outputs at launch so retained session state starts from the same manifest data as fixture mode.
-
 ## Open Questions
 
+- What exact TypeScript discriminant naming should be used for native action payloads?
 - Should parity helpers live in `transport.ts`, `index.ts`, or a shared native automation module to reduce duplication with fixture mode?
 - Should the local in-memory transport test double reuse existing fixture-mode native helpers directly, or intentionally maintain a separate implementation to catch contract drift?
 
