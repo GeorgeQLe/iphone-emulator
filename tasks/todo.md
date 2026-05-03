@@ -98,13 +98,17 @@
   - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
   - Run `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `swift test`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
   - Confirm transport-mode native tests fail before implementation and pass after implementation, including clone isolation, stale revision, post-close, missing fixture, and unsupported action cases.
-- [ ] Step 12.7: Run full workspace regression validation
+- [x] Step 12.7: Run full workspace regression validation
   - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
   - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
+  - Result: all commands passed on 2026-05-03. `npm --prefix packages/browser-renderer run build` emitted Vite's existing large-chunk warning for Monaco/editor assets; accepted as unrelated to native transport parity and not a regression.
 - [ ] Step 12.8: Refactor native parity boundaries if needed while keeping tests green
   - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/src/types.ts`, `packages/automation-sdk/src/transport.ts`, `packages/runtime-host/Sources/RuntimeHost/Transport/**`, `packages/runtime-host/Sources/RuntimeHost/Automation/**`, `docs/live-runtime-transport.md`, and `docs/native-capabilities.md` only as needed.
-  - Re-read fixture-mode native implementation, transport-mode native routing, Swift native command routing, tests, examples, and docs together. Only refactor if there is concrete duplicated native action vocabulary, fixture-vs-transport return drift, hidden mutable state, diagnostic ambiguity, or documentation overclaiming.
-  - Include the Step 12.3 review gaps in the refactor decision: initial manifest derivation parity for scripted events, keyboard state, notification state, unsupported diagnostics, and `artifactOutputs`; clone isolation for direct permission/location/clipboard/file/device results; explicit decision on missing-fixture throw-vs-diagnostic behavior; and transport semantic tree parity where native metadata depends on launch state.
+  - Execution plan:
+    1. Re-read fixture-mode native implementation, transport-mode native routing, Swift native command routing, parity tests, examples, and native/transport docs together before editing.
+    2. Compare concrete boundaries for duplicated native action vocabulary, fixture-vs-transport return drift, hidden mutable state, diagnostic ambiguity, documentation overclaiming, and the Step 12.3 review gaps: initial manifest derivation parity for scripted events, keyboard state, notification state, unsupported diagnostics, `artifactOutputs`, clone isolation for direct permission/location/clipboard/file/device results, missing-fixture throw-vs-diagnostic behavior, and transport semantic tree parity where native metadata depends on launch state.
+    3. If no concrete issue remains, record Step 12.8 as a no-op boundary review and preserve the current source files.
+    4. If a concrete issue remains, make the smallest source/doc correction, then rerun the focused affected validation plus any full-regression command needed to keep the green phase honest.
 
 ### Milestone: M11 Transport Native Capability Parity
 **Acceptance Criteria:**

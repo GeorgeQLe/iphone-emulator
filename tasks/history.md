@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 12 Step 12.7 by running the full workspace regression validation surface after native transport parity landed.
+- Validation: `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts` all passed. The browser renderer Vite production build emitted the existing large-chunk warning for Monaco/editor assets; accepted as unrelated to native transport parity and not a regression.
+
 - Completed Phase 12 Step 12.6 by running the focused native transport parity validation matrix without needing source, package wiring, or regression fixes.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `swift test`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts` all passed cleanly. No warnings or unexpected regressions were emitted.
 
