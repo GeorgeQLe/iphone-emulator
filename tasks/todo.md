@@ -6,7 +6,8 @@
 
 ## Priority Task Queue
 
-- [x] Task pipeline is healthy; all 11 roadmap phases are complete, `tasks/todo.md` has no unchecked implementation or documentation queue items as of 2026-05-01 13:19, git is clean on `main...origin/main`, and the only unchecked record item in `tasks/record-todo.md` remains gated on a future hosted-session design phase or pilot.
+- [ ] `$roadmap specs/transport-native-capability-parity.md` - integrate the new transport native capability parity spec into `tasks/roadmap.md` because `specs/transport-native-capability-parity.md` was modified on 2026-05-02 23:39, after `tasks/roadmap.md` on 2026-05-01 13:13, and no Phase 12 or roadmap entry references transport native capability parity.
+- [ ] `$spec-interview --ideas` - review remaining unspecced ideas because `tasks/ideas.md` was updated on 2026-05-01 13:36 and still contains ideas without matching specs, including setup doctor, live-session replay fixtures, compatibility rewrite examples, template gallery, local MCP transport server, CI artifact export bundle, Swift package intake diagnostics, local WebSocket runtime service, compile-and-run strict-mode packages, renderer pixel artifact capture, and hosted-session pilot economics.
 
 ## Priority Documentation Todo
 
