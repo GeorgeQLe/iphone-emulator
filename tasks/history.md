@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 12 Step 12.1 by adding red-phase native transport parity coverage across the automation SDK transport tests, SDK namespace tests, and Swift runtime host contracts. The new tests pin fixture-vs-transport native workflow parity, launch-time native capability state, clone isolation, deterministic missing-fixture diagnostics, post-close protocol diagnostics, a single generic native automation transport boundary, and stale native automation rejection before mutation.
+- Validation: `swift test` passed with 55 Swift tests. `npm --prefix packages/automation-sdk test` failed as expected in the red phase with 4 native transport parity failures: transport native mutations still throw `runtime transport native command is not implemented yet`, transport launch still drops native capability state, and `RuntimeTransportClient.nativeAutomation` does not exist yet. These are expected red failures for Step 12.1, not unrelated regressions.
+
 - Completed `$devtool-docs-audit` by adding `research/devtool-docs-audit.md`, a findings-first review of quickstart clarity, examples, API reference coverage, troubleshooting, migration paths, and missing proof artifacts. The audit found no P0 adoption blocker, but flagged stale current-status language, one stale `close` diagnostic reference in CI docs, missing API reference pages, local troubleshooting gaps, and missing sample proof artifacts.
 - Validation: documentation/research-only update; no Swift or TypeScript validation was required. Reviewed README, public docs, strict-mode examples, specs, and task queue as audit evidence.
 

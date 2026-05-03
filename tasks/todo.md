@@ -60,7 +60,7 @@
   - Deliverable: documentation wording risks and missing parity notes.
 
 ### Tests First
-- [ ] Step 12.1: Write failing native transport parity tests
+- [x] Step 12.1: Write failing native transport parity tests
   - Files: modify `packages/automation-sdk/src/transport.test.ts`, modify `packages/automation-sdk/src/index.test.ts`, and modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
   - Add fixture-vs-transport assertions for permissions snapshot/request/set, camera capture, photo select, location current/update, clipboard read/write, file selection, share-sheet completion, notification authorization/schedule/deliver, device snapshot, native events, native artifacts, logs, semantic metadata, permission state, and clone isolation.
   - Add red-phase assertions that no supported transport native method throws `runtime transport native command is not implemented yet`.

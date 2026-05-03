@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Emulator } from "./index";
+import { RuntimeTransportClient, createInMemoryRuntimeTransport } from "./transport";
 import type {
   RuntimeDeviceSettings,
   RuntimeNativeCapabilityArtifactOutputKind,
@@ -110,6 +111,95 @@ describe("Emulator", () => {
     ).resolves.toMatchObject({
       native: expect.any(Object),
     });
+  });
+
+  it("exposes the same native automation namespace in transport launch mode", async () => {
+    const app = (await Emulator.launch({
+      mode: "transport",
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      nativeCapabilities: representativeNativeMockManifest(),
+      transport: new RuntimeTransportClient({
+        transport: createInMemoryRuntimeTransport({ fixtureName: "strict-mode-baseline" }),
+        timeoutMs: 250,
+      }),
+    })) as NativeAutomationApp;
+
+    await expect(app.native.permissions.snapshot()).resolves.toMatchObject({
+      camera: { state: "prompt", resolvedState: "granted" },
+    });
+    await expect(app.native.permissions.request("camera")).resolves.toMatchObject({
+      capability: "camera",
+      name: "native.permission.camera.request",
+    });
+    await expect(app.native.permissions.set("location", "denied")).resolves.toMatchObject({
+      capability: "location",
+      name: "native.permission.location.set",
+    });
+    await expect(app.native.camera.capture("front-camera-still")).resolves.toMatchObject({
+      capability: "camera",
+      name: "native.camera.capture.front-camera-still",
+    });
+    await expect(app.native.photos.select("recent-library-pick")).resolves.toMatchObject({
+      capability: "photos",
+      name: "native.photos.selection.recent-library-pick",
+    });
+    await expect(app.native.location.current()).resolves.toMatchObject({
+      permissionState: "denied",
+      diagnostic: { capability: "location", code: "permissionDenied" },
+    });
+    await expect(app.native.location.update({ latitude: 34.0522, longitude: -118.2437, accuracyMeters: 10 })).resolves.toMatchObject({
+      capability: "location",
+      name: "native.location.update.automation",
+    });
+    await expect(app.native.clipboard.read()).resolves.toMatchObject({
+      text: "Draft profile notes",
+      record: { capability: "clipboard", name: "native.clipboard.read.automation" },
+    });
+    await expect(app.native.clipboard.write("Copied in transport mode")).resolves.toMatchObject({
+      capability: "clipboard",
+      name: "native.clipboard.write.automation",
+    });
+    await expect(app.native.files.select("document-picker")).resolves.toMatchObject({
+      selectedFiles: ["Fixtures/profile.pdf", "Fixtures/receipt.pdf"],
+      record: { capability: "files", name: "native.files.selection.document-picker" },
+    });
+    await expect(app.native.shareSheet.complete("share-receipt", { completionState: "completed" })).resolves.toMatchObject({
+      capability: "shareSheet",
+      name: "native.shareSheet.complete.share-receipt",
+    });
+    await expect(app.native.notifications.requestAuthorization()).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.authorization.request",
+    });
+    await expect(app.native.notifications.schedule("profile-reminder")).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.schedule.profile-reminder",
+    });
+    await expect(app.native.notifications.deliver("profile-reminder")).resolves.toMatchObject({
+      capability: "notifications",
+      name: "native.notifications.deliver.profile-reminder",
+    });
+    await expect(app.native.device.snapshot()).resolves.toMatchObject({
+      viewport: { width: 390, height: 844, scale: 1 },
+    });
+    await expect(app.native.events()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "native.clipboard.write.automation" }),
+      ])
+    );
+    await expect(app.native.artifacts()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "native.clipboard.write.automation" }),
+      ])
+    );
+
+    const unsupportedControls = app.native as unknown as Record<string, unknown>;
+    expect(unsupportedControls.biometrics).toBeUndefined();
+    expect(unsupportedControls.health).toBeUndefined();
+    expect(unsupportedControls.speech).toBeUndefined();
+    expect(unsupportedControls.sensors).toBeUndefined();
+    expect(unsupportedControls.haptics).toBeUndefined();
   });
 
   it("runs a representative fixture-backed automation flow", async () => {

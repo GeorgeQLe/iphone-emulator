@@ -2267,6 +2267,49 @@ struct RuntimeHostContractTests {
         #expect(semanticRevisions == [1, 2])
     }
 
+    @Test("live runtime transport rejects stale native automation before mutation")
+    func liveRuntimeTransportRejectsStaleNativeAutomationBeforeMutation() throws {
+        var coordinator = RuntimeTransportSessionCoordinator()
+        _ = try coordinator.handle(
+            RuntimeTransportRequest.launch(
+                id: "rpc-launch",
+                configuration: RuntimeAutomationLaunchConfiguration(
+                    appIdentifier: "FixtureApp",
+                    fixtureName: "strict-mode-baseline",
+                    nativeCapabilities: representativeNativeMockManifest()
+                )
+            )
+        )
+        _ = try coordinator.handle(
+            RuntimeTransportRequest.command(
+                id: "rpc-tap",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .tap(RuntimeAutomationSemanticQuery(identifier: "save-button"))
+            )
+        )
+
+        let eventCount = coordinator.session?.nativeCapabilityEvents.count
+        let artifactCount = coordinator.session?.artifactBundle.nativeCapabilityRecords.count
+        let logCount = coordinator.session?.logs.count
+        let staleNative = try coordinator.handle(
+            RuntimeTransportRequest.command(
+                id: "rpc-stale-native",
+                sessionID: "session-1",
+                expectedRevision: 1,
+                command: .nativeAutomation(.captureCamera(identifier: "front-camera-still"))
+            )
+        )
+
+        #expect(staleNative.diagnostic?.code == .staleRevision)
+        #expect(staleNative.diagnostic?.payload["currentRevision"] == "2")
+        #expect(staleNative.diagnostic?.payload["expectedRevision"] == "1")
+        #expect(coordinator.session?.snapshot.revision == 2)
+        #expect(coordinator.session?.nativeCapabilityEvents.count == eventCount)
+        #expect(coordinator.session?.artifactBundle.nativeCapabilityRecords.count == artifactCount)
+        #expect(coordinator.session?.logs.count == logCount)
+    }
+
     @Test("live runtime transport returns structured diagnostics and retained inspection records")
     func liveRuntimeTransportDiagnosticsAndInspectionContract() throws {
         var coordinator = RuntimeTransportSessionCoordinator()
