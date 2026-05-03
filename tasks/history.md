@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 12 Step 12.6 by running the focused native transport parity validation matrix without needing source, package wiring, or regression fixes.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `swift test`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts` all passed cleanly. No warnings or unexpected regressions were emitted.
+
 - Completed Phase 12 Step 12.5 by extending the local live transport example with representative deterministic `app.native.*` calls across permissions, camera/photo fixtures, location, clipboard, files, share sheets, notifications, device snapshots, native events, and native artifacts. Updated live transport and native capability docs to state that parity is deterministic local session parity only, not host native access, production WebSocket, hosted sessions, MCP, or new simulator fidelity.
 - Validation: `npm --prefix packages/automation-sdk run typecheck`, `npx tsx examples/strict-mode-baseline/live-transport-example.ts`, and `npm --prefix packages/automation-sdk test` passed cleanly with no warnings.
 

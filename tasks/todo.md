@@ -94,7 +94,7 @@
   - State explicitly that this parity does not add host camera, photos, clipboard, files, notifications, sensors, haptics, production WebSocket, hosted sessions, or MCP behavior.
 
 ### Green
-- [ ] Step 12.6: Run focused parity validation
+- [x] Step 12.6: Run focused parity validation
   - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
   - Run `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `swift test`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
   - Confirm transport-mode native tests fail before implementation and pass after implementation, including clone isolation, stale revision, post-close, missing fixture, and unsupported action cases.
