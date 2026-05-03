@@ -19,6 +19,8 @@ import type {
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
   RuntimeNativeCapabilityMock,
+  RuntimeNativeAutomationAction,
+  RuntimeNativeAutomationResult,
   RuntimeNativeCapabilityRecord,
   RuntimeNativeCapabilityState,
   RuntimeNativeClipboardState,
@@ -68,6 +70,8 @@ export type {
   RuntimeAutomationSession,
   RuntimeDeviceSettings,
   RuntimeNativeCapabilityArtifactOutput,
+  RuntimeNativeAutomationAction,
+  RuntimeNativeAutomationResult,
   RuntimeNativeCapabilityEvent,
   RuntimeNativeCapabilityID,
   RuntimeNativeCapabilityManifest,
@@ -213,32 +217,92 @@ class TransportEmulatorApp implements EmulatorApp {
     return {
       permissions: {
         snapshot: async () => this.session().then((session) => cloneNativePermissionSnapshot(session.nativeCapabilityState.permissions)),
-        request: async () => unsupportedNativeTransportMethod(),
-        set: async () => unsupportedNativeTransportMethod(),
+        request: async (capability) =>
+          this.nativeAutomationRecord({ type: "requestPermission", capability }),
+        set: async (capability, state) =>
+          this.nativeAutomationRecord({ type: "setPermission", capability, state }),
       },
-      camera: { capture: async () => unsupportedNativeTransportMethod() },
-      photos: { select: async () => unsupportedNativeTransportMethod() },
+      camera: {
+        capture: async (fixtureIdentifier) =>
+          this.nativeAutomationRecord({ type: "captureCamera", identifier: fixtureIdentifier }),
+      },
+      photos: {
+        select: async (fixtureIdentifier) =>
+          this.nativeAutomationRecord({ type: "selectPhoto", identifier: fixtureIdentifier }),
+      },
       location: {
-        current: async () => unsupportedNativeTransportMethod(),
-        update: async () => unsupportedNativeTransportMethod(),
+        current: async () =>
+          this.nativeAutomationResult<NativeLocationSnapshot>({ type: "currentLocation" }),
+        update: async (coordinate) =>
+          this.nativeAutomationRecord({
+            type: "updateLocation",
+            identifier: "automation",
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            accuracyMeters: coordinate.accuracyMeters,
+          }),
       },
       clipboard: {
-        read: async () => unsupportedNativeTransportMethod(),
-        write: async () => unsupportedNativeTransportMethod(),
+        read: async () =>
+          this.nativeAutomationResult<NativeClipboardReadResult>({
+            type: "readClipboard",
+            identifier: "automation",
+          }),
+        write: async (text) =>
+          this.nativeAutomationRecord({ type: "writeClipboard", identifier: "automation", text }),
       },
-      files: { select: async () => unsupportedNativeTransportMethod() },
-      shareSheet: { complete: async () => unsupportedNativeTransportMethod() },
+      files: {
+        select: async (fixtureIdentifier) =>
+          this.nativeAutomationResult<NativeFileSelectionResult>({
+            type: "selectFiles",
+            identifier: fixtureIdentifier,
+          }),
+      },
+      shareSheet: {
+        complete: async (identifier, result) =>
+          this.nativeAutomationRecord({
+            type: "completeShareSheet",
+            identifier,
+            completionState: result.completionState,
+          }),
+      },
       notifications: {
-        requestAuthorization: async () => unsupportedNativeTransportMethod(),
-        schedule: async () => unsupportedNativeTransportMethod(),
-        deliver: async () => unsupportedNativeTransportMethod(),
+        requestAuthorization: async () =>
+          this.nativeAutomationRecord({
+            type: "requestPermission",
+            capability: "notifications",
+          }),
+        schedule: async (identifier) =>
+          this.nativeAutomationRecord({ type: "scheduleNotification", identifier }),
+        deliver: async (identifier) =>
+          this.nativeAutomationRecord({ type: "deliverNotification", identifier }),
       },
       device: {
-        snapshot: async () => this.requireTransportMethod("nativeDeviceSnapshot")(this.sessionID),
+        snapshot: async () =>
+          this.nativeAutomationResult<RuntimeDeviceSettings>({
+            type: "snapshotDeviceEnvironment",
+          }),
       },
       events: async () => this.nativeCapabilityEvents(),
       artifacts: async () => (await this.artifacts()).nativeCapabilityRecords,
     };
+  }
+
+  private async nativeAutomationRecord(
+    action: RuntimeNativeAutomationAction
+  ): Promise<RuntimeNativeCapabilityRecord> {
+    return this.nativeAutomationResult<RuntimeNativeCapabilityRecord>(action);
+  }
+
+  private async nativeAutomationResult<T extends RuntimeNativeAutomationResult>(
+    action: RuntimeNativeAutomationAction
+  ): Promise<T> {
+    const session = await this.session();
+    return this.requireTransportMethod("nativeAutomation")(
+      this.sessionID,
+      session.snapshot.revision,
+      action
+    ) as Promise<T>;
   }
 
   private requireTransportMethod<Name extends keyof RuntimeTransportLike>(
@@ -270,10 +334,6 @@ class TransportLocator implements Locator {
   async tap(): Promise<void> {
     await this.app.tap(this.query);
   }
-}
-
-function unsupportedNativeTransportMethod(): never {
-  throw new Error("runtime transport native command is not implemented yet");
 }
 
 function isTransportLaunchOptions(

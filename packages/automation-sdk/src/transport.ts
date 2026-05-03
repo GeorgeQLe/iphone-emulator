@@ -8,7 +8,14 @@ import type {
   RuntimeNetworkRequestInput,
   RuntimeNetworkRequestRecord,
   RuntimeDeviceSettings,
+  RuntimeNativeAutomationAction,
+  RuntimeNativeAutomationResult,
   RuntimeNativeCapabilityRecord,
+  RuntimeNativeCapabilityManifest,
+  RuntimeNativeCapabilityState,
+  RuntimeNativeClipboardState,
+  RuntimeNativeDiagnosticRecord,
+  RuntimeNativePermissionState,
   RuntimeTransportLaunchRequest,
   RuntimeTransportLike,
   SemanticQuery,
@@ -173,6 +180,17 @@ export class RuntimeTransportClient implements RuntimeTransportLike {
     return this.inspectSession(sessionID);
   }
 
+  async nativeAutomation(
+    sessionID: string,
+    expectedSemanticRevision: number,
+    action: RuntimeNativeAutomationAction
+  ): Promise<RuntimeNativeAutomationResult> {
+    return this.command<RuntimeNativeAutomationResult>("native.automation", sessionID, {
+      expectedSemanticRevision,
+      action,
+    });
+  }
+
   async nativeDeviceSnapshot(sessionID: string): Promise<RuntimeDeviceSettings> {
     return this.command<RuntimeDeviceSettings>("native.device.snapshot", sessionID);
   }
@@ -278,7 +296,7 @@ export function createInMemoryRuntimeTransport(
       }
       if (method === "launch") {
         const request = params as RuntimeTransportLaunchRequest;
-        session = makeContractSession(request.appIdentifier, options.fixtureName);
+        session = makeContractSession(request);
         return cloneSession(session);
       }
       if (method === "close") {
@@ -390,6 +408,15 @@ export function createInMemoryRuntimeTransport(
           payload: { ...record.payload },
         }));
       }
+      if (method === "native.automation") {
+        return applyNativeAutomation(
+          liveSession,
+          params as {
+            expectedSemanticRevision: number;
+            action: RuntimeNativeAutomationAction;
+          }
+        );
+      }
       throw {
         code: "unsupportedCommand",
         message: `${method} is not supported`,
@@ -422,12 +449,33 @@ export function createWebSocketRuntimeTransport(options: { url: string }): Runti
   };
 }
 
-function makeContractSession(
-  appIdentifier: string,
-  fixtureName: string
-): RuntimeAutomationSession {
+function makeContractSession(request: RuntimeTransportLaunchRequest): RuntimeAutomationSession {
+  const appIdentifier = request.appIdentifier;
+  const fixtureName = request.fixtureName;
   const logs: RuntimeAutomationLogEntry[] = [
     { level: "info", message: `Launched fixture ${fixtureName}` },
+  ];
+  const device = request.device ? cloneDevice(request.device) : defaultDevice();
+  const nativeCapabilities = cloneNativeManifest(
+    request.nativeCapabilities ?? emptyNativeManifest()
+  );
+  const nativeCapabilityState = deriveNativeState(nativeCapabilities);
+  const initialNativeRecords = nativeCapabilityState.fixtureOutputs.map((fixture) => ({
+    capability: fixture.capability,
+    name: `native.fixture.${fixture.capability}.${fixture.identifier}`,
+    revision: 1,
+    payload: { identifier: fixture.identifier, ...fixture.payload },
+  }));
+  const initialNativeEvents = [
+    ...nativeCapabilities.requiredCapabilities
+      .filter((requirement) => requirement.permissionState === "prompt")
+      .map((requirement) => ({
+        capability: requirement.id,
+        name: `native.permission.${requirement.id}.prompt`,
+        revision: 1,
+        payload: { capability: requirement.id, state: "prompt" },
+      })),
+    ...initialNativeRecords,
   ];
   return {
     id: "session-1",
@@ -436,7 +484,7 @@ function makeContractSession(
       appIdentifier,
       lifecycleState: "active",
       revision: 1,
-      device: defaultDevice(),
+      device: cloneDevice(device),
       tree: {
         appIdentifier,
         scene: {
@@ -508,27 +556,197 @@ function makeContractSession(
       ],
       logs: logs.map((entry) => ({ ...entry })),
       networkRecords: [],
-      nativeCapabilityRecords: [],
+      nativeCapabilityRecords: cloneNativeRecords(initialNativeRecords),
     },
-    device: defaultDevice(),
-    nativeCapabilities: {
-      requiredCapabilities: [],
-      configuredMocks: [],
-      scriptedEvents: [],
-      unsupportedSymbols: [],
-      artifactOutputs: [],
-    },
-    nativeCapabilityState: {
-      permissions: {},
-      fixtureOutputs: [],
-      locationEvents: [],
-      filePickerRecords: [],
-      shareSheetRecords: [],
-      notificationRecords: [],
-      diagnosticRecords: [],
-    },
-    nativeCapabilityEvents: [],
+    device: cloneDevice(device),
+    nativeCapabilities,
+    nativeCapabilityState,
+    nativeCapabilityEvents: cloneNativeRecords(initialNativeEvents),
   };
+}
+
+function applyNativeAutomation(
+  session: RuntimeAutomationSession,
+  request: { expectedSemanticRevision: number; action: RuntimeNativeAutomationAction }
+): RuntimeNativeAutomationResult {
+  if (request.expectedSemanticRevision !== session.snapshot.revision) {
+    throw {
+      code: "staleRevision",
+      message: "semantic revision is stale",
+      payload: {
+        sessionID: session.id,
+        expectedSemanticRevision: String(request.expectedSemanticRevision),
+        actualSemanticRevision: String(session.snapshot.revision),
+      },
+    } satisfies RuntimeTransportDiagnostic;
+  }
+
+  const action = request.action;
+  switch (action.type) {
+    case "requestPermission": {
+      const permission = ensureNativePermission(session, action.capability);
+      const initialState = permission.state;
+      const result = permission.prompt.result;
+      const requestedState = result ?? permission.resolvedState;
+      permission.state = requestedState;
+      permission.resolvedState = requestedState;
+      permission.prompt = {
+        presented: requestedState === "prompt",
+        result: requestedState === "prompt" ? result : undefined,
+      };
+      const name =
+        action.capability === "notifications"
+          ? "native.notifications.authorization.request"
+          : `native.permission.${action.capability}.request`;
+      return appendNativeRecord(session, action.capability, name, {
+        initialState,
+        state: permission.state,
+        result,
+        resolvedState: permission.resolvedState,
+      });
+    }
+    case "setPermission": {
+      const permission = ensureNativePermission(session, action.capability);
+      permission.state = action.state;
+      permission.resolvedState = action.state;
+      permission.prompt = { presented: action.state === "prompt", result: undefined };
+      return appendNativeRecord(session, action.capability, `native.permission.${action.capability}.set`, {
+        state: action.state,
+        resolvedState: permission.resolvedState,
+      });
+    }
+    case "captureCamera":
+      return nativeFixtureRecord(session, "camera", action.identifier ?? "front-camera-still", "capture");
+    case "selectPhoto":
+      return nativeFixtureRecord(session, "photos", action.identifier ?? "recent-library-pick", "selection");
+    case "currentLocation": {
+      const permission = ensureNativePermission(session, "location");
+      if (permission.resolvedState !== "granted") {
+        const diagnostic = appendNativeDiagnostic(session, "location", "permissionDenied", {
+          permissionState: permission.resolvedState,
+        });
+        return {
+          permissionState: permission.resolvedState,
+          diagnostic,
+        };
+      }
+      const latestLocation = session.nativeCapabilityState.locationEvents.at(-1);
+      const coordinate = latestLocation
+        ? {
+            latitude: latestLocation.latitude,
+            longitude: latestLocation.longitude,
+            accuracyMeters: latestLocation.accuracyMeters,
+          }
+        : session.device.geolocation
+          ? { ...session.device.geolocation }
+          : undefined;
+      return coordinate ? { permissionState: permission.resolvedState, coordinate } : { permissionState: permission.resolvedState };
+    }
+    case "updateLocation": {
+      const identifier = action.identifier ?? "automation";
+      const record = appendNativeRecord(session, "location", `native.location.update.${identifier}`, {
+        identifier,
+        latitude: String(action.latitude),
+        longitude: String(action.longitude),
+        accuracyMeters: String(action.accuracyMeters ?? 0),
+      });
+      session.nativeCapabilityState.locationEvents.push({
+        name: identifier,
+        latitude: action.latitude,
+        longitude: action.longitude,
+        accuracyMeters: action.accuracyMeters ?? 0,
+        revision: record.revision,
+        payload: { ...record.payload },
+      });
+      return record;
+    }
+    case "readClipboard": {
+      const clipboard = ensureNativeClipboard(session);
+      const text = clipboard.currentText ?? clipboard.text ?? clipboard.initialText;
+      const identifier = action.identifier ?? clipboard.identifier;
+      const record = appendNativeRecord(session, "clipboard", `native.clipboard.read.${identifier}`, {
+        identifier: clipboard.identifier,
+        text,
+      });
+      clipboard.readRecords.push({ name: `${identifier}-read`, revision: record.revision, text, payload: { ...record.payload } });
+      return { text, record };
+    }
+    case "writeClipboard": {
+      const clipboard = ensureNativeClipboard(session);
+      const identifier = action.identifier ?? clipboard.identifier;
+      const record = appendNativeRecord(session, "clipboard", `native.clipboard.write.${identifier}`, {
+        identifier: clipboard.identifier,
+        text: action.text,
+      });
+      clipboard.text = action.text;
+      clipboard.currentText = action.text;
+      clipboard.writeRecords.push({ name: `${identifier}-write`, revision: record.revision, text: action.text, payload: { ...record.payload } });
+      return record;
+    }
+    case "selectFiles": {
+      const identifier = action.identifier ?? "document-picker";
+      const file = session.nativeCapabilityState.filePickerRecords.find((candidate) => candidate.identifier === identifier);
+      if (!file) {
+        const record = appendNativeDiagnosticRecord(session, "files", "missingFixture", { fixtureIdentifier: identifier });
+        return { selectedFiles: [], record };
+      }
+      const record = appendNativeRecord(session, "files", `native.files.selection.${identifier}`, {
+        identifier,
+        selectedFiles: file.selectedFiles.join(","),
+        contentTypes: file.contentTypes.join(","),
+        allowsMultipleSelection: String(file.allowsMultipleSelection),
+        ...file.payload,
+      });
+      return { selectedFiles: [...file.selectedFiles], record };
+    }
+    case "completeShareSheet": {
+      const identifier = action.identifier ?? "share-receipt";
+      const share = session.nativeCapabilityState.shareSheetRecords.find((candidate) => candidate.identifier === identifier);
+      if (!share) {
+        return appendNativeDiagnosticRecord(session, "shareSheet", "missingFixture", { fixtureIdentifier: identifier });
+      }
+      share.completionState = action.completionState ?? share.completionState ?? "completed";
+      return appendNativeRecord(session, "shareSheet", `native.shareSheet.complete.${identifier}`, {
+        identifier,
+        activityType: action.activityType ?? share.activityType,
+        items: (action.items ?? share.items).join(","),
+        excludedActivityTypes: share.excludedActivityTypes.join(","),
+        ...share.payload,
+        completionState: share.completionState,
+      });
+    }
+    case "scheduleNotification":
+    case "deliverNotification": {
+      const identifier = action.identifier ?? "profile-reminder";
+      const existing = session.nativeCapabilityState.notificationRecords.find((candidate) => candidate.identifier === identifier);
+      const event = action.type === "scheduleNotification" ? "schedule" : "deliver";
+      const state = event === "schedule" ? "scheduled" : "delivered";
+      const permission = ensureNativePermission(session, "notifications");
+      const record = appendNativeRecord(session, "notifications", `native.notifications.${event}.${identifier}`, {
+        identifier,
+        title: action.title ?? existing?.title,
+        body: action.body ?? existing?.body,
+        trigger: action.type === "scheduleNotification" ? action.trigger ?? existing?.trigger : existing?.trigger,
+        state,
+        authorizationState: permission.resolvedState,
+        ...(existing?.payload ?? {}),
+      });
+      session.nativeCapabilityState.notificationRecords.push({
+        identifier,
+        title: action.title ?? existing?.title,
+        body: action.body ?? existing?.body,
+        trigger: action.type === "scheduleNotification" ? action.trigger ?? existing?.trigger : existing?.trigger,
+        state,
+        authorizationState: permission.resolvedState,
+        revision: record.revision,
+        payload: { ...record.payload },
+      });
+      return record;
+    }
+    case "snapshotDeviceEnvironment":
+      appendNativeRecord(session, "deviceEnvironment", "native.deviceEnvironment.snapshot", devicePayload(session.device));
+      return cloneDevice(session.device);
+  }
 }
 
 function defaultDevice() {
@@ -538,6 +756,271 @@ function defaultDevice() {
     locale: "en_US",
     clock: { timeZone: "UTC" },
     network: { isOnline: true, latencyMilliseconds: 0, downloadKbps: 0 },
+  };
+}
+
+function emptyNativeManifest(): RuntimeNativeCapabilityManifest {
+  return {
+    requiredCapabilities: [],
+    configuredMocks: [],
+    scriptedEvents: [],
+    unsupportedSymbols: [],
+    artifactOutputs: [],
+  };
+}
+
+function cloneNativeManifest(manifest: RuntimeNativeCapabilityManifest): RuntimeNativeCapabilityManifest {
+  return {
+    requiredCapabilities: manifest.requiredCapabilities.map((item) => ({ ...item })),
+    configuredMocks: manifest.configuredMocks.map((item) => ({
+      ...item,
+      payload: { ...item.payload },
+    })),
+    scriptedEvents: manifest.scriptedEvents.map((item) => ({
+      ...item,
+      payload: { ...item.payload },
+    })),
+    unsupportedSymbols: manifest.unsupportedSymbols.map((item) => ({ ...item })),
+    artifactOutputs: manifest.artifactOutputs.map((item) => ({ ...item })),
+  };
+}
+
+function deriveNativeState(
+  manifest: RuntimeNativeCapabilityManifest
+): RuntimeNativeCapabilityState {
+  const permissions = Object.fromEntries(
+    manifest.requiredCapabilities.map((requirement) => {
+      const promptResult = manifest.configuredMocks.find(
+        (mock) => mock.capability === requirement.id && mock.payload.result
+      )?.payload.result as RuntimeNativePermissionState | undefined;
+      const resolvedState = resolveNativePermissionState(requirement.permissionState, promptResult);
+      return [
+        requirement.id,
+        {
+          state: requirement.permissionState,
+          resolvedState,
+          strictModeAlternative: requirement.strictModeAlternative,
+          prompt: {
+            presented: requirement.permissionState === "prompt",
+            result: promptResult,
+          },
+        },
+      ];
+    })
+  );
+
+  return {
+    permissions,
+    fixtureOutputs: manifest.configuredMocks
+      .filter((mock) => mock.capability === "camera" || mock.capability === "photos")
+      .map((mock) => ({
+        capability: mock.capability,
+        identifier: mock.identifier,
+        fixtureName: mock.payload.fixtureName,
+        payload: { ...mock.payload },
+      })),
+    locationEvents: manifest.scriptedEvents
+      .filter((event) => event.capability === "location")
+      .map((event) => ({
+        name: event.name,
+        latitude: Number(event.payload.latitude ?? 0),
+        longitude: Number(event.payload.longitude ?? 0),
+        accuracyMeters: Number(event.payload.accuracyMeters ?? 0),
+        revision: event.atRevision,
+        payload: { ...event.payload },
+      })),
+    clipboard: clipboardStateFromManifest(manifest),
+    filePickerRecords: manifest.configuredMocks
+      .filter((mock) => mock.capability === "files")
+      .map((mock) => ({
+        identifier: mock.identifier,
+        selectedFiles: splitList(mock.payload.selectedFiles),
+        contentTypes: splitList(mock.payload.contentTypes),
+        allowsMultipleSelection: mock.payload.allowsMultipleSelection === "true",
+        payload: { ...mock.payload },
+      })),
+    shareSheetRecords: manifest.configuredMocks
+      .filter((mock) => mock.capability === "shareSheet")
+      .map((mock) => ({
+        identifier: mock.identifier,
+        activityType: mock.payload.activityType,
+        items: splitList(mock.payload.items),
+        completionState: mock.payload.completionState,
+        excludedActivityTypes: splitList(mock.payload.excludedActivityTypes),
+        payload: { ...mock.payload },
+      })),
+    notificationRecords: [],
+    diagnosticRecords: manifest.unsupportedSymbols.map((symbol) => ({
+      capability: symbol.capability,
+      code: "unsupportedSymbol",
+      message: `Unsupported native symbol ${symbol.symbolName} was requested.`,
+      suggestedAdaptation: symbol.suggestedAdaptation,
+      payload: { symbolName: symbol.symbolName, capability: symbol.capability },
+    })),
+  };
+}
+
+function clipboardStateFromManifest(
+  manifest: RuntimeNativeCapabilityManifest
+): RuntimeNativeClipboardState | undefined {
+  const mock = manifest.configuredMocks.find((candidate) => candidate.capability === "clipboard");
+  if (!mock) {
+    return undefined;
+  }
+  return {
+    identifier: mock.identifier,
+    text: mock.payload.text ?? mock.payload.initialText,
+    initialText: mock.payload.initialText ?? mock.payload.text,
+    currentText: mock.payload.currentText ?? mock.payload.text ?? mock.payload.initialText,
+    readRecords: [],
+    writeRecords: [],
+    payload: { ...mock.payload },
+  };
+}
+
+function splitList(value: string | undefined): string[] {
+  return value ? value.split(",").filter(Boolean) : [];
+}
+
+function resolveNativePermissionState(
+  state: RuntimeNativePermissionState,
+  promptResult: RuntimeNativePermissionState | undefined
+): RuntimeNativePermissionState {
+  return state === "prompt" ? promptResult ?? state : state;
+}
+
+function ensureNativePermission(
+  session: RuntimeAutomationSession,
+  capability: string
+): RuntimeNativeCapabilityState["permissions"][string] {
+  const existing = session.nativeCapabilityState.permissions[capability];
+  if (existing) {
+    return existing;
+  }
+  const permission = {
+    state: "notRequested" as const,
+    resolvedState: "notRequested" as const,
+    strictModeAlternative: `Use deterministic ${capability} mock controls instead of host native APIs.`,
+    prompt: { presented: false },
+  };
+  session.nativeCapabilityState.permissions[capability] = permission;
+  return permission;
+}
+
+function ensureNativeClipboard(session: RuntimeAutomationSession): RuntimeNativeClipboardState {
+  if (!session.nativeCapabilityState.clipboard) {
+    session.nativeCapabilityState.clipboard = {
+      identifier: "automation",
+      readRecords: [],
+      writeRecords: [],
+      payload: {},
+    };
+  }
+  return session.nativeCapabilityState.clipboard;
+}
+
+function nativeFixtureRecord(
+  session: RuntimeAutomationSession,
+  capability: "camera" | "photos",
+  identifier: string,
+  action: "capture" | "selection"
+): RuntimeNativeCapabilityRecord {
+  const fixture = session.nativeCapabilityState.fixtureOutputs.find(
+    (candidate) => candidate.capability === capability && candidate.identifier === identifier
+  );
+  if (!fixture) {
+    return appendNativeDiagnosticRecord(session, capability, "missingFixture", {
+      fixtureIdentifier: identifier,
+    });
+  }
+  return appendNativeRecord(session, capability, `native.${capability}.${action}.${identifier}`, {
+    identifier,
+    fixtureName: fixture.fixtureName,
+    ...fixture.payload,
+    permissionState: session.nativeCapabilityState.permissions[capability]?.resolvedState ?? "unsupported",
+  });
+}
+
+function appendNativeDiagnosticRecord(
+  session: RuntimeAutomationSession,
+  capability: RuntimeNativeCapabilityRecord["capability"],
+  code: string,
+  payload: Record<string, string>
+): RuntimeNativeCapabilityRecord {
+  appendNativeDiagnostic(session, capability, code, payload);
+  return cloneNativeRecords(session.nativeCapabilityEvents).at(-1)!;
+}
+
+function appendNativeDiagnostic(
+  session: RuntimeAutomationSession,
+  capability: RuntimeNativeCapabilityRecord["capability"],
+  code: string,
+  payload: Record<string, string>
+): RuntimeNativeDiagnosticRecord {
+  const diagnostic: RuntimeNativeDiagnosticRecord = {
+    capability,
+    code,
+    message:
+      code === "permissionDenied"
+        ? "Location permission is not granted for the deterministic native mock."
+        : `Deterministic native ${capability} ${code}.`,
+    suggestedAdaptation:
+      code === "permissionDenied"
+        ? "Set the location permission to granted or use scripted location denial assertions."
+        : `Configure a deterministic ${capability} mock for this transport session.`,
+    payload: { ...payload },
+  };
+  session.nativeCapabilityState.diagnosticRecords.push(diagnostic);
+  appendNativeRecord(session, capability, `native.diagnostic.${capability}.${code}`, {
+    code,
+    message: diagnostic.message,
+    suggestedAdaptation: diagnostic.suggestedAdaptation,
+    ...payload,
+  });
+  return { ...diagnostic, payload: { ...diagnostic.payload } };
+}
+
+function appendNativeRecord(
+  session: RuntimeAutomationSession,
+  capability: RuntimeNativeCapabilityRecord["capability"],
+  name: string,
+  payload: Record<string, string | undefined>
+): RuntimeNativeCapabilityRecord {
+  const record = {
+    capability,
+    name,
+    revision: maxNativeRevision(session) + 1,
+    payload: compactPayload(payload),
+  };
+  session.nativeCapabilityEvents.push(record);
+  session.artifactBundle.nativeCapabilityRecords.push({ ...record, payload: { ...record.payload } });
+  appendSessionLog(session, name);
+  return { ...record, payload: { ...record.payload } };
+}
+
+function maxNativeRevision(session: RuntimeAutomationSession): number {
+  return Math.max(
+    session.nativeCapabilities === undefined ? 0 : 1,
+    ...session.nativeCapabilityEvents.map((record) => record.revision),
+    ...session.artifactBundle.nativeCapabilityRecords.map((record) => record.revision)
+  );
+}
+
+function devicePayload(device: RuntimeDeviceSettings): Record<string, string | undefined> {
+  return {
+    viewportWidth: String(device.viewport.width),
+    viewportHeight: String(device.viewport.height),
+    viewportScale: String(device.viewport.scale),
+    colorScheme: device.colorScheme,
+    locale: device.locale,
+    timeZone: device.clock.timeZone,
+    frozenAtISO8601: device.clock.frozenAtISO8601,
+    latitude: device.geolocation ? String(device.geolocation.latitude) : undefined,
+    longitude: device.geolocation ? String(device.geolocation.longitude) : undefined,
+    accuracyMeters: device.geolocation ? String(device.geolocation.accuracyMeters) : undefined,
+    isOnline: String(device.network.isOnline),
+    latencyMilliseconds: String(device.network.latencyMilliseconds),
+    downloadKbps: String(device.network.downloadKbps),
   };
 }
 

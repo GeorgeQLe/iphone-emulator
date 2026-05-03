@@ -102,6 +102,11 @@ export interface RuntimeTransportLike {
   screenshot?(sessionID: string, name?: string): Promise<RuntimeAutomationScreenshotMetadata>;
   semanticTree?(sessionID: string): Promise<SemanticUITree>;
   session?(sessionID: string): Promise<RuntimeAutomationSession>;
+  nativeAutomation?(
+    sessionID: string,
+    expectedSemanticRevision: number,
+    action: RuntimeNativeAutomationAction
+  ): Promise<RuntimeNativeAutomationResult>;
   nativeDeviceSnapshot?(sessionID: string): Promise<RuntimeDeviceSettings>;
   nativeCapabilityEvents?(sessionID: string): Promise<RuntimeNativeCapabilityRecord[]>;
 }
@@ -451,6 +456,87 @@ export type NativeAutomationSupportedCapability =
   | "shareSheet"
   | "notifications"
   | "deviceEnvironment";
+
+export type RuntimeNativeAutomationAction =
+  | {
+      type: "requestPermission";
+      capability: RuntimeNativeCapabilityID;
+    }
+  | {
+      type: "setPermission";
+      capability: RuntimeNativeCapabilityID;
+      state: RuntimeNativePermissionState;
+    }
+  | {
+      type: "captureCamera";
+      identifier?: string;
+      fixtureName?: string;
+      mediaType?: string;
+      outputPath?: string;
+    }
+  | {
+      type: "selectPhoto";
+      identifier?: string;
+      fixtureName?: string;
+      assetIdentifiers?: string[];
+      mediaTypes?: string[];
+    }
+  | {
+      type: "updateLocation";
+      identifier?: string;
+      latitude: number;
+      longitude: number;
+      accuracyMeters?: number;
+    }
+  | {
+      type: "currentLocation";
+    }
+  | {
+      type: "readClipboard";
+      identifier?: string;
+    }
+  | {
+      type: "writeClipboard";
+      identifier?: string;
+      text: string;
+    }
+  | {
+      type: "selectFiles";
+      identifier?: string;
+      selectedFiles?: string[];
+      contentTypes?: string[];
+      allowsMultipleSelection?: boolean;
+    }
+  | {
+      type: "completeShareSheet";
+      identifier?: string;
+      activityType?: string;
+      items?: string[];
+      completionState?: string;
+    }
+  | {
+      type: "scheduleNotification";
+      identifier?: string;
+      title?: string;
+      body?: string;
+      trigger?: string;
+    }
+  | {
+      type: "deliverNotification";
+      identifier?: string;
+      title?: string;
+      body?: string;
+    }
+  | {
+      type: "snapshotDeviceEnvironment";
+    };
+
+export type RuntimeNativeAutomationResult =
+  | RuntimeNativeCapabilityRecord
+  | NativeLocationSnapshot
+  | NativeClipboardReadResult
+  | NativeFileSelectionResult
+  | RuntimeDeviceSettings;
 
 export type NativePermissionSnapshot = Record<string, RuntimeNativePermissionInspection>;
 

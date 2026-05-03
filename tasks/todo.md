@@ -68,7 +68,7 @@
   - Tests MUST fail at this point because transport-mode native mutation methods still throw the placeholder unsupported-native error and `RuntimeTransportLike` has no generic native automation command boundary.
 
 ### Implementation
-- [ ] Step 12.2: Define TypeScript native transport action contracts and SDK namespace routing
+- [x] Step 12.2: Define TypeScript native transport action contracts and SDK namespace routing
   - Files: modify `packages/automation-sdk/src/types.ts`, modify `packages/automation-sdk/src/index.ts`, and modify `packages/automation-sdk/src/transport.ts`.
   - Add a JSON-compatible generic native automation action payload that maps one-to-one to the current Swift `RuntimeNativeAutomationAction` cases without adding one transport method per native operation.
   - Extend `RuntimeTransportLike` and `RuntimeTransportClient` with a generic native command method that sends `sessionID`, expected semantic revision, action type, and action payload through the existing command request path.
