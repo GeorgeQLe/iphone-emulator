@@ -577,3 +577,31 @@
 - Deviations from plan: no hosted or production WebSocket service was added; the live path remains deterministic local in-memory transport as planned for M10.
 - Tech debt / follow-ups: Vite still emits the existing Monaco/editor large-chunk warning during renderer builds; accepted as unchanged bundling behavior.
 - Ready for next phase: yes
+
+## Phase 12: M11 Transport Native Capability Parity
+**Status:** planned.
+
+**Goal:** Make transport-backed automation support the same deterministic native capability controls and inspection surfaces as the current in-memory `app.native.*` namespace.
+
+**Source Spec:** `specs/transport-native-capability-parity.md`
+
+**Scope:**
+- Add full current native automation parity for `Emulator.launch({ mode: "transport", ... })`, covering permissions, camera, photos, location, clipboard, files, share sheets, notifications, device snapshots, native events, and native artifacts.
+- Route TypeScript transport native mutations through a generic native automation command boundary that maps to Swift's existing `RuntimeAutomationCommand.nativeAutomation(RuntimeNativeAutomationAction)` model.
+- Keep native mutations serialized through the existing session command path and semantic revision gate so native state, semantic metadata, logs, events, and artifacts remain ordered consistently.
+- Preserve deterministic fail-closed behavior for unsupported native capabilities, missing fixtures, stale revisions, post-close commands, malformed actions, and invalid sessions.
+- Add fixture-vs-transport parity tests for representative native workflows and clone isolation.
+- Update transport and native capability docs only where needed to clarify local deterministic parity, while keeping production WebSocket, hosted sessions, MCP, and host native service behavior out of scope.
+
+**Acceptance Criteria:**
+- Transport-backed `app.native.*` supports the full current fixture-mode native API surface.
+- No supported transport native method throws `runtime transport native command is not implemented yet`.
+- Native mutation methods route through a generic native automation command boundary.
+- Native mutations use the existing semantic revision gate.
+- Fixture-vs-transport parity tests pass for representative native workflows.
+- Native records, logs, artifacts, semantic metadata, and permission state match fixture-mode behavior for equivalent inputs.
+- Unsupported native capabilities remain fail-closed and absent from the public namespace.
+- Documentation clearly states that parity is deterministic local transport parity, not host native access or production WebSocket support.
+
+**Parallelization:** research-only
+**Coordination Notes:** The work crosses the TypeScript automation SDK transport client, local in-memory transport test double, and Swift native automation contract. Parallel review can help catch parity gaps, but implementation should remain integrated because duplicated native command schemas or divergent fixture/transport behavior are the primary risks.

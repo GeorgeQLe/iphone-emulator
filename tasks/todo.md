@@ -1,12 +1,12 @@
 # Todo — iPhone Emulator Workspace
 
-> Current phase: 11 of 11 — M10 Live Runtime-to-Renderer Transport and Session Coordination
+> Current phase: 12 of 12 — M11 Transport Native Capability Parity (needs `$plan-phase 12`)
 > Source roadmap: `tasks/roadmap.md`
 > Test strategy: tdd
 
 ## Priority Task Queue
 
-- [ ] `$roadmap specs/transport-native-capability-parity.md` - integrate the new transport native capability parity spec into `tasks/roadmap.md` because `specs/transport-native-capability-parity.md` was modified on 2026-05-02 23:39, after `tasks/roadmap.md` on 2026-05-01 13:13, and no Phase 12 or roadmap entry references transport native capability parity.
+- [ ] `$plan-phase 12` - decompose Phase 12 before execution because `tasks/roadmap.md` now includes `## Phase 12: M11 Transport Native Capability Parity` from `specs/transport-native-capability-parity.md`, but Phase 12 has acceptance criteria and no `### Tests First`, `### Implementation`, or `### Green` implementation steps.
 - [ ] `$spec-interview --ideas` - review remaining unspecced ideas because `tasks/ideas.md` was updated on 2026-05-01 13:36 and still contains ideas without matching specs, including setup doctor, live-session replay fixtures, compatibility rewrite examples, template gallery, local MCP transport server, CI artifact export bundle, Swift package intake diagnostics, local WebSocket runtime service, compile-and-run strict-mode packages, renderer pixel artifact capture, and hosted-session pilot economics.
 
 ## Priority Documentation Todo
