@@ -74,7 +74,7 @@
   - Extend `RuntimeTransportLike` and `RuntimeTransportClient` with a generic native command method that sends `sessionID`, expected semantic revision, action type, and action payload through the existing command request path.
   - Replace transport-mode `unsupportedNativeTransportMethod()` usage with method-compatible `app.native.*` calls that preserve fixture-mode signatures and return shapes.
   - Keep read-only native inspection surfaces (`snapshot`, `current`, `read`, `device.snapshot`, `events`, `artifacts`) clone-safe and aligned with fixture-mode behavior.
-- [ ] Step 12.3: Implement native action handling in the local in-memory transport test double
+- [x] Step 12.3: Implement native action handling in the local in-memory transport test double
   - Files: modify `packages/automation-sdk/src/transport.ts` and modify `packages/automation-sdk/src/transport.test.ts`.
   - Apply native permission, camera, photos, location, clipboard, files, share sheet, notification, and device actions to the retained transport session using the same state, event, artifact, log, and semantic metadata conventions as `InMemoryEmulatorApp`.
   - Serialize native mutations through the current semantic revision model, increment snapshots for successful mutations where fixture mode records native revisions, and reject stale expected revisions with the existing `staleRevision` diagnostic.
@@ -85,6 +85,8 @@
   - Verify `RuntimeSessionCoordinator` already routes `.nativeAutomation(RuntimeNativeAutomationAction)` through the same stale revision gate as other commands; add or tighten tests for all current native action cases and diagnostic branches.
   - Avoid a parallel Swift native command taxonomy; use the existing `RuntimeAutomationCommand.nativeAutomation` and `RuntimeNativeAutomationAction` contract as the canonical model.
   - Confirm native command responses publish inspectable events, logs, artifact records, semantic snapshot metadata, and session native state consistently.
+  - Reconcile the TypeScript `RuntimeNativeAutomationAction`/result surface against Swift before adding coverage: current review findings flagged TypeScript-only `currentLocation`/read-result shapes, stale diagnostic payload key drift (`expectedSemanticRevision`/`actualSemanticRevision` vs Swift `expectedRevision`/`currentRevision`), and duplicated native state transition logic between fixture mode and the local transport double.
+  - Add direct stale native command coverage at the Swift transport boundary that proves rejected commands do not append native events, logs, artifacts, or mutate retained native state.
 - [ ] Step 12.5: Update examples and documentation for local native parity
   - Files: modify `examples/strict-mode-baseline/live-transport-example.ts`, modify `README.md` only if the example command summary needs parity wording, modify `docs/live-runtime-transport.md`, and modify `docs/native-capabilities.md`.
   - Extend the live transport example with representative native calls across permissions, camera/photos fixtures, location, clipboard, files, share sheet, notifications, device snapshot, native events, and native artifacts.
@@ -102,6 +104,7 @@
 - [ ] Step 12.8: Refactor native parity boundaries if needed while keeping tests green
   - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/src/types.ts`, `packages/automation-sdk/src/transport.ts`, `packages/runtime-host/Sources/RuntimeHost/Transport/**`, `packages/runtime-host/Sources/RuntimeHost/Automation/**`, `docs/live-runtime-transport.md`, and `docs/native-capabilities.md` only as needed.
   - Re-read fixture-mode native implementation, transport-mode native routing, Swift native command routing, tests, examples, and docs together. Only refactor if there is concrete duplicated native action vocabulary, fixture-vs-transport return drift, hidden mutable state, diagnostic ambiguity, or documentation overclaiming.
+  - Include the Step 12.3 review gaps in the refactor decision: initial manifest derivation parity for scripted events, keyboard state, notification state, unsupported diagnostics, and `artifactOutputs`; clone isolation for direct permission/location/clipboard/file/device results; explicit decision on missing-fixture throw-vs-diagnostic behavior; and transport semantic tree parity where native metadata depends on launch state.
 
 ### Milestone: M11 Transport Native Capability Parity
 **Acceptance Criteria:**

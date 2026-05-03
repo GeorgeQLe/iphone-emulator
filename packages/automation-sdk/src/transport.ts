@@ -409,13 +409,7 @@ export function createInMemoryRuntimeTransport(
         }));
       }
       if (method === "native.automation") {
-        return applyNativeAutomation(
-          liveSession,
-          params as {
-            expectedSemanticRevision: number;
-            action: RuntimeNativeAutomationAction;
-          }
-        );
+        return applyNativeAutomation(liveSession, params);
       }
       throw {
         code: "unsupportedCommand",
@@ -567,8 +561,9 @@ function makeContractSession(request: RuntimeTransportLaunchRequest): RuntimeAut
 
 function applyNativeAutomation(
   session: RuntimeAutomationSession,
-  request: { expectedSemanticRevision: number; action: RuntimeNativeAutomationAction }
+  params: unknown
 ): RuntimeNativeAutomationResult {
+  const request = parseNativeAutomationRequest(params, session.id);
   if (request.expectedSemanticRevision !== session.snapshot.revision) {
     throw {
       code: "staleRevision",
@@ -747,6 +742,81 @@ function applyNativeAutomation(
       appendNativeRecord(session, "deviceEnvironment", "native.deviceEnvironment.snapshot", devicePayload(session.device));
       return cloneDevice(session.device);
   }
+}
+
+function parseNativeAutomationRequest(
+  params: unknown,
+  sessionID: string
+): { expectedSemanticRevision: number; action: RuntimeNativeAutomationAction } {
+  if (typeof params !== "object" || params === null) {
+    throw nativeAutomationProtocolViolation(sessionID, "native automation params must be an object", {
+      reason: "malformedParams",
+    });
+  }
+
+  const candidate = params as {
+    expectedSemanticRevision?: unknown;
+    action?: unknown;
+  };
+  if (typeof candidate.expectedSemanticRevision !== "number") {
+    throw nativeAutomationProtocolViolation(sessionID, "native automation expected revision is required", {
+      reason: "missingExpectedSemanticRevision",
+    });
+  }
+  if (typeof candidate.action !== "object" || candidate.action === null) {
+    throw nativeAutomationProtocolViolation(sessionID, "native automation action must be an object", {
+      reason: "malformedAction",
+    });
+  }
+
+  const action = candidate.action as { type?: unknown };
+  if (typeof action.type !== "string") {
+    throw nativeAutomationProtocolViolation(sessionID, "native automation action type is required", {
+      reason: "missingActionType",
+    });
+  }
+  if (!isSupportedNativeAutomationActionType(action.type)) {
+    throw {
+      code: "unsupportedCommand",
+      message: `native automation action ${action.type} is not supported`,
+      payload: { sessionID, command: "native.automation", nativeAction: action.type },
+    } satisfies RuntimeTransportDiagnostic;
+  }
+
+  return {
+    expectedSemanticRevision: candidate.expectedSemanticRevision,
+    action: candidate.action as RuntimeNativeAutomationAction,
+  };
+}
+
+function nativeAutomationProtocolViolation(
+  sessionID: string,
+  message: string,
+  payload: Record<string, string>
+): RuntimeTransportDiagnostic {
+  return {
+    code: "protocolViolation",
+    message,
+    payload: { sessionID, command: "native.automation", ...payload },
+  };
+}
+
+function isSupportedNativeAutomationActionType(type: string): type is RuntimeNativeAutomationAction["type"] {
+  return (
+    type === "requestPermission" ||
+    type === "setPermission" ||
+    type === "captureCamera" ||
+    type === "selectPhoto" ||
+    type === "updateLocation" ||
+    type === "currentLocation" ||
+    type === "readClipboard" ||
+    type === "writeClipboard" ||
+    type === "selectFiles" ||
+    type === "completeShareSheet" ||
+    type === "scheduleNotification" ||
+    type === "deliverNotification" ||
+    type === "snapshotDeviceEnvironment"
+  );
 }
 
 function defaultDevice() {

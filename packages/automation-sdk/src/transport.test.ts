@@ -351,6 +351,35 @@ describe("RuntimeTransportClient", () => {
       capability: "clipboard",
       name: "native.clipboard.write.automation",
     });
+
+    const currentSession = await app.session();
+    const eventCountBeforeStaleNativeCommand = currentSession.nativeCapabilityEvents.length;
+    const artifactCountBeforeStaleNativeCommand =
+      currentSession.artifactBundle.nativeCapabilityRecords.length;
+    await expect(
+      client.nativeAutomation(currentSession.id, currentSession.snapshot.revision - 1, {
+        type: "writeClipboard",
+        identifier: "automation",
+        text: "stale write",
+      })
+    ).rejects.toMatchObject({
+      name: "RuntimeTransportProtocolError",
+      code: "staleRevision",
+      payload: {
+        sessionID: currentSession.id,
+        expectedSemanticRevision: String(currentSession.snapshot.revision - 1),
+        actualSemanticRevision: String(currentSession.snapshot.revision),
+      },
+    });
+    await expect(app.session()).resolves.toMatchObject({
+      nativeCapabilityEvents: { length: eventCountBeforeStaleNativeCommand },
+      artifactBundle: {
+        nativeCapabilityRecords: { length: artifactCountBeforeStaleNativeCommand },
+      },
+      nativeCapabilityState: {
+        clipboard: { currentText: "after stale UI mutation" },
+      },
+    });
   });
 
   it("exposes one generic native automation transport command boundary", async () => {
@@ -360,6 +389,45 @@ describe("RuntimeTransportClient", () => {
     });
 
     expect(typeof (client as unknown as { nativeAutomation?: unknown }).nativeAutomation).toBe("function");
+  });
+
+  it("fails closed for malformed and unknown native automation actions", async () => {
+    const client = new RuntimeTransportClient({
+      transport: createInMemoryRuntimeTransport({ fixtureName: "strict-mode-baseline" }),
+      timeoutMs: 250,
+    });
+    const app = await Emulator.launch({
+      mode: "transport",
+      appIdentifier: "FixtureApp",
+      fixtureName: "strict-mode-baseline",
+      transport: client,
+    });
+    const session = await app.session();
+
+    await expect(
+      client.nativeAutomation(session.id, session.snapshot.revision, null as never)
+    ).rejects.toMatchObject({
+      name: "RuntimeTransportProtocolError",
+      code: "protocolViolation",
+      payload: {
+        sessionID: session.id,
+        command: "native.automation",
+        reason: "malformedAction",
+      },
+    });
+    await expect(
+      client.nativeAutomation(session.id, session.snapshot.revision, {
+        type: "openHostCamera",
+      } as never)
+    ).rejects.toMatchObject({
+      name: "RuntimeTransportProtocolError",
+      code: "unsupportedCommand",
+      payload: {
+        sessionID: session.id,
+        command: "native.automation",
+        nativeAction: "openHostCamera",
+      },
+    });
   });
 });
 

@@ -1,5 +1,8 @@
 # History
 
+- Completed Phase 12 Step 12.3 by tightening the local in-memory transport native automation command boundary. The transport double now validates native automation envelopes before dispatch, reports malformed actions as structured `protocolViolation` diagnostics, fails closed on unknown native action types as `unsupportedCommand`, and has focused coverage proving stale native commands reject before appending native events/artifacts or mutating retained clipboard state.
+- Validation: `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test -- --run src/transport.test.ts`, `npm --prefix packages/automation-sdk test`, and `npm --prefix packages/automation-sdk run build` all passed cleanly with no warnings.
+
 - Completed Phase 12 Step 12.1 by adding red-phase native transport parity coverage across the automation SDK transport tests, SDK namespace tests, and Swift runtime host contracts. The new tests pin fixture-vs-transport native workflow parity, launch-time native capability state, clone isolation, deterministic missing-fixture diagnostics, post-close protocol diagnostics, a single generic native automation transport boundary, and stale native automation rejection before mutation.
 - Validation: `swift test` passed with 55 Swift tests. `npm --prefix packages/automation-sdk test` failed as expected in the red phase with 4 native transport parity failures: transport native mutations still throw `runtime transport native command is not implemented yet`, transport launch still drops native capability state, and `RuntimeTransportClient.nativeAutomation` does not exist yet. These are expected red failures for Step 12.1, not unrelated regressions.
 
