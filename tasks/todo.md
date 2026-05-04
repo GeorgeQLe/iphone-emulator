@@ -1,135 +1,129 @@
 # Todo — iPhone Emulator Workspace
 
 > Project: Open-Source iPhone Emulator Harness
-> Current phase: 12 of 12 — M11 Transport Native Capability Parity
+> Current phase: 13 of 13 — M12 Compatibility Report CLI
 > Source roadmap: `tasks/roadmap.md`
-> Source spec: `specs/transport-native-capability-parity.md`
+> Source spec: `specs/compatibility-report-cli.md`
 > Test strategy: tdd
 
-## Phase 12: M11 Transport Native Capability Parity
+## Phase 13: M12 Compatibility Report CLI
 
-**Status:** complete on 2026-05-03.
+**Status:** not started
 
-**Goal:** Make transport-backed automation support the same deterministic native capability controls and inspection surfaces as the current in-memory `app.native.*` namespace.
+**Goal:** Give developers a single command to scan Swift source directories and assess compatibility with the harness, surfacing grouped diagnostics, strict-mode adaptation hints, and a draft native capability manifest.
 
 **Scope:**
-- Add full current native automation parity for `Emulator.launch({ mode: "transport", ... })`, covering permissions, camera, photos, location, clipboard, files, share sheets, notifications, device snapshots, native events, and native artifacts.
-- Route TypeScript transport native mutations through a generic native automation command boundary that maps to Swift's existing `RuntimeAutomationCommand.nativeAutomation(RuntimeNativeAutomationAction)` model.
-- Keep native mutations serialized through the existing session command path and semantic revision gate so native state, semantic metadata, logs, events, and artifacts remain ordered consistently.
-- Preserve deterministic fail-closed behavior for unsupported native capabilities, missing fixtures, stale revisions, post-close commands, malformed actions, and invalid sessions.
-- Add fixture-vs-transport parity tests for representative native workflows and clone isolation.
-- Update transport and native capability docs only where needed to clarify local deterministic parity, while keeping production WebSocket, hosted sessions, MCP, and host native service behavior out of scope.
+- Add a Swift executable target (`compatibility-report`) that imports `DiagnosticsCore`, recursively scans `.swift` files in a directory, aggregates per-file `CompatibilityAnalysis` results into one merged report, and emits category-grouped text or JSON output with meaningful exit codes.
+- Generate a draft `RuntimeNativeCapabilityManifest` from detected platform API usage with `NativeCapabilityGuidance`.
+- Add a TypeScript wrapper package (`packages/compatibility-cli`) with both a CLI bin entry and a programmatic `analyzeCompatibility()` API that shells out to the Swift binary with `--json`.
+- Add Swift CLI integration tests against fixture directories and TypeScript bridge tests.
+- Update docs and examples to show CLI usage for migration planning and CI gating.
 
 **Acceptance Criteria:**
-- Transport-backed `app.native.*` supports the full current fixture-mode native API surface.
-- No supported transport native method throws `runtime transport native command is not implemented yet`.
-- Native mutation methods route through a generic native automation command boundary.
-- Native mutations use the existing semantic revision gate.
-- Fixture-vs-transport parity tests pass for representative native workflows.
-- Native records, logs, artifacts, semantic metadata, and permission state match fixture-mode behavior for equivalent inputs.
-- Unsupported native capabilities remain fail-closed and absent from the public namespace.
-- Documentation clearly states that parity is deterministic local transport parity, not host native access or production WebSocket support.
+- `compatibility-report <directory>` recursively scans .swift files and prints a category-grouped report with file:line locations and adaptation hints.
+- `compatibility-report <directory> --json` emits valid JSON mirroring the Swift `CompatibilityAnalysis` structure plus a `draftManifest` key.
+- Draft manifest includes `requiredCapabilities` for detected platform APIs and `unsupportedSymbols` for APIs without capability contracts.
+- Exit code 0 for clean source, 1 for diagnostics found, 2 for CLI errors.
+- `npx @iphone-emulator/compatibility-cli <path>` invokes the Swift binary and returns equivalent output.
+- `analyzeCompatibility()` programmatic API returns typed results from TypeScript.
+- Swift CLI integration tests pass against fixture directories (clean, mixed, unsupported-only, empty, native-apis).
+- TypeScript bridge tests pass.
+- No regressions in existing DiagnosticsCore, RuntimeHost, automation SDK, or browser renderer tests.
 
 ### Execution Profile
-**Parallel mode:** research-only
+**Parallel mode:** implementation-safe
 **Integration owner:** main agent
-**Conflict risk:** high
-**Review gates:** correctness, tests, security, docs/API conformance
+**Conflict risk:** medium
+**Review gates:** correctness, tests, docs/API conformance
 
 **Subagent lanes:**
-- Lane: native-api-parity-review
-  - Agent: explorer
+- Lane: swift-cli
+  - Agent: general-purpose
+  - Role: implementer
+  - Mode: write
+  - Scope: implement Swift executable target with directory scanning, multi-file aggregation, text/JSON output formatting, draft manifest generation, and exit codes.
+  - Owns: `Sources/CompatibilityReport/**`, `Tests/CompatibilityReportTests/**`, `Tests/fixtures/cli/**`
+  - Must not edit: `packages/**`, `tasks/**`, `docs/**`, `README.md`, `examples/**`
+  - Depends on: Step 13.1
+  - Deliverable: Swift executable patch, CLI fixture directories, and focused Swift test output.
+- Lane: typescript-wrapper
+  - Agent: general-purpose
+  - Role: implementer
+  - Mode: write
+  - Scope: implement TypeScript wrapper package with CLI bin entry, programmatic API, types mirroring Swift JSON output, and bridge tests.
+  - Owns: `packages/compatibility-cli/**`
+  - Must not edit: `Sources/**`, `Tests/**`, `packages/automation-sdk/**`, `packages/browser-renderer/**`, `packages/runtime-host/**`, `packages/diagnostics/**`, `tasks/**`, `docs/**`, `README.md`
+  - Depends on: Step 13.1
+  - Deliverable: TypeScript package patch and package validation output.
+- Lane: json-schema-review
+  - Agent: general-purpose
   - Role: reviewer
   - Mode: read-only
-  - Scope: compare the fixture-mode `app.native.*` namespace against the transport-mode namespace and identify method, return-shape, clone-isolation, and missing-fixture behavior gaps before implementation.
-  - Depends on: Step 12.1, Step 12.2
-  - Deliverable: findings on parity gaps and test cases that should block green status.
-- Lane: transport-command-boundary-review
-  - Agent: explorer
-  - Role: reviewer
-  - Mode: read-only
-  - Scope: review TypeScript `RuntimeTransportLike`/`RuntimeTransportClient` native command design against Swift `RuntimeAutomationCommand.nativeAutomation(RuntimeNativeAutomationAction)` and the existing semantic revision gate.
-  - Depends on: Step 12.1, Step 12.3
-  - Deliverable: findings on duplicated native schemas, stale-revision risks, lifecycle diagnostics, and API drift.
-- Lane: docs-boundary-review
-  - Agent: explorer
-  - Role: docs-researcher
-  - Mode: read-only
-  - Scope: review `docs/live-runtime-transport.md`, `docs/native-capabilities.md`, and `specs/transport-native-capability-parity.md` for wording that could imply host native access, production WebSocket support, hosted sessions, or new native fidelity.
-  - Depends on: Step 12.5
-  - Deliverable: documentation wording risks and missing parity notes.
+  - Scope: review Swift JSON output and TypeScript types for schema alignment after both lanes complete.
+  - Depends on: Step 13.3, Step 13.5
+  - Deliverable: findings on schema drift between Swift Codable output and TypeScript types.
 
 ### Tests First
-- [x] Step 12.1: Write failing native transport parity tests
-  - Files: modify `packages/automation-sdk/src/transport.test.ts`, modify `packages/automation-sdk/src/index.test.ts`, and modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
-  - Add fixture-vs-transport assertions for permissions snapshot/request/set, camera capture, photo select, location current/update, clipboard read/write, file selection, share-sheet completion, notification authorization/schedule/deliver, device snapshot, native events, native artifacts, logs, semantic metadata, permission state, and clone isolation.
-  - Add red-phase assertions that no supported transport native method throws `runtime transport native command is not implemented yet`.
-  - Add stale semantic revision, post-close native command, missing session, malformed action, missing fixture, and unsupported native action assertions that expect structured diagnostics or deterministic native records rather than host fallback behavior.
-  - Tests MUST fail at this point because transport-mode native mutation methods still throw the placeholder unsupported-native error and `RuntimeTransportLike` has no generic native automation command boundary.
+- [ ] Step 13.1: Write failing tests for CLI directory scanning, aggregation, output formatting, and exit codes
+  - Files: create `Tests/CompatibilityReportTests/CompatibilityReportTests.swift`; create `Tests/fixtures/cli/clean-project/CleanApp.swift`; create `Tests/fixtures/cli/mixed-project/SupportedFile.swift`, `Tests/fixtures/cli/mixed-project/UnsupportedFile.swift`; create `Tests/fixtures/cli/unsupported-only/FullyUnsupported.swift`; create `Tests/fixtures/cli/native-apis/NativeAPIs.swift`; create `packages/compatibility-cli/test/cli.test.ts`.
+  - Swift red-phase assertions: directory scanner finds `.swift` files while skipping hidden dirs, `.build`, `Packages`, and symlinks; multi-file aggregation merges summary counts, deduplicates unsupported group names while keeping all locations, unions supported features; JSON output matches expected structure with `draftManifest` key; text output contains expected section headers; exit code 0 for clean directory, 1 for diagnostics found, 2 for empty directory or bad path.
+  - TypeScript red-phase assertions: `analyzeCompatibility()` returns a typed `CompatibilityAnalysisResult`; CLI bin invocation returns expected output; error handling for missing Swift binary.
+  - Tests MUST fail at this point because the executable target, directory scanner, aggregator, output formatters, and TypeScript wrapper do not exist yet.
+  - Add the executable target and test target to `Package.swift` in this step so Swift tests can reference the new module.
 
 ### Implementation
-- [x] Step 12.2: Define TypeScript native transport action contracts and SDK namespace routing
-  - Files: modify `packages/automation-sdk/src/types.ts`, modify `packages/automation-sdk/src/index.ts`, and modify `packages/automation-sdk/src/transport.ts`.
-  - Add a JSON-compatible generic native automation action payload that maps one-to-one to the current Swift `RuntimeNativeAutomationAction` cases without adding one transport method per native operation.
-  - Extend `RuntimeTransportLike` and `RuntimeTransportClient` with a generic native command method that sends `sessionID`, expected semantic revision, action type, and action payload through the existing command request path.
-  - Replace transport-mode `unsupportedNativeTransportMethod()` usage with method-compatible `app.native.*` calls that preserve fixture-mode signatures and return shapes.
-  - Keep read-only native inspection surfaces (`snapshot`, `current`, `read`, `device.snapshot`, `events`, `artifacts`) clone-safe and aligned with fixture-mode behavior.
-- [x] Step 12.3: Implement native action handling in the local in-memory transport test double
-  - Files: modify `packages/automation-sdk/src/transport.ts` and modify `packages/automation-sdk/src/transport.test.ts`.
-  - Apply native permission, camera, photos, location, clipboard, files, share sheet, notification, and device actions to the retained transport session using the same state, event, artifact, log, and semantic metadata conventions as `InMemoryEmulatorApp`.
-  - Serialize native mutations through the current semantic revision model, increment snapshots for successful mutations where fixture mode records native revisions, and reject stale expected revisions with the existing `staleRevision` diagnostic.
-  - Ensure returned sessions, native events, native artifacts, permission snapshots, clipboard reads, file selections, location snapshots, and device snapshots are cloned so caller mutation cannot corrupt retained transport state.
-  - Preserve deterministic missing-fixture diagnostics and errors without attempting host native services.
-- [x] Step 12.4: Align Swift runtime transport native command coverage
-  - Files: modify `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeSessionCoordinator.swift`, modify `packages/runtime-host/Sources/RuntimeHost/Transport/RuntimeTransportTypes.swift` only if a Codable adapter is needed, modify `packages/runtime-host/Sources/RuntimeHost/Automation/RuntimeAutomationTypes.swift` only if mapping helpers are needed, and modify `Tests/RuntimeHostContractTests/RuntimeHostContractTests.swift`.
-  - Verify `RuntimeSessionCoordinator` already routes `.nativeAutomation(RuntimeNativeAutomationAction)` through the same stale revision gate as other commands; add or tighten tests for all current native action cases and diagnostic branches.
-  - Avoid a parallel Swift native command taxonomy; use the existing `RuntimeAutomationCommand.nativeAutomation` and `RuntimeNativeAutomationAction` contract as the canonical model.
-  - Confirm native command responses publish inspectable events, logs, artifact records, semantic snapshot metadata, and session native state consistently.
-  - Reconcile the TypeScript `RuntimeNativeAutomationAction`/result surface against Swift before adding coverage: current review findings flagged TypeScript-only `currentLocation`/read-result shapes, stale diagnostic payload key drift (`expectedSemanticRevision`/`actualSemanticRevision` vs Swift `expectedRevision`/`currentRevision`), and duplicated native state transition logic between fixture mode and the local transport double.
-  - Add direct stale native command coverage at the Swift transport boundary that proves rejected commands do not append native events, logs, artifacts, or mutate retained native state.
-- [x] Step 12.5: Update examples and documentation for local native parity
-  - Files: modify `examples/strict-mode-baseline/live-transport-example.ts`, modify `README.md` only if the example command summary needs parity wording, modify `docs/live-runtime-transport.md`, and modify `docs/native-capabilities.md`.
-  - Extend the live transport example with representative native calls across permissions, camera/photos fixtures, location, clipboard, files, share sheet, notifications, device snapshot, native events, and native artifacts.
-  - Document that transport mode now supports the current deterministic `app.native.*` controls while still using local session records, fixture outputs, logs, artifacts, and semantic metadata.
-  - State explicitly that this parity does not add host camera, photos, clipboard, files, notifications, sensors, haptics, production WebSocket, hosted sessions, or MCP behavior.
+- [ ] Step 13.2: Implement Swift directory scanner and multi-file aggregator
+  - Files: create `Sources/CompatibilityReport/main.swift`, create `Sources/CompatibilityReport/DirectoryScanner.swift`, create `Sources/CompatibilityReport/ReportAggregator.swift`; modify `Package.swift` to add the executable target and test target.
+  - Implement recursive `.swift` file discovery with hidden dir/`.build`/`Packages`/symlink filtering. Implement multi-file aggregation: merge summary counts, deduplicate unsupported group names by category while preserving all locations, union supported features by `(kind, name)`, and derive combined migration summary.
+  - Implementation plan: `DirectoryScanner` returns `[URL]` of `.swift` files. `ReportAggregator` takes `[CompatibilityAnalysis]` and produces a merged `CompatibilityReport`, merged `[CompatibilitySupportedFeature]`, and combined `[CompatibilityDiagnostic]` list. Keep the aggregator as a pure function over value types.
+  - Validation focus: `swift build --target compatibility-report` should compile.
+- [ ] Step 13.3: Implement JSON and text output formatters with draft manifest generation
+  - Files: create `Sources/CompatibilityReport/JSONFormatter.swift`, create `Sources/CompatibilityReport/TextFormatter.swift`, create `Sources/CompatibilityReport/DraftManifestGenerator.swift`; modify `Sources/CompatibilityReport/main.swift` for argument parsing and exit codes.
+  - Implement JSON output using `Codable` encoding that mirrors the `CompatibilityAnalysis` structure plus a top-level `draftManifest`, `scannedFiles`, and `affectedFiles`. Implement text output with category-grouped sections, file:line locations, adaptation hints, supported features summary, and a copy-pasteable draft manifest JSON block. Implement draft manifest generation: collect unique `NativeCapabilityGuidance` entries, group by capability ID, produce `requiredCapabilities` for `requiresManifestMock == true` with `permissionState: "notDetermined"`, and `unsupportedSymbols` for `requiresManifestMock == false`.
+  - Implement exit code logic: 0 for zero diagnostics, 1 for one or more diagnostics, 2 for CLI errors (bad path, no `.swift` files, unreadable files, invalid arguments). Emit warnings to stderr for skipped files.
+  - Validation focus: `swift build --target compatibility-report` and `.build/debug/compatibility-report Tests/fixtures/cli/mixed-project` should produce output.
+- [ ] Step 13.4: Add CLI fixture directories for integration testing
+  - Files: create `Tests/fixtures/cli/clean-project/CleanApp.swift` (supported-only SwiftUI subset); create `Tests/fixtures/cli/mixed-project/SupportedFile.swift` and `Tests/fixtures/cli/mixed-project/UnsupportedFile.swift`; create `Tests/fixtures/cli/unsupported-only/FullyUnsupported.swift` (UIKit, UIViewControllerRepresentable, platform APIs, lifecycle, modifiers); create `Tests/fixtures/cli/native-apis/NativeAPIs.swift` (platform APIs triggering NativeCapabilityGuidance for camera, location, clipboard, and one unsupported biometric API).
+  - Implementation plan: reuse patterns from existing `Tests/fixtures/compatibility/` fixtures. Each fixture should exercise specific aggregation and output formatting behavior.
+  - Validation focus: files are valid Swift source that the existing `CompatibilityAnalyzer` can process.
+- [ ] Step 13.5: Implement TypeScript wrapper package with CLI bin and programmatic API
+  - Files: create `packages/compatibility-cli/package.json`, `packages/compatibility-cli/tsconfig.json`, `packages/compatibility-cli/tsconfig.build.json`; create `packages/compatibility-cli/src/index.ts`, `packages/compatibility-cli/src/cli.ts`, `packages/compatibility-cli/src/types.ts`; update root `package.json` workspaces if needed.
+  - Implement `types.ts` with TypeScript interfaces mirroring the Swift JSON output: `CompatibilityAnalysisResult`, `CompatibilityReport`, `Summary`, `UnsupportedGroup`, `MigrationSummary`, `CompatibilityDiagnostic`, `SourceLocation`, `SuggestedAdaptation`, `NativeCapabilityGuidance`, `DraftManifest`, `CompatibilitySupportedFeature`, `CompatibilityMatrix`.
+  - Implement `index.ts` with `analyzeCompatibility({ path, swiftBinaryPath? })` that spawns the Swift binary with `--json`, captures stdout, parses JSON, and returns typed `CompatibilityAnalysisResult`. Handle missing binary, non-zero exit codes, and malformed output as typed errors.
+  - Implement `cli.ts` as the bin entry that parses `<path>`, optional `--json` and `--swift-binary` flags, calls `analyzeCompatibility()`, and either passes JSON through or re-formats as text. Wire the bin entry in `package.json`.
+  - Validation focus: `npm --prefix packages/compatibility-cli run typecheck` and `npm --prefix packages/compatibility-cli run build`.
+- [ ] Step 13.6: Update docs and examples for CLI usage
+  - Files: modify `README.md` to add a CLI usage section; modify `docs/strict-mode-migration.md` to reference the CLI as the first migration step; create or modify `docs/compatibility-cli.md` with full CLI reference, example output, and CI gating recipe.
+  - Document both Swift binary and TypeScript wrapper usage. Show example text and JSON output. Document exit codes and CI integration patterns.
+  - Validation focus: documentation-only; no Swift or TypeScript validation required unless code snippets change.
 
 ### Green
-- [x] Step 12.6: Run focused parity validation
+- [ ] Step 13.7: Run Swift CLI integration tests and TypeScript bridge tests
+  - Files: extend `Tests/CompatibilityReportTests/CompatibilityReportTests.swift` and `packages/compatibility-cli/test/cli.test.ts` if coverage gaps exist after implementation.
+  - Run `swift test --filter CompatibilityReportTests`, `npm --prefix packages/compatibility-cli run typecheck`, `npm --prefix packages/compatibility-cli test`, and `npm --prefix packages/compatibility-cli run build`.
+  - Verify: clean-project fixture exits 0 with zero diagnostics; mixed-project exits 1 with correct aggregated counts; unsupported-only exits 1 with all categories; empty path exits 2; native-apis exits 1 with draft manifest containing correct capability entries; JSON output parses to valid TypeScript types; TypeScript programmatic API returns typed results.
+- [ ] Step 13.8: Run full workspace regression validation
   - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
-  - Run `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `swift test`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
-  - Confirm transport-mode native tests fail before implementation and pass after implementation, including clone isolation, stale revision, post-close, missing fixture, and unsupported action cases.
-- [x] Step 12.7: Run full workspace regression validation
-  - Files: no intended source edits unless validation exposes missing package wiring or real regressions.
-  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
-  - Result: all commands passed on 2026-05-03. `npm --prefix packages/browser-renderer run build` emitted Vite's existing large-chunk warning for Monaco/editor assets; accepted as unrelated to native transport parity and not a regression.
-- [x] Step 12.8: Refactor native parity boundaries if needed while keeping tests green
-  - Files: modify `packages/automation-sdk/src/index.ts`, `packages/automation-sdk/src/types.ts`, `packages/automation-sdk/src/transport.ts`, `packages/runtime-host/Sources/RuntimeHost/Transport/**`, `packages/runtime-host/Sources/RuntimeHost/Automation/**`, `docs/live-runtime-transport.md`, and `docs/native-capabilities.md` only as needed.
-  - Execution plan:
-    1. Re-read fixture-mode native implementation, transport-mode native routing, Swift native command routing, parity tests, examples, and native/transport docs together before editing.
-    2. Compare concrete boundaries for duplicated native action vocabulary, fixture-vs-transport return drift, hidden mutable state, diagnostic ambiguity, documentation overclaiming, and the Step 12.3 review gaps: initial manifest derivation parity for scripted events, keyboard state, notification state, unsupported diagnostics, `artifactOutputs`, clone isolation for direct permission/location/clipboard/file/device results, missing-fixture throw-vs-diagnostic behavior, and transport semantic tree parity where native metadata depends on launch state.
-    3. If no concrete issue remains, record Step 12.8 as a no-op boundary review and preserve the current source files.
-    4. If a concrete issue remains, make the smallest source/doc correction, then rerun the focused affected validation plus any full-regression command needed to keep the green phase honest.
+  - Run `swift test`, `swift build`, `npm --prefix packages/browser-renderer run typecheck`, `npm --prefix packages/browser-renderer test`, `npm --prefix packages/browser-renderer run build`, `npm --prefix packages/automation-sdk run typecheck`, `npm --prefix packages/automation-sdk test`, `npm --prefix packages/automation-sdk run build`, `npm --prefix packages/compatibility-cli run typecheck`, `npm --prefix packages/compatibility-cli test`, `npm --prefix packages/compatibility-cli run build`, `npx tsx examples/strict-mode-baseline/automation-example.ts`, and `npx tsx examples/strict-mode-baseline/live-transport-example.ts`.
+- [ ] Step 13.9: Refactor CLI boundaries if needed while keeping tests green
+  - Files: modify `Sources/CompatibilityReport/**`, `packages/compatibility-cli/src/**`, and docs only as needed.
+  - Re-read the Swift CLI directory scanner, aggregator, formatters, draft manifest generator, TypeScript types, programmatic API, CLI bin, and docs together. Only refactor if there is concrete type drift between Swift JSON output and TypeScript types, duplicated aggregation logic, unclear text output formatting, or documentation that overclaims analyzer accuracy.
 
-### Milestone: M11 Transport Native Capability Parity
+### Milestone: M12 Compatibility Report CLI
 **Acceptance Criteria:**
-- [x] Transport-backed `app.native.*` supports the full current fixture-mode native API surface.
-- [x] No supported transport native method throws `runtime transport native command is not implemented yet`.
-- [x] Native mutation methods route through a generic native automation command boundary.
-- [x] Native mutations use the existing semantic revision gate.
-- [x] Fixture-vs-transport parity tests pass for representative native workflows.
-- [x] Native records, logs, artifacts, semantic metadata, and permission state match fixture-mode behavior for equivalent inputs.
-- [x] Unsupported native capabilities remain fail-closed and absent from the public namespace.
-- [x] Documentation clearly states that parity is deterministic local transport parity, not host native access or production WebSocket support.
-- [x] All phase tests pass.
-- [x] No regressions in previous phase tests.
+- [ ] `compatibility-report <directory>` recursively scans .swift files and prints a category-grouped report with file:line locations and adaptation hints.
+- [ ] `compatibility-report <directory> --json` emits valid JSON mirroring the Swift `CompatibilityAnalysis` structure plus a `draftManifest` key.
+- [ ] Draft manifest includes `requiredCapabilities` for detected platform APIs and `unsupportedSymbols` for APIs without capability contracts.
+- [ ] Exit code 0 for clean source, 1 for diagnostics found, 2 for CLI errors.
+- [ ] `npx @iphone-emulator/compatibility-cli <path>` invokes the Swift binary and returns equivalent output.
+- [ ] `analyzeCompatibility()` programmatic API returns typed results from TypeScript.
+- [ ] Swift CLI integration tests pass against fixture directories (clean, mixed, unsupported-only, empty, native-apis).
+- [ ] TypeScript bridge tests pass.
+- [ ] No regressions in existing DiagnosticsCore, RuntimeHost, automation SDK, or browser renderer tests.
+- [ ] All phase tests pass.
+- [ ] No regressions in previous phase tests.
 
 **On Completion:**
-- Deviations from plan: Step 12.8 required a small TypeScript transport parity correction rather than a no-op review. The local transport test double now keeps read-only location inspection out of the generic Swift-aligned native automation action taxonomy, increments semantic revisions for successful native mutations, uses Swift-style stale-revision diagnostic keys, rejects missing fixture calls through the public SDK namespace like fixture mode, derives scripted native events/artifact outputs at launch, and stops logging native mutations as session logs.
-- Tech debt / follow-ups: The TypeScript local transport double still mirrors Swift native state transitions in TypeScript; keep future native action additions covered by cross-runtime tests to avoid schema drift.
-- Ready for next phase: Yes. Phase 12 is the final planned phase.
-
-## Research Roadmap Queue
-
-**Status:** empty after 2026-05-03 spec drift refresh.
-
-No active documentation queue items remain. All expected devtool research outputs exist, Phase 12 is archived, and `specs/drift-report.md` reflects the completed native transport parity implementation.
+- Deviations from plan: [fill in when complete]
+- Tech debt / follow-ups: [fill in when complete]
+- Ready for next phase: [fill in when complete]
